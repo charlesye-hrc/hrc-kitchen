@@ -59,9 +59,9 @@ const RegisterPage = () => {
   };
 
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-      <Paper sx={{ p: 4, maxWidth: 500, width: '100%' }}>
-        <Typography variant="h4" gutterBottom align="center">
+    <Box sx={{ display: 'flex', justifyContent: 'center', py: { xs: 2, md: 4 } }}>
+      <Paper sx={{ p: { xs: 2, sm: 4 }, maxWidth: 500, width: '100%' }}>
+        <Typography variant="h4" gutterBottom align="center" sx={{ fontSize: { xs: '1.75rem', md: '2.125rem' } }}>
           Register
         </Typography>
 

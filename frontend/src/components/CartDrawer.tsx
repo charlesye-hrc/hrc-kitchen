@@ -43,12 +43,12 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose, orderingWindow }
 
   return (
     <Drawer anchor="right" open={open} onClose={onClose}>
-      <Box sx={{ width: 400, height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ width: { xs: '100vw', sm: 400 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
-        <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box sx={{ p: { xs: 1.5, sm: 2 }, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <CartIcon color="primary" />
-            <Typography variant="h6">Your Cart</Typography>
+            <Typography variant="h6" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>Your Cart</Typography>
             <Chip label={getCartItemCount()} size="small" color="primary" />
           </Box>
           <IconButton onClick={onClose}>
@@ -59,7 +59,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose, orderingWindow }
         <Divider />
 
         {/* Cart Items */}
-        <Box sx={{ flexGrow: 1, overflow: 'auto', p: 2 }}>
+        <Box sx={{ flexGrow: 1, overflow: 'auto', p: { xs: 1, sm: 2 } }}>
           {items.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 4 }}>
               <Typography color="text.secondary">Your cart is empty</Typography>
@@ -73,7 +73,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose, orderingWindow }
                       flexDirection: 'column',
                       alignItems: 'flex-start',
                       gap: 1,
-                      py: 2,
+                      py: { xs: 1.5, sm: 2 },
+                      px: { xs: 1, sm: 2 },
                     }}
                   >
                     <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
@@ -149,23 +150,25 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose, orderingWindow }
                     )}
 
                     {/* Quantity Controls */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                      <IconButton
-                        size="small"
-                        onClick={() => updateQuantity(item.menuItem.id, item.quantity - 1)}
-                        disabled={item.quantity <= 1}
-                      >
-                        <RemoveIcon fontSize="small" />
-                      </IconButton>
-                      <Typography sx={{ minWidth: 30, textAlign: 'center' }}>
-                        {item.quantity}
-                      </Typography>
-                      <IconButton
-                        size="small"
-                        onClick={() => updateQuantity(item.menuItem.id, item.quantity + 1)}
-                      >
-                        <AddIcon fontSize="small" />
-                      </IconButton>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <IconButton
+                          size="small"
+                          onClick={() => updateQuantity(item.menuItem.id, item.quantity - 1)}
+                          disabled={item.quantity <= 1}
+                        >
+                          <RemoveIcon fontSize="small" />
+                        </IconButton>
+                        <Typography sx={{ minWidth: 30, textAlign: 'center' }}>
+                          {item.quantity}
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          onClick={() => updateQuantity(item.menuItem.id, item.quantity + 1)}
+                        >
+                          <AddIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
                       <Typography variant="body2" sx={{ ml: 'auto', fontWeight: 'bold' }}>
                         ${(calculateItemPrice(item) * item.quantity).toFixed(2)}
                       </Typography>
@@ -182,7 +185,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose, orderingWindow }
         {items.length > 0 && (
           <>
             <Divider />
-            <Box sx={{ p: 2 }}>
+            <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
               {isOrderingClosed && (
                 <Alert severity="error" sx={{ mb: 2 }}>
                   {orderingWindow.message || 'Ordering is currently closed'}
@@ -194,8 +197,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose, orderingWindow }
                 </Alert>
               )}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6">Total:</Typography>
-                <Typography variant="h6" color="primary">
+                <Typography variant="h6" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>Total:</Typography>
+                <Typography variant="h6" color="primary" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
                   ${getCartTotal().toFixed(2)}
                 </Typography>
               </Box>

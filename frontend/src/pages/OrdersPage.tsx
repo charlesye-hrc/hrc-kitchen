@@ -130,8 +130,8 @@ const OrdersPage: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
+    <Container maxWidth="md" sx={{ py: { xs: 2, md: 4 } }}>
+      <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.75rem', md: '2.125rem' } }}>
         My Orders
       </Typography>
 
@@ -201,7 +201,14 @@ const OrdersPage: React.FC = () => {
             return (
               <Card key={order.id}>
                 <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                  <Box sx={{
+                    display: 'flex',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    justifyContent: 'space-between',
+                    alignItems: { xs: 'flex-start', sm: 'flex-start' },
+                    gap: { xs: 1, sm: 0 },
+                    mb: 2
+                  }}>
                     <Box>
                       <Typography variant="h6">{order.orderNumber}</Typography>
                       <Typography variant="body2" color="text.secondary">
@@ -221,11 +228,11 @@ const OrdersPage: React.FC = () => {
                         })}
                       </Typography>
                     </Box>
-                    <Box sx={{ textAlign: 'right' }}>
+                    <Box sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
                       <Typography variant="h6" color="primary">
                         ${Number(order.totalAmount).toFixed(2)}
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
                         <Chip
                           label={order.paymentStatus}
                           color={order.paymentStatus === 'COMPLETED' ? 'success' : 'warning'}

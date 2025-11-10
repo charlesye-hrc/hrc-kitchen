@@ -34,8 +34,8 @@ const LoginPage = () => {
 
   return (
     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-      <Paper sx={{ p: 4, maxWidth: 400, width: '100%' }}>
-        <Typography variant="h4" gutterBottom align="center">
+      <Paper sx={{ p: { xs: 2, sm: 4 }, maxWidth: 400, width: '100%' }}>
+        <Typography variant="h4" gutterBottom align="center" sx={{ fontSize: { xs: '1.75rem', md: '2.125rem' } }}>
           Login
         </Typography>
 

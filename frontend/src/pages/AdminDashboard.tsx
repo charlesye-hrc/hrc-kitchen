@@ -61,7 +61,13 @@ const AdminDashboard = () => {
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       <Box mb={4}>
-        <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
+        <Typography
+          variant="h4"
+          component="h1"
+          gutterBottom
+          fontWeight="bold"
+          sx={{ fontSize: { xs: '1.75rem', md: '2.125rem' } }}
+        >
           Admin Dashboard
         </Typography>
         <Typography variant="body1" color="text.secondary">
@@ -76,6 +82,13 @@ const AdminDashboard = () => {
             onChange={handleTabChange}
             aria-label="admin dashboard tabs"
             variant="fullWidth"
+            sx={{
+              '& .MuiTab-root': {
+                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                minWidth: { xs: 0, sm: 160 },
+                padding: { xs: '6px 8px', sm: '12px 16px' }
+              }
+            }}
           >
             <Tab
               icon={<RestaurantIcon />}

@@ -22,6 +22,8 @@ import {
   Checkbox,
   IconButton,
   Badge,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import { Add as AddIcon, ShoppingCart as CartIcon } from '@mui/icons-material';
 import { menuApi, MenuItem, VariationSelection } from '../services/api';
@@ -43,6 +45,8 @@ const MenuPage: React.FC = () => {
   const [orderingWindow, setOrderingWindow] = useState<any>(null);
 
   const { addItem, getCartItemCount } = useCart();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   useEffect(() => {
     fetchTodaysMenu();
@@ -180,10 +184,10 @@ const MenuPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+    <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 } }}>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'row', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'center', sm: 'center' }, mb: 3, gap: { xs: 1, sm: 0 } }}>
         <Box>
-          <Typography variant="h4" component="h1" gutterBottom>
+          <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.75rem', md: '2.125rem' } }}>
             Today's Menu
           </Typography>
           {weekday && (
@@ -223,10 +227,10 @@ const MenuPage: React.FC = () => {
       ) : (
         categories.map((category) => (
           <Box key={category} sx={{ mb: 4 }}>
-            <Typography variant="h5" gutterBottom sx={{ mb: 2 }}>
+            <Typography variant="h5" gutterBottom sx={{ mb: 2, fontSize: { xs: '1.5rem', md: '1.5rem' } }}>
               {category}
             </Typography>
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 2, md: 3 }}>
               {groupedItems[category].map((item) => (
                 <Grid item xs={12} sm={6} md={4} key={item.id}>
                   <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -273,7 +277,7 @@ const MenuPage: React.FC = () => {
       )}
 
       {/* Add to Cart Dialog */}
-      <Dialog open={!!selectedItem} onClose={() => setSelectedItem(null)} maxWidth="sm" fullWidth>
+      <Dialog open={!!selectedItem} onClose={() => setSelectedItem(null)} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>{selectedItem?.name}</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2 }}>

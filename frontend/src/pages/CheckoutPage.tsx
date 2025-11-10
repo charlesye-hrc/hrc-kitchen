@@ -16,6 +16,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
@@ -33,6 +35,8 @@ const CheckoutForm: React.FC = () => {
   const navigate = useNavigate();
   const stripe = useStripe();
   const elements = useElements();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -327,7 +331,7 @@ const CheckoutForm: React.FC = () => {
 
   if (checkingWindow) {
     return (
-      <Container maxWidth="md" sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
+      <Container maxWidth="md" sx={{ py: { xs: 2, md: 4 }, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
       </Container>
     );
@@ -335,7 +339,7 @@ const CheckoutForm: React.FC = () => {
 
   if (items.length === 0) {
     return (
-      <Container maxWidth="md" sx={{ py: 4 }}>
+      <Container maxWidth="md" sx={{ py: { xs: 2, md: 4 } }}>
         <Alert severity="info">
           Your cart is empty. <Button onClick={() => navigate('/menu')}>Browse Menu</Button>
         </Alert>
@@ -346,7 +350,7 @@ const CheckoutForm: React.FC = () => {
   // If ordering is closed, show error and prevent checkout
   if (orderingWindow && !orderingWindow.active) {
     return (
-      <Container maxWidth="md" sx={{ py: 4 }}>
+      <Container maxWidth="md" sx={{ py: { xs: 2, md: 4 } }}>
         <Alert severity="error">
           {error || 'Ordering is currently closed'}
           <Typography variant="body2" sx={{ mt: 1 }}>
@@ -358,8 +362,8 @@ const CheckoutForm: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
+    <Container maxWidth="md" sx={{ py: { xs: 2, md: 4 } }}>
+      <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.75rem', md: '2.125rem' } }}>
         Checkout
       </Typography>
 
@@ -370,7 +374,7 @@ const CheckoutForm: React.FC = () => {
 
         <List>
           {items.map(item => (
-            <ListItem key={item.menuItem.id} sx={{ px: 0, flexDirection: 'column', alignItems: 'flex-start' }}>
+            <ListItem key={item.menuItem.id} sx={{ px: 0, py: { xs: 1.5, sm: 2 }, flexDirection: 'column', alignItems: 'flex-start' }}>
               <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                 <Typography variant="body1" fontWeight="bold">
                   {item.menuItem.name} × {item.quantity}
@@ -479,7 +483,7 @@ const CheckoutForm: React.FC = () => {
                   Sign In
                 </Box>
               </Typography>
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
                 <TextField
                   required
                   label="First Name"
@@ -557,7 +561,7 @@ const CheckoutForm: React.FC = () => {
             />
           </Box>
 
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
             <Button
               variant="outlined"
               onClick={() => navigate('/menu')}

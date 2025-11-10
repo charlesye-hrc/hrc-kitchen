@@ -392,7 +392,14 @@ const KitchenDashboard = () => {
   return (
     <Box>
       {/* Header with Print Button */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'stretch', sm: 'center' },
+        gap: { xs: 2, sm: 0 },
+        mb: 3
+      }}>
         <Typography variant="h4">
           Kitchen Dashboard
         </Typography>
@@ -424,7 +431,7 @@ const KitchenDashboard = () => {
       {/* Date filter and stats */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} sm={6} md={3}>
             <TextField
               label="Date"
               type="date"
@@ -434,7 +441,7 @@ const KitchenDashboard = () => {
               InputLabelProps={{ shrink: true }}
             />
           </Grid>
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} sm={6} md={3}>
             <FormControl fullWidth>
               <InputLabel>Status Filter</InputLabel>
               <Select
@@ -452,7 +459,7 @@ const KitchenDashboard = () => {
 
           {stats && (
             <>
-              <Grid item xs={6} md={2}>
+              <Grid item xs={12} sm={6} md={2}>
                 <Card>
                   <CardContent>
                     <Typography color="text.secondary" variant="body2">
@@ -462,7 +469,7 @@ const KitchenDashboard = () => {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={6} md={2}>
+              <Grid item xs={12} sm={6} md={2}>
                 <Card>
                   <CardContent>
                     <Typography color="text.secondary" variant="body2">
@@ -474,7 +481,7 @@ const KitchenDashboard = () => {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={6} md={2}>
+              <Grid item xs={12} sm={6} md={2}>
                 <Card>
                   <CardContent>
                     <Typography color="text.secondary" variant="body2">
@@ -739,11 +746,15 @@ const KitchenDashboard = () => {
                                   key={order.orderId}
                                   sx={{
                                     display: 'grid',
-                                    gridTemplateColumns: '160px 70px 1fr auto',
-                                    gap: 2,
+                                    gridTemplateColumns: {
+                                      xs: '1fr',
+                                      sm: '120px 50px 1fr auto',
+                                      md: '160px 70px 1fr auto'
+                                    },
+                                    gap: { xs: 1, md: 2 },
                                     alignItems: 'center',
                                     py: 1.5,
-                                    px: 2,
+                                    px: { xs: 1, md: 2 },
                                     backgroundColor: flashingRows[orderItem?.id || '']
                                       ? 'rgba(76, 175, 80, 0.2)'
                                       : index % 2 === 0
@@ -852,7 +863,13 @@ const KitchenDashboard = () => {
                         }}
                       >
                         <CardContent>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                          <Box sx={{
+                            display: 'flex',
+                            flexDirection: { xs: 'column', sm: 'row' },
+                            justifyContent: 'space-between',
+                            gap: { xs: 1, sm: 0 },
+                            mb: 2
+                          }}>
                             <Box>
                               <Typography variant="h6">{order.orderNumber}</Typography>
                               <Typography variant="body2" color="text.secondary">
@@ -865,7 +882,7 @@ const KitchenDashboard = () => {
                                 {new Date(order.createdAt).toLocaleTimeString()}
                               </Typography>
                             </Box>
-                            <Box sx={{ textAlign: 'right' }}>
+                            <Box sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
                               <Typography variant="h6" color="primary">
                                 ${Number(order.totalAmount).toFixed(2)}
                               </Typography>
@@ -896,7 +913,13 @@ const KitchenDashboard = () => {
                                   ? 'rgba(76, 175, 80, 0.08)'
                                   : 'transparent'
                               }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                                <Box sx={{
+                                  display: 'flex',
+                                  flexDirection: { xs: 'column', sm: 'row' },
+                                  justifyContent: 'space-between',
+                                  alignItems: { xs: 'flex-start', sm: 'flex-start' },
+                                  mb: 1
+                                }}>
                                   <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                                     <Typography variant="body1">
                                       <strong>{item.quantity}x</strong> {item.menuItem.name}

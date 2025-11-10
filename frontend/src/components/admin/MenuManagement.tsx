@@ -30,6 +30,8 @@ import {
   ToggleButtonGroup,
   ToggleButton,
   Tooltip,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -64,6 +66,8 @@ const CATEGORIES = ['MAIN', 'SIDE', 'DRINK', 'DESSERT', 'OTHER'];
 const DIETARY_TAGS = ['Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Nut-Free', 'Halal'];
 
 const MenuManagement = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [currentWeekday, setCurrentWeekday] = useState(0);
   const [menuItems, setMenuItems] = useState<Record<string, MenuItem[]>>({});
   const [loading, setLoading] = useState(true);
@@ -339,14 +343,24 @@ const MenuManagement = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
       {error && (
         <Alert severity="error" onClose={() => setError('')} sx={{ mb: 3 }}>
           {error}
         </Alert>
       )}
 
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={3}
+        sx={{
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: { xs: 2, sm: 0 }
+        }}
+      >
         <Typography variant="h6">Menu Items</Typography>
         <Button
           variant="contained"
@@ -357,7 +371,7 @@ const MenuManagement = () => {
         </Button>
       </Box>
 
-      <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }}>
         <TextField
           fullWidth
           placeholder="Search menu items by name, description, category, or dietary tags..."
@@ -375,19 +389,20 @@ const MenuManagement = () => {
             }
           }}
           size="small"
+          sx={{ width: { xs: '100%', sm: 'auto' } }}
         >
           <Tooltip title="By Day">
-            <ToggleButton value="weekday" sx={{ px: 2 }}>
+            <ToggleButton value="weekday" sx={{ px: 2, flex: { xs: 1, sm: 'initial' } }}>
               <ViewWeekIcon fontSize="small" />
             </ToggleButton>
           </Tooltip>
           <Tooltip title="By Category">
-            <ToggleButton value="category" sx={{ px: 2 }}>
+            <ToggleButton value="category" sx={{ px: 2, flex: { xs: 1, sm: 'initial' } }}>
               <CategoryIcon fontSize="small" />
             </ToggleButton>
           </Tooltip>
           <Tooltip title="All Items">
-            <ToggleButton value="all" sx={{ px: 2 }}>
+            <ToggleButton value="all" sx={{ px: 2, flex: { xs: 1, sm: 'initial' } }}>
               <ViewListIcon fontSize="small" />
             </ToggleButton>
           </Tooltip>
@@ -430,7 +445,7 @@ const MenuManagement = () => {
         </Box>
       )}
 
-      <Grid container spacing={3}>
+      <Grid container spacing={{ xs: 2, md: 3 }}>
         {currentItems.length === 0 ? (
           <Grid item xs={12}>
             <Alert severity="info">
@@ -456,7 +471,7 @@ const MenuManagement = () => {
                     sx={{ objectFit: 'cover' }}
                   />
                 )}
-                <CardContent sx={{ flexGrow: 1 }}>
+                <CardContent sx={{ flexGrow: 1, p: { xs: 1.5, sm: 2 } }}>
                   <Typography variant="h6" gutterBottom noWrap title={item.name}>
                     {item.name}
                   </Typography>
@@ -517,7 +532,7 @@ const MenuManagement = () => {
       </Grid>
 
       {/* Add/Edit Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth fullScreen={isMobile}>
         <DialogTitle>
           {editingItem ? 'Edit Menu Item' : 'Add Menu Item'}
         </DialogTitle>
@@ -574,7 +589,7 @@ const MenuManagement = () => {
               <Typography variant="subtitle2" gutterBottom>
                 Weekdays *
               </Typography>
-              <FormGroup row>
+              <FormGroup sx={{ flexDirection: { xs: 'column', sm: 'row' } }}>
                 {WEEKDAYS.map((day) => (
                   <FormControlLabel
                     key={day}
@@ -597,6 +612,7 @@ const MenuManagement = () => {
                       />
                     }
                     label={day}
+                    sx={{ mr: { xs: 0, sm: 2 } }}
                   />
                 ))}
               </FormGroup>
@@ -606,7 +622,7 @@ const MenuManagement = () => {
               <Typography variant="subtitle2" gutterBottom>
                 Dietary Tags
               </Typography>
-              <FormGroup row>
+              <FormGroup sx={{ flexDirection: { xs: 'column', sm: 'row' } }}>
                 {DIETARY_TAGS.map((tag) => (
                   <FormControlLabel
                     key={tag}
@@ -629,6 +645,7 @@ const MenuManagement = () => {
                       />
                     }
                     label={tag}
+                    sx={{ mr: { xs: 0, sm: 2 } }}
                   />
                 ))}
               </FormGroup>

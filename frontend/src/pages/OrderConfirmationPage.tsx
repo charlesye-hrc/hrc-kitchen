@@ -17,6 +17,8 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -53,6 +55,8 @@ const OrderConfirmationPage: React.FC = () => {
   const { token, isAuthenticated, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -183,11 +187,11 @@ const OrderConfirmationPage: React.FC = () => {
   const orderCreatedDate = new Date(order.createdAt);
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Paper sx={{ p: 4 }}>
+    <Container maxWidth="md" sx={{ py: { xs: 2, md: 4 } }}>
+      <Paper sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
         <Box sx={{ textAlign: 'center', mb: 4 }}>
           <CheckCircleIcon color="success" sx={{ fontSize: 64, mb: 2 }} />
-          <Typography variant="h4" component="h1" gutterBottom>
+          <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
             Order Confirmed!
           </Typography>
           <Typography variant="body1" color="text.secondary">
@@ -203,7 +207,7 @@ const OrderConfirmationPage: React.FC = () => {
             Order Details
           </Typography>
 
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 2 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
             <Box>
               <Typography variant="body2" color="text.secondary">
                 Order Number
@@ -299,7 +303,7 @@ const OrderConfirmationPage: React.FC = () => {
           </Box>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mt: 4 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, justifyContent: 'center', mt: 4 }}>
           <Button variant="outlined" onClick={() => navigate('/menu')}>
             Order Again
           </Button>
@@ -312,7 +316,7 @@ const OrderConfirmationPage: React.FC = () => {
       </Paper>
 
       {/* Account Creation Dialog for Guests */}
-      <Dialog open={showAccountDialog} onClose={() => setShowAccountDialog(false)} maxWidth="sm" fullWidth>
+      <Dialog open={showAccountDialog} onClose={() => setShowAccountDialog(false)} maxWidth="sm" fullWidth fullScreen={isMobile}>
         <DialogTitle>Create an Account</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
