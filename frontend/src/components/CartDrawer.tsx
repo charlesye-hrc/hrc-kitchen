@@ -12,6 +12,7 @@ import {
   TextField,
   Chip,
   Stack,
+  Alert,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -26,11 +27,14 @@ import { useNavigate } from 'react-router-dom';
 interface CartDrawerProps {
   open: boolean;
   onClose: () => void;
+  orderingWindow?: any;
 }
 
-const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose }) => {
+const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose, orderingWindow }) => {
   const { items, removeItem, updateQuantity, clearCart, getCartTotal, getCartItemCount, calculateItemPrice } = useCart();
   const navigate = useNavigate();
+
+  const isOrderingClosed = orderingWindow && !orderingWindow.active;
 
   const handleCheckout = () => {
     onClose();
@@ -179,6 +183,16 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose }) => {
           <>
             <Divider />
             <Box sx={{ p: 2 }}>
+              {isOrderingClosed && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {orderingWindow.message || 'Ordering is currently closed'}
+                  {orderingWindow.window?.start && orderingWindow.window?.end && (
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      Ordering window: {orderingWindow.window.start} - {orderingWindow.window.end}
+                    </Typography>
+                  )}
+                </Alert>
+              )}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                 <Typography variant="h6">Total:</Typography>
                 <Typography variant="h6" color="primary">
@@ -191,7 +205,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose }) => {
                   variant="contained"
                   size="large"
                   onClick={handleCheckout}
-                  disabled={items.length === 0}
+                  disabled={items.length === 0 || isOrderingClosed}
                 >
                   Proceed to Checkout
                 </Button>

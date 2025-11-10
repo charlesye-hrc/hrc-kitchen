@@ -44,6 +44,7 @@ interface CartProviderProps {
 
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -55,12 +56,15 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         console.error('Failed to load cart from localStorage:', error);
       }
     }
+    setIsInitialized(true);
   }, []);
 
-  // Save cart to localStorage whenever it changes
+  // Save cart to localStorage whenever it changes (after initialization)
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(items));
-  }, [items]);
+    if (isInitialized) {
+      localStorage.setItem('cart', JSON.stringify(items));
+    }
+  }, [items, isInitialized]);
 
   const calculateItemPrice = (item: CartItem): number => {
     let basePrice = Number(item.menuItem.price);

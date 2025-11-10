@@ -37,6 +37,8 @@ const CheckoutForm: React.FC = () => {
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [orderingWindow, setOrderingWindow] = useState<any>(null);
+  const [checkingWindow, setCheckingWindow] = useState(true);
 
   // Guest checkout fields
   const [guestFirstName, setGuestFirstName] = useState('');
@@ -51,6 +53,31 @@ const CheckoutForm: React.FC = () => {
   const [canMakePayment, setCanMakePayment] = useState(false);
 
   const cartTotal = getCartTotal();
+
+  // Check ordering window on page load
+  useEffect(() => {
+    const checkOrderingWindow = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/menu/today`);
+        const windowData = response.data.data.orderingWindow;
+        setOrderingWindow(windowData);
+
+        // If ordering window is closed, redirect to menu with error
+        if (windowData && !windowData.active) {
+          setError('Ordering is currently closed. You cannot proceed with checkout at this time.');
+          setTimeout(() => {
+            navigate('/menu');
+          }, 3000);
+        }
+      } catch (err) {
+        console.error('Error checking ordering window:', err);
+      } finally {
+        setCheckingWindow(false);
+      }
+    };
+
+    checkOrderingWindow();
+  }, [navigate]);
 
   // Initialize Payment Request Button for Apple Pay / Google Pay
   useEffect(() => {
@@ -298,11 +325,33 @@ const CheckoutForm: React.FC = () => {
     navigate('/login', { state: { from: '/checkout' } });
   };
 
+  if (checkingWindow) {
+    return (
+      <Container maxWidth="md" sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress />
+      </Container>
+    );
+  }
+
   if (items.length === 0) {
     return (
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Alert severity="info">
           Your cart is empty. <Button onClick={() => navigate('/menu')}>Browse Menu</Button>
+        </Alert>
+      </Container>
+    );
+  }
+
+  // If ordering is closed, show error and prevent checkout
+  if (orderingWindow && !orderingWindow.active) {
+    return (
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Alert severity="error">
+          {error || 'Ordering is currently closed'}
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            Redirecting to menu...
+          </Typography>
         </Alert>
       </Container>
     );

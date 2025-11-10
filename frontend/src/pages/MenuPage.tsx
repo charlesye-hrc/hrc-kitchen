@@ -358,7 +358,11 @@ const MenuPage: React.FC = () => {
       </Dialog>
 
       {/* Cart Drawer */}
-      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
+      <CartDrawer
+        open={cartOpen}
+        onClose={() => setCartOpen(false)}
+        orderingWindow={orderingWindow}
+      />
     </Container>
   );
 };
