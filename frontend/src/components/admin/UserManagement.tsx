@@ -40,7 +40,7 @@ interface User {
   fullName: string;
   department: string | null;
   location: string | null;
-  role: 'STAFF' | 'KITCHEN' | 'ADMIN';
+  role: 'STAFF' | 'KITCHEN' | 'FINANCE' | 'ADMIN';
   isActive: boolean;
   emailVerified: boolean;
   createdAt: string;
@@ -204,6 +204,7 @@ const UserManagement = () => {
             <MenuItem value="">All</MenuItem>
             <MenuItem value="STAFF">Staff</MenuItem>
             <MenuItem value="KITCHEN">Kitchen</MenuItem>
+            <MenuItem value="FINANCE">Finance</MenuItem>
             <MenuItem value="ADMIN">Admin</MenuItem>
           </Select>
         </FormControl>
@@ -325,6 +326,12 @@ const UserManagement = () => {
                 Kitchen
               </MenuItem>
               <MenuItem
+                value="FINANCE"
+                disabled={!selectedUser?.email.toLowerCase().endsWith(restrictedDomain.toLowerCase())}
+              >
+                Finance
+              </MenuItem>
+              <MenuItem
                 value="ADMIN"
                 disabled={!selectedUser?.email.toLowerCase().endsWith(restrictedDomain.toLowerCase())}
               >
@@ -334,7 +341,7 @@ const UserManagement = () => {
           </FormControl>
           {!selectedUser?.email.toLowerCase().endsWith(restrictedDomain.toLowerCase()) && (
             <Alert severity="info" sx={{ mt: 2 }}>
-              Kitchen and Admin roles require a {restrictedDomain} email address.
+              Kitchen, Finance, and Admin roles require a {restrictedDomain} email address.
             </Alert>
           )}
           {newRole === 'ADMIN' && selectedUser?.email.toLowerCase().endsWith(restrictedDomain.toLowerCase()) && (

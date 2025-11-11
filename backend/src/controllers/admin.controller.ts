@@ -233,10 +233,10 @@ export class AdminController {
       const { id } = req.params;
       const { role } = req.body;
 
-      if (!role || !['STAFF', 'KITCHEN', 'ADMIN'].includes(role)) {
+      if (!role || !['STAFF', 'KITCHEN', 'FINANCE', 'ADMIN'].includes(role)) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid role. Must be STAFF, KITCHEN, or ADMIN',
+          message: 'Invalid role. Must be STAFF, KITCHEN, FINANCE, or ADMIN',
         });
       }
 
@@ -248,8 +248,8 @@ export class AdminController {
         });
       }
 
-      // Check email domain restriction for KITCHEN and ADMIN roles
-      if (role === 'KITCHEN' || role === 'ADMIN') {
+      // Check email domain restriction for KITCHEN, FINANCE, and ADMIN roles
+      if (role === 'KITCHEN' || role === 'FINANCE' || role === 'ADMIN') {
         const user = await adminService.getUserById(id);
 
         if (!user) {
@@ -266,7 +266,7 @@ export class AdminController {
         if (!user.email.toLowerCase().endsWith(allowedDomain.toLowerCase())) {
           return res.status(403).json({
             success: false,
-            message: `Only users with ${allowedDomain} email addresses can be assigned KITCHEN or ADMIN roles`,
+            message: `Only users with ${allowedDomain} email addresses can be assigned KITCHEN, FINANCE, or ADMIN roles`,
             code: 'INVALID_EMAIL_DOMAIN',
           });
         }

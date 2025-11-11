@@ -80,15 +80,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <ListItemText primary="Kitchen" />
               </ListItemButton>
             )}
+            {(user?.role === 'FINANCE' || user?.role === 'ADMIN') && (
+              <ListItemButton component={Link} to="/reports" onClick={handleNavClick}>
+                <ListItemText primary="Reports" />
+              </ListItemButton>
+            )}
             {user?.role === 'ADMIN' && (
-              <>
-                <ListItemButton component={Link} to="/admin" onClick={handleNavClick}>
-                  <ListItemText primary="Admin" />
-                </ListItemButton>
-                <ListItemButton component={Link} to="/reports" onClick={handleNavClick}>
-                  <ListItemText primary="Reports" />
-                </ListItemButton>
-              </>
+              <ListItemButton component={Link} to="/admin" onClick={handleNavClick}>
+                <ListItemText primary="Admin" />
+              </ListItemButton>
             )}
             <Divider />
             <ListItemButton onClick={handleLogout}>
@@ -215,15 +215,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       Kitchen
                     </Button>
                   )}
+                  {(user?.role === 'FINANCE' || user?.role === 'ADMIN') && (
+                    <Button color="inherit" component={Link} to="/reports">
+                      Reports
+                    </Button>
+                  )}
                   {user?.role === 'ADMIN' && (
-                    <>
-                      <Button color="inherit" component={Link} to="/admin">
-                        Admin
-                      </Button>
-                      <Button color="inherit" component={Link} to="/reports">
-                        Reports
-                      </Button>
-                    </>
+                    <Button color="inherit" component={Link} to="/admin">
+                      Admin
+                    </Button>
                   )}
                   <Button color="inherit" onClick={handleLogout}>
                     Logout

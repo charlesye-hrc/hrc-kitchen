@@ -4,6 +4,7 @@ import menuRoutes from './menu.routes';
 import orderRoutes from './order.routes';
 import kitchenRoutes from './kitchen.routes';
 import adminRoutes from './admin.routes';
+import financeRoutes from './finance.routes';
 import paymentRoutes from './payment.routes';
 
 const router = Router();
@@ -23,6 +24,7 @@ router.use('/menu', menuRoutes);
 router.use('/orders', orderRoutes);
 router.use('/kitchen', kitchenRoutes);
 router.use('/admin', adminRoutes);
+router.use('/finance', financeRoutes);
 router.use('/payment', paymentRoutes);
 
 export default router;
