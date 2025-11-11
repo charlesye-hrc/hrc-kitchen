@@ -24,6 +24,17 @@ const LoginPage = () => {
     try {
       await login(email, password);
 
+      // Check if user has admin access to this application
+      const storedHasAdminAccess = localStorage.getItem('hasAdminAccess');
+      const hasAdminAccess = storedHasAdminAccess === 'true';
+
+      if (!hasAdminAccess) {
+        // Show access denied error on login page
+        setError('Access Denied: This application is restricted to authorized domain users only. Your email domain does not have access to management features. Please contact your administrator.');
+        setLoading(false);
+        return;
+      }
+
       // Wait a bit for context to update with user info
       setTimeout(() => {
         // Redirect based on where they came from or their role
