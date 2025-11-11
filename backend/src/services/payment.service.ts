@@ -44,19 +44,67 @@ export class PaymentService {
 
   static async confirmPayment(paymentIntentId: string): Promise<Stripe.PaymentIntent> {
     try {
+      // 1. Verify payment with Stripe (source of truth)
       const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
       if (paymentIntent.status !== 'succeeded') {
         throw new ApiError(400, 'Payment has not been completed');
       }
 
+      // 2. Update order payment status in database with idempotency check
+      const orderId = paymentIntent.metadata.orderId;
+      if (!orderId) {
+        console.warn(`[Payment Service] ⚠ Payment intent ${paymentIntentId} has no orderId in metadata`);
+        return paymentIntent;
+      }
+
+      // 3. Check if already processed (idempotency)
+      const existingOrder = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: { paymentStatus: true, paymentId: true },
+      });
+
+      if (!existingOrder) {
+        throw new ApiError(404, `Order ${orderId} not found`);
+      }
+
+      if (existingOrder.paymentStatus === 'COMPLETED') {
+        console.log(`[Payment Service] ℹ Order ${orderId} already marked as COMPLETED (idempotent)`);
+        return paymentIntent;
+      }
+
+      // 4. Update payment status
+      await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          paymentStatus: 'COMPLETED',
+          paymentId: paymentIntent.id,
+        },
+      });
+
+      console.log(`[Payment Service] ✓ Updated order ${orderId} payment status: PENDING → COMPLETED (manual confirmation)`);
+
       return paymentIntent;
     } catch (error) {
       if (error instanceof ApiError) {
         throw error;
       }
-      console.error('Payment confirmation failed:', error);
+      console.error('[Payment Service] ✗ Payment confirmation failed:', error);
       throw new ApiError(500, 'Failed to confirm payment');
+    }
+  }
+
+  static async updatePaymentIntentMetadata(paymentIntentId: string, orderId: string): Promise<void> {
+    try {
+      await stripe.paymentIntents.update(paymentIntentId, {
+        metadata: {
+          orderId: orderId,
+        },
+      });
+      console.log(`[Payment Service] ✓ Updated payment intent ${paymentIntentId} with orderId ${orderId}`);
+    } catch (error) {
+      console.error('[Payment Service] ✗ Failed to update payment intent metadata:', error);
+      // Don't throw - this is not critical for order creation
     }
   }
 
@@ -111,31 +159,68 @@ export class PaymentService {
   private static async handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent): Promise<void> {
     const orderId = paymentIntent.metadata.orderId;
 
-    if (orderId) {
-      await prisma.order.update({
-        where: { id: orderId },
-        data: {
-          paymentStatus: 'COMPLETED',
-          paymentId: paymentIntent.id,
-        },
-      });
-
-      console.log(`Payment succeeded for order ${orderId}`);
+    if (!orderId) {
+      console.warn(`[Payment Service] ⚠ Webhook: Payment intent ${paymentIntent.id} has no orderId in metadata`);
+      return;
     }
+
+    // Check if already processed (idempotency for webhook retries)
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { paymentStatus: true },
+    });
+
+    if (!existingOrder) {
+      console.error(`[Payment Service] ✗ Webhook: Order ${orderId} not found`);
+      return;
+    }
+
+    if (existingOrder.paymentStatus === 'COMPLETED') {
+      console.log(`[Payment Service] ℹ Order ${orderId} already marked as COMPLETED (webhook retry)`);
+      return;
+    }
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        paymentStatus: 'COMPLETED',
+        paymentId: paymentIntent.id,
+      },
+    });
+
+    console.log(`[Payment Service] ✓ Updated order ${orderId} payment status: PENDING → COMPLETED (webhook)`);
   }
 
   private static async handlePaymentFailure(paymentIntent: Stripe.PaymentIntent): Promise<void> {
     const orderId = paymentIntent.metadata.orderId;
 
-    if (orderId) {
-      await prisma.order.update({
-        where: { id: orderId },
-        data: {
-          paymentStatus: 'FAILED',
-        },
-      });
-
-      console.log(`Payment failed for order ${orderId}`);
+    if (!orderId) {
+      console.warn(`[Payment Service] ⚠ Webhook: Failed payment intent ${paymentIntent.id} has no orderId in metadata`);
+      return;
     }
+
+    const existingOrder = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { paymentStatus: true },
+    });
+
+    if (!existingOrder) {
+      console.error(`[Payment Service] ✗ Webhook: Order ${orderId} not found for failed payment`);
+      return;
+    }
+
+    if (existingOrder.paymentStatus === 'FAILED') {
+      console.log(`[Payment Service] ℹ Order ${orderId} already marked as FAILED (webhook retry)`);
+      return;
+    }
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        paymentStatus: 'FAILED',
+      },
+    });
+
+    console.log(`[Payment Service] ✗ Updated order ${orderId} payment status: ${existingOrder.paymentStatus} → FAILED (webhook)`);
   }
 }

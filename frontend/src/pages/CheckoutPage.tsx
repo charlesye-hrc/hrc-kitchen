@@ -188,6 +188,20 @@ const CheckoutForm: React.FC = () => {
 
         if (paymentIntent?.status === 'succeeded') {
           event.complete('success');
+
+          // Manually confirm payment status with backend (since webhooks may not fire in dev)
+          try {
+            await axios.post(
+              `${import.meta.env.VITE_API_URL}/payment/confirm`,
+              { paymentIntentId: paymentIntent.id },
+              isAuthenticated ? { headers: { Authorization: `Bearer ${token}` } } : {}
+            );
+            console.log('[Checkout] Payment status confirmed with backend');
+          } catch (confirmErr) {
+            console.error('[Checkout] Failed to confirm payment with backend:', confirmErr);
+            // Don't block the user flow, payment succeeded on Stripe side
+          }
+
           clearCart();
           navigate(`/order-confirmation/${order.id}`, {
             state: {
@@ -299,6 +313,19 @@ const CheckoutForm: React.FC = () => {
       }
 
       if (paymentIntent?.status === 'succeeded') {
+        // Manually confirm payment status with backend (since webhooks may not fire in dev)
+        try {
+          await axios.post(
+            `${import.meta.env.VITE_API_URL}/payment/confirm`,
+            { paymentIntentId: paymentIntent.id },
+            isAuthenticated ? { headers: { Authorization: `Bearer ${token}` } } : {}
+          );
+          console.log('[Checkout] Payment status confirmed with backend');
+        } catch (confirmErr) {
+          console.error('[Checkout] Failed to confirm payment with backend:', confirmErr);
+          // Don't block the user flow, payment succeeded on Stripe side
+        }
+
         // Payment successful
         clearCart();
         navigate(`/order-confirmation/${order.id}`, {

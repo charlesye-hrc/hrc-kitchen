@@ -4,6 +4,7 @@ import menuRoutes from './menu.routes';
 import orderRoutes from './order.routes';
 import kitchenRoutes from './kitchen.routes';
 import adminRoutes from './admin.routes';
+import paymentRoutes from './payment.routes';
 
 const router = Router();
 
@@ -22,9 +23,6 @@ router.use('/menu', menuRoutes);
 router.use('/orders', orderRoutes);
 router.use('/kitchen', kitchenRoutes);
 router.use('/admin', adminRoutes);
-
-// TODO: Add remaining route modules
-// import paymentRoutes from './payment.routes';
-// router.use('/payment', paymentRoutes);
+router.use('/payment', paymentRoutes);
 
 export default router;

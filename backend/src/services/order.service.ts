@@ -143,11 +143,13 @@ export class OrderService {
     // Create order with payment in a transaction
     const result = await prisma.$transaction(async (tx) => {
       // Create payment intent with Stripe first
+      console.log(`[Order Service] Creating payment intent for ${customerInfo.customerEmail}, amount: $${totalAmount}`);
       const paymentIntent = await PaymentService.createPaymentIntent({
         amount: totalAmount,
         customerEmail: customerInfo.customerEmail,
         orderId: undefined // We don't have the orderId yet
       });
+      console.log(`[Order Service] Payment intent created: ${paymentIntent.id}`);
 
       // Create order
       const order = await tx.order.create({
@@ -182,8 +184,12 @@ export class OrderService {
         }
       });
 
-      return { order, clientSecret: paymentIntent.client_secret };
+      return { order, clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id };
     });
+
+    // Update payment intent metadata with orderId after transaction completes
+    console.log(`[Order Service] Updating payment intent ${result.paymentIntentId} with orderId ${result.order.id}`);
+    await PaymentService.updatePaymentIntentMetadata(result.paymentIntentId, result.order.id);
 
     return result;
   }
