@@ -9,12 +9,12 @@ const LoginPage = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Get the redirect path from location state (e.g., from checkout page)
-  const from = (location.state as any)?.from || '/menu';
+  // Get the redirect path from location state
+  const from = (location.state as any)?.from;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,8 +23,31 @@ const LoginPage = () => {
 
     try {
       await login(email, password);
-      // Redirect back to the page they came from (e.g., checkout)
-      navigate(from);
+
+      // Wait a bit for context to update with user info
+      setTimeout(() => {
+        // Redirect based on where they came from or their role
+        if (from && from !== '/login') {
+          navigate(from);
+        } else {
+          // Default redirect based on role
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            const userData = JSON.parse(storedUser);
+            if (userData.role === 'ADMIN') {
+              navigate('/admin');
+            } else if (userData.role === 'KITCHEN') {
+              navigate('/kitchen');
+            } else if (userData.role === 'FINANCE') {
+              navigate('/reports');
+            } else {
+              navigate('/kitchen');
+            }
+          } else {
+            navigate('/');
+          }
+        }
+      }, 100);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Login failed. Please try again.');
     } finally {

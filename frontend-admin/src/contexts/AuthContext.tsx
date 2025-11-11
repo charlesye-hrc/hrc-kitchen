@@ -11,6 +11,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
+  hasAdminAccess: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   register: (data: RegisterData) => Promise<void>;
@@ -32,6 +33,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [hasAdminAccess, setHasAdminAccess] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
@@ -40,10 +42,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Load user from localStorage on mount
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
+    const storedHasAdminAccess = localStorage.getItem('hasAdminAccess');
 
     if (storedToken && storedUser) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
+      setHasAdminAccess(storedHasAdminAccess === 'true');
       axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
     }
 
@@ -57,13 +61,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password,
       });
 
-      const { user: userData, token: authToken } = response.data;
+      const { user: userData, token: authToken, hasAdminAccess: adminAccess } = response.data;
 
       setUser(userData);
       setToken(authToken);
+      setHasAdminAccess(adminAccess || false);
 
       localStorage.setItem('token', authToken);
       localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('hasAdminAccess', String(adminAccess || false));
 
       axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
     } catch (error) {
@@ -75,8 +81,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setUser(null);
     setToken(null);
+    setHasAdminAccess(false);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('hasAdminAccess');
     delete axios.defaults.headers.common['Authorization'];
   };
 
@@ -92,6 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value = {
     user,
     token,
+    hasAdminAccess,
     login,
     logout,
     register,

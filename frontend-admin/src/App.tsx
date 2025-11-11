@@ -25,7 +25,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
-  const { isAuthenticated, user, isLoading } = useAuth();
+  const { isAuthenticated, user, isLoading, hasAdminAccess } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -48,26 +48,22 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   }
 
   // Check domain access (hasAdminAccess flag from backend)
-  const authResponse = localStorage.getItem('authResponse');
-  if (authResponse) {
-    const parsed = JSON.parse(authResponse);
-    if (!parsed.hasAdminAccess) {
-      return (
-        <Container maxWidth="md" sx={{ mt: 8 }}>
-          <Alert severity="error" sx={{ mb: 2 }}>
-            <strong>Access Denied</strong>
-          </Alert>
-          <Alert severity="warning">
-            This application is restricted to authorized domain users only.
-            <br />
-            Your email domain does not have access to management features.
-            <br />
-            <br />
-            Please contact your administrator if you believe this is an error.
-          </Alert>
-        </Container>
-      );
-    }
+  if (!hasAdminAccess) {
+    return (
+      <Container maxWidth="md" sx={{ mt: 8 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          <strong>Access Denied</strong>
+        </Alert>
+        <Alert severity="warning">
+          This application is restricted to authorized domain users only.
+          <br />
+          Your email domain does not have access to management features.
+          <br />
+          <br />
+          Please contact your administrator if you believe this is an error.
+        </Alert>
+      </Container>
+    );
   }
 
   // Check role-based access
