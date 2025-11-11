@@ -828,9 +828,155 @@ id, config_key, config_value, updated_at, updated_by
 
 ---
 
-## 14. Future Enhancements (Out of Scope for Phase 1)
+## 14. Application Separation Architecture (Phase 6)
 
-### 14.1 Advanced Features
+**Status:** ✅ Planned (See [APP_SEPARATION_PLAN.md](./APP_SEPARATION_PLAN.md))
+
+### 14.1 Dual Application Architecture
+
+The system will be restructured into two separate frontend applications:
+
+#### Public Ordering Application
+**Purpose:** Customer-facing lunch ordering system
+
+**Target Users:** General staff, guests, public users
+
+**Features:**
+- Menu browsing (no login required)
+- Shopping cart and checkout
+- Guest checkout support
+- User registration (any email domain)
+- Order history (authenticated users)
+- Payment processing (Stripe)
+
+**Access Control:**
+- No email domain restrictions
+- Self-registration allowed
+- Guest checkout supported
+
+#### Internal Management Application
+**Purpose:** Operations and administration for authorized staff
+
+**Target Users:** Kitchen staff, administrators, finance staff
+
+**Features:**
+- Kitchen dashboard (order fulfillment)
+- Admin panel (menu/user/system management)
+- Finance reports and analytics
+- User role management
+
+**Access Control:**
+- **Email domain restrictions enforced**
+- Only users with configured domain email can access
+- Example: `@hrc-kitchen.com`, `@huonregionalcare.com.au`
+- Guest access not allowed
+
+### 14.2 Email Domain Restrictions
+
+**Requirement:** FR-19.1 - Domain-Based Access Control
+
+**Implementation:**
+- Environment variable: `ALLOWED_ADMIN_DOMAIN` (comma-separated list)
+- Backend middleware validates email domain for all management routes
+- Role assignment validation prevents privilege escalation
+- Frontend displays clear error messages for unauthorized domains
+
+**Rules:**
+- **STAFF role:** Any email domain allowed
+- **KITCHEN role:** Must match allowed domain(s)
+- **ADMIN role:** Must match allowed domain(s)
+- **FINANCE role:** Must match allowed domain(s)
+
+**Validation Points:**
+1. Login to management app (frontend + backend)
+2. API route access (backend middleware)
+3. Role assignment (backend service)
+4. User promotion (admin panel)
+
+### 14.3 Shared Authentication
+
+**Requirement:** FR-19.2 - Unified Authentication System
+
+**Implementation:**
+- Single JWT token system
+- Same backend authentication service
+- Shared user database
+- Cross-app token validity
+
+**User Experience:**
+- User with `staff@gmail.com` can:
+  - ✅ Access public ordering app
+  - ❌ Cannot access management app
+  - ❌ Cannot be promoted to Kitchen/Admin/Finance roles
+
+- User with `staff@hrc-kitchen.com` can:
+  - ✅ Access public ordering app
+  - ✅ Access management app (if assigned Kitchen/Admin/Finance role)
+  - ✅ Can be promoted to privileged roles
+
+### 14.4 Technical Architecture
+
+**Frontend Structure:**
+```
+frontend-public/     # Public ordering app (port 5173)
+frontend-admin/      # Internal management app (port 5174)
+frontend-common/     # Shared component library
+```
+
+**Backend Changes:**
+- Domain validation middleware
+- Enhanced CORS configuration
+- Login endpoint returns `hasAdminAccess` flag
+- Role assignment validation
+
+**Deployment:**
+- Separate subdomains recommended:
+  - `order.hrc-kitchen.com` → Public app
+  - `manage.hrc-kitchen.com` → Admin app
+  - `api.hrc-kitchen.com` → Backend API
+- Independent deployment pipelines
+- Separate CDN/caching strategies
+
+### 14.5 Security Enhancements
+
+**Benefits:**
+1. **Reduced Attack Surface**
+   - Public app contains no admin code
+   - Management app not exposed to public
+   - Clear separation of concerns
+
+2. **Domain-Based Access Control**
+   - Prevents unauthorized role escalation
+   - Enforces organizational email policy
+   - Backend + frontend validation
+
+3. **Independent Security Policies**
+   - Different rate limiting per app
+   - Separate monitoring and logging
+   - Isolated security incident impact
+
+### 14.6 Migration Strategy
+
+**Backward Compatibility:**
+- All backend changes are backward compatible
+- Existing frontend continues working during migration
+- Zero-downtime migration possible
+
+**Timeline:** 5 weeks (detailed in [APP_SEPARATION_PLAN.md](./APP_SEPARATION_PLAN.md))
+
+**Phases:**
+1. Backend domain validation (Week 1)
+2. Shared component library (Week 1-2)
+3. Public app creation (Week 2-3)
+4. Admin app creation (Week 3-4)
+5. Integration testing (Week 4)
+6. Documentation + deployment (Week 5)
+
+---
+
+## 15. Future Enhancements (Out of Scope for Current Phases)
+
+### 15.1 Advanced Features
 - Mobile native apps (iOS/Android)
 - Push notifications for order status
 - Multi-day advance ordering
@@ -841,20 +987,20 @@ id, config_key, config_value, updated_at, updated_by
 - Multi-location support
 - Catering orders for meetings/events
 
-### 14.2 Advanced Analytics
+### 15.2 Advanced Analytics
 - Predictive ordering patterns
 - Inventory recommendations
 - Waste reduction insights
 - Revenue forecasting
 
-### 14.3 Integration
+### 15.3 Integration
 - Slack/Teams notifications
 - Calendar integration for meetings
 - Accounting software integration (Xero, MYOB)
 
 ---
 
-## 15. Glossary
+## 16. Glossary
 
 | Term | Definition |
 |------|------------|
@@ -865,10 +1011,14 @@ id, config_key, config_value, updated_at, updated_by
 | Kitchen Ticket | Printed or displayed order details for kitchen staff |
 | Order Status | Current state of an order (Placed, Preparing, Ready) |
 | Payment Intent | Stripe object representing intent to collect payment |
+| Public Ordering App | Customer-facing application for placing lunch orders (no domain restrictions) |
+| Internal Management App | Staff-only application for kitchen operations and admin (domain-restricted) |
+| Domain Validation | Backend middleware that enforces email domain restrictions for privileged roles |
+| Privileged Roles | User roles requiring domain validation (KITCHEN, ADMIN, FINANCE) |
 
 ---
 
-## 16. Appendices
+## 17. Appendices
 
 ### Appendix A: Wireframes
 *(To be created during design phase)*
@@ -889,6 +1039,7 @@ id, config_key, config_value, updated_at, updated_by
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-10-07 | HRC Project Team | Initial draft |
+| 1.1 | 2025-11-11 | HRC Project Team | Added Section 14: Application Separation Architecture |
 
 ---
 

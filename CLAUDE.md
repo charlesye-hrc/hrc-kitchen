@@ -8,6 +8,7 @@
 ## Quick Links
 - PRD: `./PRD.md`
 - MVP Build Plan: `./MVP_PLAN.md`
+- **[App Separation Plan](./APP_SEPARATION_PLAN.md)** - Implementation plan for splitting into public and admin apps
 
 ## Project Overview
 HRC Kitchen is a web-based lunch ordering system for Huon Regional Care staff, featuring:
@@ -19,7 +20,8 @@ HRC Kitchen is a web-based lunch ordering system for Huon Regional Care staff, f
 - Non-technical menu management interface
 
 ## Development Status
-- **Current Phase**: MVP Complete + Apple Pay/Google Pay Integration
+- **Current Phase**: Application Separation (Public vs Admin Apps)
+- **Previous Phase**: MVP Complete + Apple Pay/Google Pay Integration
 - **Completed**:
   - ✅ Project structure and monorepo setup
   - ✅ Backend API foundation (Node.js/Express/TypeScript)
@@ -432,3 +434,145 @@ model MenuItem {
 - `GET /api/v1/menu/today` - Public access (no authentication)
 - `GET /api/v1/menu/week` - Public access (no authentication)
 - `GET /api/v1/menu/items/:id` - Public access (no authentication)
+
+---
+
+## Application Separation Architecture (Phase 6 - In Planning)
+
+**See [APP_SEPARATION_PLAN.md](./APP_SEPARATION_PLAN.md) for complete implementation details.**
+
+### Overview
+
+The application will be split into **two separate frontend applications** while maintaining a single shared backend:
+
+#### 1. Public Ordering App (`frontend-public`)
+**Purpose:** Customer-facing lunch ordering system
+
+**Features:**
+- Menu browsing (public access)
+- Shopping cart with localStorage
+- Guest checkout (no account required)
+- User registration (any email domain accepted)
+- Authenticated order history
+- Payment processing (Stripe)
+
+**Access:** Open to anyone (staff, guests, public)
+
+**Port:** 5173 (dev), separate subdomain in production (e.g., `order.hrc-kitchen.com`)
+
+#### 2. Internal Management App (`frontend-admin`)
+**Purpose:** Staff-only operations and administration
+
+**Features:**
+- Kitchen dashboard (order fulfillment)
+- Admin panel (menu/user/system management)
+- Finance reports
+- Analytics and reporting
+
+**Access:** Restricted to configured email domain(s) only
+
+**Port:** 5174 (dev), separate subdomain in production (e.g., `manage.hrc-kitchen.com`)
+
+### Key Benefits
+
+1. **Security Separation**
+   - Public app has no admin code exposure
+   - Admin app enforces email domain restrictions
+   - Reduced attack surface for each app
+
+2. **User Experience**
+   - Cleaner, focused interface for each user type
+   - Public app optimized for ordering workflow
+   - Admin app optimized for management tasks
+
+3. **Deployment Flexibility**
+   - Independent deployment pipelines
+   - Scale apps independently
+   - Different CDN/caching strategies
+
+4. **Code Organization**
+   - Clear separation of concerns
+   - Shared component library (`frontend-common`)
+   - Easier maintenance and testing
+
+### Email Domain Restrictions
+
+**Configuration:**
+```bash
+# Backend environment variable
+ALLOWED_ADMIN_DOMAIN=hrc-kitchen.com,huonregionalcare.com.au
+```
+
+**Enforcement:**
+- **Staff Role:** Any email domain allowed (e.g., `user@gmail.com`)
+- **Kitchen/Admin/Finance Roles:** Must match configured domain(s)
+- **Backend Validation:** Domain checked via middleware on all protected routes
+- **Frontend Validation:** Admin app login page checks domain before login
+- **Role Assignment:** Cannot assign privileged roles to users outside allowed domain(s)
+
+### Shared Authentication
+
+- Single JWT token system
+- Same credentials work across both apps
+- Login in public app → Can access admin app (if authorized)
+- Login in admin app → Can access public app
+- Token stored in localStorage/cookies (shared domain strategy)
+
+### Architecture Diagram
+
+```
+┌──────────────────────┐         ┌──────────────────────┐
+│  Public Ordering App │         │ Internal Mgmt App    │
+│                      │         │                      │
+│  - Menu browsing     │         │  - Kitchen dashboard │
+│  - Cart & checkout   │         │  - Admin panel       │
+│  - Guest orders      │         │  - Finance reports   │
+│  - Order history     │         │  - Analytics         │
+│                      │         │                      │
+│  ANY email domain    │         │  DOMAIN-ONLY emails  │
+│  Port: 5173          │         │  Port: 5174          │
+└──────────┬───────────┘         └──────────┬───────────┘
+           │                                │
+           │    ┌────────────────────┐      │
+           └────┤ Shared Components  ├──────┘
+                │  (frontend-common) │
+                └──────────┬─────────┘
+                           │
+                           ▼
+         ┌─────────────────────────────────┐
+         │     Shared Backend API          │
+         │   (Express + TypeScript)        │
+         │                                 │
+         │  - Domain validation middleware │
+         │  - Role-based access control    │
+         │  - Shared authentication        │
+         │                                 │
+         │        Port: 3000                │
+         └──────────────┬──────────────────┘
+                        │
+                        ▼
+         ┌─────────────────────────────────┐
+         │   PostgreSQL Database           │
+         │      (Neon Cloud)               │
+         └─────────────────────────────────┘
+```
+
+### Migration Status
+
+**Current Status:** Planning Phase
+
+**Next Steps:**
+1. Backend domain validation implementation
+2. Shared component library extraction
+3. Public app creation
+4. Admin app creation
+5. Integration testing
+6. Documentation updates
+7. Production deployment
+
+**Timeline:** 5 weeks (see [APP_SEPARATION_PLAN.md](./APP_SEPARATION_PLAN.md) for detailed timeline)
+
+**Backward Compatibility:**
+- Backend changes are backward compatible
+- Current frontend will continue working during migration
+- Zero-downtime migration possible
