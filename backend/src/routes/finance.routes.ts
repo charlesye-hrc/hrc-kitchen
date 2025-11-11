@@ -1,13 +1,15 @@
 import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
+import { validateAdminDomain } from '../middleware/domainValidation';
 import financeController from '../controllers/finance.controller';
 import { UserRole } from '@prisma/client';
 
 const router = Router();
 
-// All routes require authentication and FINANCE or ADMIN role
+// All routes require authentication, FINANCE or ADMIN role, and domain validation
 router.use(authenticate);
 router.use(authorize(UserRole.FINANCE, UserRole.ADMIN));
+router.use(validateAdminDomain);
 
 // GET /api/v1/finance/reports/daily-revenue - Get daily revenue report
 router.get('/reports/daily-revenue', financeController.getDailyRevenueReport.bind(financeController));

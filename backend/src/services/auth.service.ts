@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { User, UserRole } from '@prisma/client';
 import { ApiError } from '../middleware/errorHandler';
 import prisma from '../lib/prisma';
+import { hasAdminDomainAccess } from '../middleware/domainValidation';
 
 export interface RegisterDTO {
   email: string;
@@ -26,6 +27,7 @@ export interface AuthResponse {
     role: UserRole;
   };
   token: string;
+  hasAdminAccess: boolean; // NEW: Indicates if user can access management app
 }
 
 export class AuthService {
@@ -98,6 +100,9 @@ export class AuthService {
       role: user.role,
     });
 
+    // Check if user has admin domain access
+    const hasAdminAccess = await hasAdminDomainAccess(user.email);
+
     return {
       user: {
         id: user.id,
@@ -106,6 +111,7 @@ export class AuthService {
         role: user.role,
       },
       token,
+      hasAdminAccess, // Indicates if email domain allows management app access
     };
   }
 

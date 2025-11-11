@@ -24,16 +24,27 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 
 const allowedOrigins = isDevelopment
   ? [
-      // Development origins
+      // Development origins - Public Ordering App
       'http://localhost:5173',
       'http://127.0.0.1:5173',
-      'http://192.168.0.9:5173', // Local network access
-      /^https:\/\/.*\.ngrok-free\.dev$/, // ngrok HTTPS tunnels
-      /^https:\/\/.*\.ngrok\.io$/, // ngrok HTTPS tunnels (alternative)
+      process.env.PUBLIC_APP_URL || 'http://localhost:5173',
+      // Development origins - Internal Management App
+      'http://localhost:5174',
+      'http://127.0.0.1:5174',
+      process.env.ADMIN_APP_URL || 'http://localhost:5174',
+      // Local network access (for testing on mobile devices)
+      'http://192.168.0.9:5173', // Public app
+      'http://192.168.0.9:5174', // Admin app
+      // ngrok HTTPS tunnels (for Apple Pay/Google Pay testing)
+      /^https:\/\/.*\.ngrok-free\.dev$/,
+      /^https:\/\/.*\.ngrok\.io$/,
     ]
   : [
-      // Production origins - IMPORTANT: Replace with your actual production domain
-      process.env.FRONTEND_URL || 'https://your-production-domain.com',
+      // Production origins
+      process.env.PUBLIC_APP_URL || 'https://order.hrc-kitchen.com',
+      process.env.ADMIN_APP_URL || 'https://manage.hrc-kitchen.com',
+      // Legacy support
+      process.env.FRONTEND_URL,
     ];
 
 app.use(cors({

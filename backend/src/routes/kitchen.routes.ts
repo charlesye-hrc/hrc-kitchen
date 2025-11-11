@@ -1,16 +1,22 @@
 import { Router, Request, Response } from 'express';
 import { KitchenService } from '../services/kitchen.service';
 import { authenticate, authorize } from '../middleware/auth';
+import { validateAdminDomain } from '../middleware/domainValidation';
 import { OrderStatus } from '@prisma/client';
 
 const router = Router();
 const kitchenService = new KitchenService();
 
+// All routes require authentication, KITCHEN/ADMIN role, and domain validation
+router.use(authenticate);
+router.use(authorize('KITCHEN', 'ADMIN'));
+router.use(validateAdminDomain);
+
 /**
  * GET /api/v1/kitchen/orders
  * Get all orders with optional filters (kitchen staff only)
  */
-router.get('/orders', authenticate, authorize('KITCHEN', 'ADMIN'), async (req: Request, res: Response) => {
+router.get('/orders', async (req: Request, res: Response) => {
   try {
     const { date, fulfillmentStatus, menuItemId } = req.query;
 
@@ -38,7 +44,7 @@ router.get('/orders', authenticate, authorize('KITCHEN', 'ADMIN'), async (req: R
  * GET /api/v1/kitchen/summary
  * Get order summary grouped by menu item (kitchen staff only)
  */
-router.get('/summary', authenticate, authorize('KITCHEN', 'ADMIN'), async (req: Request, res: Response) => {
+router.get('/summary', async (req: Request, res: Response) => {
   try {
     const { date } = req.query;
 
@@ -61,7 +67,7 @@ router.get('/summary', authenticate, authorize('KITCHEN', 'ADMIN'), async (req: 
  * PATCH /api/v1/kitchen/orders/:id/status
  * Update order fulfillment status (kitchen staff only) - marks all items
  */
-router.patch('/orders/:id/status', authenticate, authorize('KITCHEN', 'ADMIN'), async (req: Request, res: Response) => {
+router.patch('/orders/:id/status', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -102,7 +108,7 @@ router.patch('/orders/:id/status', authenticate, authorize('KITCHEN', 'ADMIN'), 
  * PATCH /api/v1/kitchen/order-items/:id/status
  * Update individual order item fulfillment status (kitchen staff only)
  */
-router.patch('/order-items/:id/status', authenticate, authorize('KITCHEN', 'ADMIN'), async (req: Request, res: Response) => {
+router.patch('/order-items/:id/status', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -143,7 +149,7 @@ router.patch('/order-items/:id/status', authenticate, authorize('KITCHEN', 'ADMI
  * GET /api/v1/kitchen/stats
  * Get daily statistics for kitchen dashboard (kitchen staff only)
  */
-router.get('/stats', authenticate, authorize('KITCHEN', 'ADMIN'), async (req: Request, res: Response) => {
+router.get('/stats', async (req: Request, res: Response) => {
   try {
     const { date } = req.query;
 
@@ -166,7 +172,7 @@ router.get('/stats', authenticate, authorize('KITCHEN', 'ADMIN'), async (req: Re
  * GET /api/v1/kitchen/print
  * Get printable HTML for batch summary (kitchen staff only)
  */
-router.get('/print', authenticate, authorize('KITCHEN', 'ADMIN'), async (req: Request, res: Response) => {
+router.get('/print', async (req: Request, res: Response) => {
   try {
     const { date } = req.query;
 

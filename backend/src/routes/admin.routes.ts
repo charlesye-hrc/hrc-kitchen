@@ -2,12 +2,14 @@ import { Router } from 'express';
 import adminController from '../controllers/admin.controller';
 import reportController from '../controllers/report.controller';
 import { authenticate, authorize } from '../middleware/auth';
+import { validateAdminDomain } from '../middleware/domainValidation';
 import { UserRole } from '@prisma/client';
 
 const router = Router();
 
-// All routes require authentication
+// All routes require authentication and domain validation
 router.use(authenticate);
+router.use(validateAdminDomain);
 
 // Report routes - accessible by FINANCE and ADMIN
 router.get('/reports/revenue-by-user', authorize(UserRole.FINANCE, UserRole.ADMIN), reportController.getRevenueByUser);
