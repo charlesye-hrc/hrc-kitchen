@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -21,27 +21,25 @@ function App() {
   return (
     <AuthProvider>
       <CartProvider>
-        <BrowserRouter>
-          <Layout>
-            <Routes>
-              {/* Redirect root to menu */}
-              <Route path="/" element={<Navigate to="/menu" replace />} />
+        <Layout>
+          <Routes>
+            {/* Redirect root to menu */}
+            <Route path="/" element={<Navigate to="/menu" replace />} />
 
-              {/* Public Routes */}
-              <Route path="/menu" element={<MenuPage />} />
-              <Route path="/checkout" element={<CheckoutPage />} />
-              <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
+            {/* Public Routes */}
+            <Route path="/menu" element={<MenuPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
 
-              {/* Protected Routes (Authenticated Users Only) */}
-              <Route path="/orders" element={<OrdersPage />} />
+            {/* Protected Routes (Authenticated Users Only) */}
+            <Route path="/orders" element={<OrdersPage />} />
 
-              {/* 404 - Catch-all route */}
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </Layout>
-        </BrowserRouter>
+            {/* 404 - Catch-all route */}
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Layout>
       </CartProvider>
     </AuthProvider>
   );
