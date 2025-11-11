@@ -6,7 +6,8 @@
   "workspaces": [
     "backend",
     "frontend",
-    "frontend-common"
+    "frontend-common",
+    "frontend-public"
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
