@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -16,6 +16,7 @@ import api from '../../services/api';
 interface SystemConfig {
   ordering_window_start?: string;
   ordering_window_end?: string;
+  restricted_role_domain?: string;
 }
 
 const SystemConfig = () => {
@@ -27,11 +28,20 @@ const SystemConfig = () => {
   const [formData, setFormData] = useState({
     orderingWindowStart: '',
     orderingWindowEnd: '',
+    restrictedRoleDomain: '',
   });
+  const alertRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchConfig();
   }, []);
+
+  // Scroll to alert when error or success message appears
+  useEffect(() => {
+    if ((error || success) && alertRef.current) {
+      alertRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [error, success]);
 
   const fetchConfig = async () => {
     try {
@@ -44,6 +54,7 @@ const SystemConfig = () => {
         setFormData({
           orderingWindowStart: configData.ordering_window_start || '',
           orderingWindowEnd: configData.ordering_window_end || '',
+          restrictedRoleDomain: configData.restricted_role_domain || '',
         });
       }
     } catch (err: any) {
@@ -86,6 +97,21 @@ const SystemConfig = () => {
         return;
       }
 
+      // Validate restricted domain format
+      if (formData.restrictedRoleDomain && formData.restrictedRoleDomain.trim() !== '') {
+        const domain = formData.restrictedRoleDomain.trim();
+        if (!domain.startsWith('@')) {
+          setError('Restricted domain must start with @ (e.g., @example.com)');
+          return;
+        }
+        // Basic domain validation: @something.something
+        const domainRegex = /^@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!domainRegex.test(domain)) {
+          setError('Invalid domain format. Use format like @example.com');
+          return;
+        }
+      }
+
       const response = await api.put('/admin/config', formData);
 
       if (response.data.success) {
@@ -103,6 +129,7 @@ const SystemConfig = () => {
     setFormData({
       orderingWindowStart: config.ordering_window_start || '',
       orderingWindowEnd: config.ordering_window_end || '',
+      restrictedRoleDomain: config.restricted_role_domain || '',
     });
     setError('');
     setSuccess('');
@@ -122,17 +149,19 @@ const SystemConfig = () => {
         System Configuration
       </Typography>
 
-      {error && (
-        <Alert severity="error" onClose={() => setError('')} sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      )}
+      <div ref={alertRef}>
+        {error && (
+          <Alert severity="error" onClose={() => setError('')} sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
 
-      {success && (
-        <Alert severity="success" onClose={() => setSuccess('')} sx={{ mb: 3 }}>
-          {success}
-        </Alert>
-      )}
+        {success && (
+          <Alert severity="success" onClose={() => setSuccess('')} sx={{ mb: 3 }}>
+            {success}
+          </Alert>
+        )}
+      </div>
 
       <Paper sx={{ p: 3, maxWidth: 600 }}>
         <Typography variant="subtitle1" gutterBottom fontWeight="bold">
@@ -209,6 +238,56 @@ const SystemConfig = () => {
 
       <Paper sx={{ p: 3, maxWidth: 600, mt: 3 }}>
         <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+          Role Restriction Configuration
+        </Typography>
+        <Typography variant="body2" color="text.secondary" paragraph>
+          Configure the email domain required for Kitchen and Admin role assignments. Users
+          with other email domains can only have Staff role.
+        </Typography>
+
+        <Divider sx={{ my: 2 }} />
+
+        <Stack spacing={3}>
+          <TextField
+            label="Restricted Role Domain"
+            type="text"
+            value={formData.restrictedRoleDomain}
+            onChange={(e) =>
+              setFormData({ ...formData, restrictedRoleDomain: e.target.value })
+            }
+            placeholder="@example.com"
+            helperText="Email domain required for Kitchen and Admin roles (e.g., @huonregionalcare.org.au)"
+            fullWidth
+          />
+
+          <Alert severity="info">
+            <Typography variant="body2">
+              <strong>Current Domain:</strong>{' '}
+              {config.restricted_role_domain || 'Not set'}
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              Only users with emails ending in this domain can be assigned Kitchen or Admin roles.
+            </Typography>
+          </Alert>
+
+          <Stack direction="row" spacing={2} justifyContent="flex-end">
+            <Button onClick={handleReset} disabled={saving}>
+              Reset
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<SaveIcon />}
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Save Configuration'}
+            </Button>
+          </Stack>
+        </Stack>
+      </Paper>
+
+      <Paper sx={{ p: 3, maxWidth: 600, mt: 3 }}>
+        <Typography variant="subtitle1" gutterBottom fontWeight="bold">
           Configuration Guidelines
         </Typography>
         <Stack spacing={1}>
@@ -223,6 +302,12 @@ const SystemConfig = () => {
           </Typography>
           <Typography variant="body2" color="text.secondary">
             • Staff can only order during the configured window
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            • Restricted domain must start with @ symbol
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            • Empty domain allows all users to have any role (not recommended)
           </Typography>
         </Stack>
       </Paper>

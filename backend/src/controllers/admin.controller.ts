@@ -248,6 +248,30 @@ export class AdminController {
         });
       }
 
+      // Check email domain restriction for KITCHEN and ADMIN roles
+      if (role === 'KITCHEN' || role === 'ADMIN') {
+        const user = await adminService.getUserById(id);
+
+        if (!user) {
+          return res.status(404).json({
+            success: false,
+            message: 'User not found',
+          });
+        }
+
+        // Get restricted domain from config
+        const config = await adminService.getConfig();
+        const allowedDomain = config.restricted_role_domain || '@huonregionalcare.org.au';
+
+        if (!user.email.toLowerCase().endsWith(allowedDomain.toLowerCase())) {
+          return res.status(403).json({
+            success: false,
+            message: `Only users with ${allowedDomain} email addresses can be assigned KITCHEN or ADMIN roles`,
+            code: 'INVALID_EMAIL_DOMAIN',
+          });
+        }
+      }
+
       const user = await adminService.updateUserRole(id, role as UserRole);
 
       if (!user) {
@@ -345,7 +369,7 @@ export class AdminController {
    */
   async updateConfig(req: AuthRequest, res: Response) {
     try {
-      const { orderingWindowStart, orderingWindowEnd } = req.body;
+      const { orderingWindowStart, orderingWindowEnd, restrictedRoleDomain } = req.body;
 
       // Validation
       if (orderingWindowStart && orderingWindowEnd) {
@@ -373,9 +397,20 @@ export class AdminController {
         }
       }
 
+      // Validate restricted domain format (optional)
+      if (restrictedRoleDomain !== undefined && restrictedRoleDomain !== '') {
+        if (!restrictedRoleDomain.startsWith('@')) {
+          return res.status(400).json({
+            success: false,
+            message: 'Restricted domain must start with @ (e.g., @example.com)',
+          });
+        }
+      }
+
       const config = await adminService.updateConfig({
         orderingWindowStart,
         orderingWindowEnd,
+        restrictedRoleDomain,
       });
 
       res.json({

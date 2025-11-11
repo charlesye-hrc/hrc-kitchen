@@ -126,6 +126,33 @@ export class AdminService {
   }
 
   /**
+   * Get a single user by ID
+   */
+  async getUserById(userId: string) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          department: true,
+          location: true,
+          role: true,
+          isActive: true,
+          emailVerified: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      return user;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
    * Get all users with pagination and filtering
    */
   async getUsers(page: number = 1, limit: number = 20, filters: UserFilters = {}) {
@@ -245,7 +272,7 @@ export class AdminService {
   /**
    * Update system configuration
    */
-  async updateConfig(updates: { orderingWindowStart?: string; orderingWindowEnd?: string }) {
+  async updateConfig(updates: { orderingWindowStart?: string; orderingWindowEnd?: string; restrictedRoleDomain?: string }) {
     const updatePromises = [];
 
     if (updates.orderingWindowStart) {
@@ -264,6 +291,16 @@ export class AdminService {
           where: { configKey: 'ordering_window_end' },
           update: { configValue: updates.orderingWindowEnd },
           create: { configKey: 'ordering_window_end', configValue: updates.orderingWindowEnd },
+        })
+      );
+    }
+
+    if (updates.restrictedRoleDomain !== undefined) {
+      updatePromises.push(
+        prisma.systemConfig.upsert({
+          where: { configKey: 'restricted_role_domain' },
+          update: { configValue: updates.restrictedRoleDomain },
+          create: { configKey: 'restricted_role_domain', configValue: updates.restrictedRoleDomain },
         })
       );
     }

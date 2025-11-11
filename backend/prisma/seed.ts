@@ -77,6 +77,16 @@ async function main() {
       updatedBy: admin.id,
     },
   });
+
+  await prisma.systemConfig.upsert({
+    where: { configKey: 'restricted_role_domain' },
+    update: {},
+    create: {
+      configKey: 'restricted_role_domain',
+      configValue: '@huonregionalcare.org.au',
+      updatedBy: admin.id,
+    },
+  });
   console.log('✅ System configuration created');
 
   // Create sample menu items for all weekdays

@@ -57,6 +57,7 @@ const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [restrictedDomain, setRestrictedDomain] = useState<string>('@huonregionalcare.org.au');
 
   // Dialogs
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
@@ -65,8 +66,25 @@ const UserManagement = () => {
   const [newRole, setNewRole] = useState<string>('');
 
   useEffect(() => {
+    fetchConfig();
+  }, []);
+
+  useEffect(() => {
     fetchUsers();
   }, [page, rowsPerPage, searchTerm, roleFilter, statusFilter]);
+
+  const fetchConfig = async () => {
+    try {
+      const response = await api.get('/admin/config');
+      if (response.data.success) {
+        const domain = response.data.data.restricted_role_domain || '@huonregionalcare.org.au';
+        setRestrictedDomain(domain);
+      }
+    } catch (err) {
+      // Use default if config fetch fails
+      console.error('Failed to fetch config:', err);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -289,6 +307,9 @@ const UserManagement = () => {
           <Typography gutterBottom>
             Update role for: <strong>{selectedUser?.fullName}</strong>
           </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Email: {selectedUser?.email}
+          </Typography>
           <FormControl fullWidth sx={{ mt: 2 }}>
             <InputLabel>Role</InputLabel>
             <Select
@@ -297,11 +318,26 @@ const UserManagement = () => {
               onChange={(e) => setNewRole(e.target.value)}
             >
               <MenuItem value="STAFF">Staff</MenuItem>
-              <MenuItem value="KITCHEN">Kitchen</MenuItem>
-              <MenuItem value="ADMIN">Admin</MenuItem>
+              <MenuItem
+                value="KITCHEN"
+                disabled={!selectedUser?.email.toLowerCase().endsWith(restrictedDomain.toLowerCase())}
+              >
+                Kitchen
+              </MenuItem>
+              <MenuItem
+                value="ADMIN"
+                disabled={!selectedUser?.email.toLowerCase().endsWith(restrictedDomain.toLowerCase())}
+              >
+                Admin
+              </MenuItem>
             </Select>
           </FormControl>
-          {newRole === 'ADMIN' && (
+          {!selectedUser?.email.toLowerCase().endsWith(restrictedDomain.toLowerCase()) && (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              Kitchen and Admin roles require a {restrictedDomain} email address.
+            </Alert>
+          )}
+          {newRole === 'ADMIN' && selectedUser?.email.toLowerCase().endsWith(restrictedDomain.toLowerCase()) && (
             <Alert severity="warning" sx={{ mt: 2 }}>
               This user will have full administrative access to the system.
             </Alert>
