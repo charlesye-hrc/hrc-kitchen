@@ -187,52 +187,133 @@ const OrderConfirmationPage: React.FC = () => {
   const orderCreatedDate = new Date(order.createdAt);
 
   return (
-    <Container maxWidth="md" sx={{ py: { xs: 2, md: 4 } }}>
-      <Paper sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+    <Container maxWidth="md" sx={{ py: { xs: 3, md: 5 } }}>
+      <Paper
+        sx={{
+          p: { xs: 3, sm: 4, md: 5 },
+          border: '1px solid',
+          borderColor: 'divider',
+          position: 'relative',
+          overflow: 'hidden',
+          '&:before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 6,
+            background: 'linear-gradient(90deg, #2D5F3F 0%, #4A8862 100%)',
+          }
+        }}
+      >
         <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <CheckCircleIcon color="success" sx={{ fontSize: 64, mb: 2 }} />
-          <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
+          <Box
+            sx={{
+              width: 80,
+              height: 80,
+              borderRadius: '50%',
+              bgcolor: 'success.lighter',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto',
+              mb: 2.5,
+              animation: 'successPulse 1.5s ease-in-out',
+              '@keyframes successPulse': {
+                '0%': {
+                  transform: 'scale(0.8)',
+                  opacity: 0.5,
+                },
+                '50%': {
+                  transform: 'scale(1.05)',
+                },
+                '100%': {
+                  transform: 'scale(1)',
+                  opacity: 1,
+                },
+              },
+            }}
+          >
+            <CheckCircleIcon color="success" sx={{ fontSize: 48 }} />
+          </Box>
+          <Typography
+            variant="h4"
+            component="h1"
+            gutterBottom
+            sx={{
+              fontSize: { xs: '1.75rem', md: '2.25rem' },
+              fontWeight: 700,
+              mb: 1.5,
+            }}
+          >
             Order Confirmed!
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body1" color="text.secondary" sx={{ fontSize: '1.0625rem', lineHeight: 1.6 }}>
             Thank you for your order. Your lunch will be prepared for{' '}
-            {deliveryDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
+              {deliveryDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </Box>
           </Typography>
         </Box>
 
         <Divider sx={{ my: 3 }} />
 
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" gutterBottom>
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
             Order Details
           </Typography>
 
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
-            <Box>
-              <Typography variant="body2" color="text.secondary">
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 3 }}>
+            <Box
+              sx={{
+                p: 2.5,
+                bgcolor: 'grey.50',
+                borderRadius: 2,
+                border: '1px solid',
+                borderColor: 'divider',
+              }}
+            >
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 0.75, fontWeight: 500 }}>
                 Order Number
               </Typography>
-              <Typography variant="body1" fontWeight="medium">
+              <Typography variant="body1" fontWeight={600} sx={{ fontSize: '1.0625rem' }}>
                 {order.orderNumber}
               </Typography>
             </Box>
 
-            <Box>
-              <Typography variant="body2" color="text.secondary">
+            <Box
+              sx={{
+                p: 2.5,
+                bgcolor: 'grey.50',
+                borderRadius: 2,
+                border: '1px solid',
+                borderColor: 'divider',
+              }}
+            >
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 0.75, fontWeight: 500 }}>
                 Payment Status
               </Typography>
               <Chip
                 label={order.paymentStatus.replace('_', ' ')}
                 color={order.paymentStatus === 'COMPLETED' ? 'success' : 'warning'}
                 size="small"
+                sx={{ fontWeight: 600 }}
               />
             </Box>
 
-            <Box>
-              <Typography variant="body2" color="text.secondary">
+            <Box
+              sx={{
+                p: 2.5,
+                bgcolor: 'grey.50',
+                borderRadius: 2,
+                border: '1px solid',
+                borderColor: 'divider',
+              }}
+            >
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 0.75, fontWeight: 500 }}>
                 Ordered At
               </Typography>
-              <Typography variant="body1">
+              <Typography variant="body1" fontWeight={600} sx={{ fontSize: '1.0625rem' }}>
                 {orderCreatedDate.toLocaleTimeString('en-US', {
                   hour: 'numeric',
                   minute: '2-digit',
@@ -240,11 +321,19 @@ const OrderConfirmationPage: React.FC = () => {
               </Typography>
             </Box>
 
-            <Box>
-              <Typography variant="body2" color="text.secondary">
+            <Box
+              sx={{
+                p: 2.5,
+                bgcolor: 'grey.50',
+                borderRadius: 2,
+                border: '1px solid',
+                borderColor: 'divider',
+              }}
+            >
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 0.75, fontWeight: 500 }}>
                 Total Amount
               </Typography>
-              <Typography variant="body1" fontWeight="medium">
+              <Typography variant="h6" color="primary.main" sx={{ fontWeight: 700 }}>
                 ${Number(order.totalAmount).toFixed(2)}
               </Typography>
             </Box>
@@ -262,8 +351,8 @@ const OrderConfirmationPage: React.FC = () => {
 
         <Divider sx={{ my: 3 }} />
 
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" gutterBottom>
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2.5 }}>
             Items Ordered
           </Typography>
 
@@ -295,20 +384,40 @@ const OrderConfirmationPage: React.FC = () => {
             })}
           </List>
 
-          <Divider sx={{ my: 2 }} />
+          <Divider sx={{ my: 3 }} />
 
-          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Typography variant="h6">Total:</Typography>
-            <Typography variant="h6">${Number(order.totalAmount).toFixed(2)}</Typography>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              py: 2,
+              px: 2.5,
+              bgcolor: 'grey.50',
+              borderRadius: 2,
+            }}
+          >
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>Total:</Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
+              ${Number(order.totalAmount).toFixed(2)}
+            </Typography>
           </Box>
         </Box>
 
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, justifyContent: 'center', mt: 4 }}>
-          <Button variant="outlined" onClick={() => navigate('/menu')}>
+          <Button
+            variant="outlined"
+            onClick={() => navigate('/menu')}
+            sx={{ minWidth: { xs: 'auto', sm: 160 }, py: 1.25 }}
+          >
             Order Again
           </Button>
           {isAuthenticated && (
-            <Button variant="contained" onClick={() => navigate('/orders')}>
+            <Button
+              variant="contained"
+              onClick={() => navigate('/orders')}
+              sx={{ minWidth: { xs: 'auto', sm: 160 }, py: 1.25 }}
+            >
               View All Orders
             </Button>
           )}

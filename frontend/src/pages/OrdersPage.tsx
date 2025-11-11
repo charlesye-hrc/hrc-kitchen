@@ -130,13 +130,33 @@ const OrdersPage: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="md" sx={{ py: { xs: 2, md: 4 } }}>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.75rem', md: '2.125rem' } }}>
+    <Container maxWidth="md" sx={{ py: { xs: 3, md: 5 } }}>
+      <Typography
+        variant="h4"
+        component="h1"
+        gutterBottom
+        sx={{
+          fontSize: { xs: '1.875rem', md: '2.25rem' },
+          fontWeight: 700,
+          mb: 3,
+          background: 'linear-gradient(135deg, #2D5F3F 0%, #4A8862 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+        }}
+      >
         My Orders
       </Typography>
 
       {/* Date Range Filters */}
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper
+        sx={{
+          p: { xs: 2, sm: 2.5 },
+          mb: 3,
+          border: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} md={4}>
             <TextField
@@ -184,34 +204,67 @@ const OrdersPage: React.FC = () => {
       </Paper>
 
       {orders.length === 0 ? (
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="body1" color="text.secondary" gutterBottom>
+        <Paper
+          sx={{
+            p: 5,
+            textAlign: 'center',
+            border: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Box
+            sx={{
+              width: 80,
+              height: 80,
+              borderRadius: '50%',
+              bgcolor: 'grey.100',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto',
+              mb: 2,
+            }}
+          >
+            <Typography variant="h3">📋</Typography>
+          </Box>
+          <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 1 }}>
+            No Orders Yet
+          </Typography>
+          <Typography variant="body1" color="text.secondary" gutterBottom sx={{ mb: 3 }}>
             You haven't placed any orders yet
           </Typography>
-          <Button variant="contained" onClick={() => navigate('/menu')} sx={{ mt: 2 }}>
+          <Button variant="contained" onClick={() => navigate('/menu')} sx={{ py: 1.25, px: 3 }}>
             Browse Menu
           </Button>
         </Paper>
       ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
           {orders.map((order) => {
             const orderDate = new Date(order.orderDate);
             const createdDate = new Date(order.createdAt);
 
             return (
-              <Card key={order.id}>
-                <CardContent>
+              <Card
+                key={order.id}
+                sx={{
+                  border: '1px solid',
+                  borderColor: 'divider',
+                }}
+              >
+                <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
                   <Box sx={{
                     display: 'flex',
                     flexDirection: { xs: 'column', sm: 'row' },
                     justifyContent: 'space-between',
                     alignItems: { xs: 'flex-start', sm: 'flex-start' },
-                    gap: { xs: 1, sm: 0 },
-                    mb: 2
+                    gap: { xs: 2, sm: 3 },
+                    mb: 2.5
                   }}>
-                    <Box>
-                      <Typography variant="h6">{order.orderNumber}</Typography>
-                      <Typography variant="body2" color="text.secondary">
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                        {order.orderNumber}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                         Ordered on {createdDate.toLocaleDateString('en-US', {
                           month: 'long',
                           day: 'numeric',
@@ -229,14 +282,15 @@ const OrdersPage: React.FC = () => {
                       </Typography>
                     </Box>
                     <Box sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
-                      <Typography variant="h6" color="primary">
+                      <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main', mb: 1.5 }}>
                         ${Number(order.totalAmount).toFixed(2)}
                       </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                         <Chip
                           label={order.paymentStatus}
                           color={order.paymentStatus === 'COMPLETED' ? 'success' : 'warning'}
                           size="small"
+                          sx={{ fontWeight: 600 }}
                         />
                         <Chip
                           label={order.fulfillmentStatus}
@@ -248,32 +302,46 @@ const OrdersPage: React.FC = () => {
                               : 'default'
                           }
                           size="small"
+                          sx={{ fontWeight: 600 }}
                         />
                       </Box>
                     </Box>
                   </Box>
 
-                  <Divider sx={{ my: 2 }} />
+                  <Divider sx={{ my: 2.5 }} />
 
-                  <Typography variant="subtitle2" gutterBottom>
+                  <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 1.5 }}>
                     Items:
                   </Typography>
-                  {order.orderItems.map((item) => (
-                    <Box key={item.id} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-                      <Typography variant="body2">
-                        {item.menuItem.name} × {item.quantity}
-                      </Typography>
-                      <Typography variant="body2">
-                        ${(Number(item.priceAtPurchase) * item.quantity).toFixed(2)}
-                      </Typography>
-                    </Box>
-                  ))}
+                  <Box sx={{ bgcolor: 'grey.50', borderRadius: 2, p: 2 }}>
+                    {order.orderItems.map((item, index) => (
+                      <Box
+                        key={item.id}
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          py: 1,
+                          ...(index !== order.orderItems.length - 1 && {
+                            borderBottom: '1px solid',
+                            borderColor: 'divider',
+                          })
+                        }}
+                      >
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {item.menuItem.name} × {item.quantity}
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                          ${(Number(item.priceAtPurchase) * item.quantity).toFixed(2)}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
 
-                  <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                  <Box sx={{ mt: 2.5, display: 'flex', justifyContent: 'flex-end' }}>
                     <Button
                       variant="outlined"
-                      size="small"
                       onClick={() => navigate(`/order-confirmation/${order.id}`)}
+                      sx={{ py: 1, px: 2.5 }}
                     >
                       View Details
                     </Button>

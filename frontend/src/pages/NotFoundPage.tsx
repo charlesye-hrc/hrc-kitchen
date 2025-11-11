@@ -23,26 +23,115 @@ const NotFoundPage = () => {
   }, [navigate]);
 
   return (
-    <Container maxWidth="sm" sx={{ py: 8, textAlign: 'center' }}>
-      <Box>
-        <Typography variant="h1" color="primary" gutterBottom sx={{ fontSize: '6rem', fontWeight: 'bold' }}>
-          404
-        </Typography>
-        <Typography variant="h4" gutterBottom>
-          Page Not Found
-        </Typography>
-        <Typography variant="body1" color="text.secondary" paragraph>
-          The page you're looking for doesn't exist.
-        </Typography>
-        <Typography variant="body2" color="text.secondary" paragraph>
-          Redirecting to home page in {countdown} seconds...
-        </Typography>
+    <Container maxWidth="sm" sx={{ py: 10, textAlign: 'center' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 3,
+        }}
+      >
+        <Box
+          sx={{
+            position: 'relative',
+            mb: 2,
+          }}
+        >
+          <Typography
+            variant="h1"
+            gutterBottom
+            sx={{
+              fontSize: { xs: '5rem', sm: '7rem' },
+              fontWeight: 800,
+              background: 'linear-gradient(135deg, #2D5F3F 0%, #4A8862 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              lineHeight: 1,
+              mb: 0,
+              letterSpacing: '-0.03em',
+            }}
+          >
+            404
+          </Typography>
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: 120,
+              height: 120,
+              borderRadius: '50%',
+              bgcolor: 'primary.lighter',
+              opacity: 0.15,
+              zIndex: -1,
+            }}
+          />
+        </Box>
+
+        <Box sx={{ mb: 2 }}>
+          <Typography
+            variant="h4"
+            gutterBottom
+            sx={{
+              fontWeight: 700,
+              mb: 1.5,
+              fontSize: { xs: '1.75rem', sm: '2.125rem' },
+            }}
+          >
+            Page Not Found
+          </Typography>
+          <Typography variant="body1" color="text.secondary" paragraph sx={{ fontSize: '1.0625rem', mb: 1 }}>
+            The page you're looking for doesn't exist or has been moved.
+          </Typography>
+          <Box
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 1,
+              py: 1.5,
+              px: 2.5,
+              bgcolor: 'info.lighter',
+              borderRadius: 2,
+              mb: 3,
+            }}
+          >
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                bgcolor: 'info.main',
+                animation: 'pulse 2s infinite',
+                '@keyframes pulse': {
+                  '0%, 100%': {
+                    opacity: 1,
+                  },
+                  '50%': {
+                    opacity: 0.5,
+                  },
+                },
+              }}
+            />
+            <Typography variant="body2" color="info.dark" sx={{ fontWeight: 600 }}>
+              Redirecting to home in {countdown} seconds...
+            </Typography>
+          </Box>
+        </Box>
+
         <Button
           variant="contained"
           size="large"
           startIcon={<HomeIcon />}
           onClick={() => navigate('/')}
-          sx={{ mt: 2 }}
+          sx={{
+            mt: 1,
+            py: 1.5,
+            px: 4,
+            fontSize: '1rem',
+          }}
         >
           Go to Home Now
         </Button>

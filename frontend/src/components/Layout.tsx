@@ -111,21 +111,70 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography
-            variant="h6"
+      <AppBar
+        position="static"
+        elevation={0}
+        sx={{
+          bgcolor: 'primary.main',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+        }}
+      >
+        <Toolbar sx={{ py: 0.5 }}>
+          <Box
             component={Link}
             to="/"
             sx={{
-              flexGrow: 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5,
               textDecoration: 'none',
               color: 'inherit',
-              fontSize: { xs: '1rem', sm: '1.25rem' }
+              flexGrow: 1,
+              transition: 'opacity 0.2s',
+              '&:hover': {
+                opacity: 0.9,
+              }
             }}
           >
-            HRC Kitchen
-          </Typography>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 1.5,
+                bgcolor: 'rgba(255, 255, 255, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.25rem',
+              }}
+            >
+              🍽️
+            </Box>
+            <Box>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontSize: { xs: '1.0625rem', sm: '1.25rem' },
+                  fontWeight: 700,
+                  lineHeight: 1.2,
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                HRC Kitchen
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{
+                  fontSize: '0.7rem',
+                  opacity: 0.85,
+                  display: { xs: 'none', sm: 'block' },
+                  lineHeight: 1,
+                }}
+              >
+                Huon Regional Care
+              </Typography>
+            </Box>
+          </Box>
 
           {isMobile ? (
             <>
@@ -199,10 +248,51 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {children}
       </Box>
 
-      <Box component="footer" sx={{ py: 3, px: 2, mt: 'auto', backgroundColor: '#f5f5f5' }}>
-        <Typography variant="body2" color="text.secondary" align="center">
-          © 2025 HRC Kitchen - Huon Regional Care
-        </Typography>
+      <Box
+        component="footer"
+        sx={{
+          py: 4,
+          px: 3,
+          mt: 'auto',
+          background: 'linear-gradient(180deg, #F8F9FA 0%, #EAECEF 100%)',
+          borderTop: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        <Box sx={{ maxWidth: 1200, margin: '0 auto', textAlign: 'center' }}>
+          <Box sx={{ mb: 2 }}>
+            <Box
+              sx={{
+                width: 48,
+                height: 48,
+                borderRadius: 2,
+                bgcolor: 'primary.main',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto',
+                mb: 1.5,
+                fontSize: '1.5rem',
+              }}
+            >
+              🍽️
+            </Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', mb: 0.5 }}>
+              HRC Kitchen
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+              Fresh, Delicious Meals for Huon Regional Care
+            </Typography>
+          </Box>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ mt: 3, pt: 3, borderTop: '1px solid', borderColor: 'divider' }}
+          >
+            © 2025 HRC Kitchen - Huon Regional Care. All rights reserved.
+          </Typography>
+        </Box>
       </Box>
     </Box>
   );

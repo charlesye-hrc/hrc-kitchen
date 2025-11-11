@@ -184,21 +184,63 @@ const MenuPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 } }}>
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'row', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'center', sm: 'center' }, mb: 3, gap: { xs: 1, sm: 0 } }}>
+    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'row', sm: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'center', sm: 'center' },
+        mb: 4,
+        gap: { xs: 1, sm: 0 },
+        pb: 2
+      }}>
         <Box>
-          <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.75rem', md: '2.125rem' } }}>
+          <Typography
+            variant="h4"
+            component="h1"
+            gutterBottom
+            sx={{
+              fontSize: { xs: '1.875rem', md: '2.25rem' },
+              fontWeight: 700,
+              mb: 0.5,
+              background: 'linear-gradient(135deg, #2D5F3F 0%, #4A8862 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}
+          >
             Today's Menu
           </Typography>
           {weekday && (
-            <Typography variant="subtitle1" color="text.secondary">
+            <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 500 }}>
               {weekday}
             </Typography>
           )}
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconButton color="primary" size="large" onClick={() => setCartOpen(true)}>
-            <Badge badgeContent={getCartItemCount()} color="error">
+          <IconButton
+            color="primary"
+            size="large"
+            onClick={() => setCartOpen(true)}
+            sx={{
+              bgcolor: 'primary.main',
+              color: 'white',
+              '&:hover': {
+                bgcolor: 'primary.dark',
+                transform: 'scale(1.05)',
+              },
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
+          >
+            <Badge
+              badgeContent={getCartItemCount()}
+              color="error"
+              sx={{
+                '& .MuiBadge-badge': {
+                  fontWeight: 600,
+                }
+              }}
+            >
               <CartIcon />
             </Badge>
           </IconButton>
@@ -206,16 +248,36 @@ const MenuPage: React.FC = () => {
       </Box>
 
       {error && (
-        <Alert severity="warning" sx={{ mb: 3 }}>
+        <Alert
+          severity="warning"
+          sx={{
+            mb: 3,
+            borderLeft: '4px solid',
+            borderLeftColor: 'warning.main',
+            '& .MuiAlert-icon': {
+              fontSize: '1.5rem',
+            }
+          }}
+        >
           {error}
         </Alert>
       )}
 
       {orderingWindow && !orderingWindow.active && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert
+          severity="error"
+          sx={{
+            mb: 3,
+            borderLeft: '4px solid',
+            borderLeftColor: 'error.main',
+            '& .MuiAlert-icon': {
+              fontSize: '1.5rem',
+            }
+          }}
+        >
           {orderingWindow.message || 'Ordering is currently closed'}
           {orderingWindow.window.start && orderingWindow.window.end && (
-            <Typography variant="body2" sx={{ mt: 1 }}>
+            <Typography variant="body2" sx={{ mt: 1, fontWeight: 500 }}>
               Ordering window: {orderingWindow.window.start} - {orderingWindow.window.end}
             </Typography>
           )}
@@ -223,47 +285,130 @@ const MenuPage: React.FC = () => {
       )}
 
       {menuItems.length === 0 ? (
-        <Alert severity="info">No menu items available for today.</Alert>
+        <Alert
+          severity="info"
+          sx={{
+            borderLeft: '4px solid',
+            borderLeftColor: 'info.main',
+            textAlign: 'center',
+            py: 3,
+          }}
+        >
+          No menu items available for today.
+        </Alert>
       ) : (
         categories.map((category) => (
-          <Box key={category} sx={{ mb: 4 }}>
-            <Typography variant="h5" gutterBottom sx={{ mb: 2, fontSize: { xs: '1.5rem', md: '1.5rem' } }}>
+          <Box key={category} sx={{ mb: 5 }}>
+            <Typography
+              variant="h5"
+              gutterBottom
+              sx={{
+                mb: 3,
+                fontSize: { xs: '1.5rem', md: '1.625rem' },
+                fontWeight: 600,
+                color: 'text.primary',
+                position: 'relative',
+                pb: 1,
+                '&:after': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  width: 60,
+                  height: 3,
+                  background: 'linear-gradient(90deg, #2D5F3F 0%, #4A8862 100%)',
+                  borderRadius: 2,
+                }
+              }}
+            >
               {category}
             </Typography>
             <Grid container spacing={{ xs: 2, md: 3 }}>
               {groupedItems[category].map((item) => (
                 <Grid item xs={12} sm={6} md={4} key={item.id}>
-                  <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <Card
+                    sx={{
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      '&:hover': {
+                        '& .menu-item-image': {
+                          transform: 'scale(1.05)',
+                        }
+                      }
+                    }}
+                  >
                     {item.imageUrl && (
-                      <CardMedia
-                        component="img"
-                        height="200"
-                        image={item.imageUrl}
-                        alt={item.name}
-                      />
+                      <Box sx={{ overflow: 'hidden', position: 'relative', height: 200 }}>
+                        <CardMedia
+                          component="img"
+                          height="200"
+                          image={item.imageUrl}
+                          alt={item.name}
+                          className="menu-item-image"
+                          sx={{
+                            transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                            objectFit: 'cover',
+                          }}
+                        />
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.1) 100%)',
+                          }}
+                        />
+                      </Box>
                     )}
-                    <CardContent sx={{ flexGrow: 1 }}>
-                      <Typography variant="h6" component="h3" gutterBottom>
+                    <CardContent sx={{ flexGrow: 1, p: 2.5 }}>
+                      <Typography variant="h6" component="h3" gutterBottom sx={{ fontWeight: 600, mb: 1 }}>
                         {item.name}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary" paragraph>
+                      <Typography variant="body2" color="text.secondary" paragraph sx={{ mb: 2, lineHeight: 1.6 }}>
                         {item.description}
                       </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mb: 2 }}>
                         {item.dietaryTags.map((tag) => (
-                          <Chip key={tag} label={tag} size="small" variant="outlined" />
+                          <Chip
+                            key={tag}
+                            label={tag}
+                            size="small"
+                            variant="outlined"
+                            sx={{
+                              borderColor: 'primary.light',
+                              color: 'primary.main',
+                              fontWeight: 500,
+                              fontSize: '0.75rem',
+                            }}
+                          />
                         ))}
                       </Box>
-                      <Typography variant="h6" color="primary">
+                      <Typography
+                        variant="h6"
+                        color="primary"
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: '1.25rem',
+                        }}
+                      >
                         ${Number(item.price).toFixed(2)}
                       </Typography>
                     </CardContent>
-                    <CardActions>
+                    <CardActions sx={{ p: 2.5, pt: 0 }}>
                       <Button
                         fullWidth
                         variant="contained"
                         startIcon={<AddIcon />}
                         onClick={() => handleAddToCart(item)}
+                        sx={{
+                          py: 1.25,
+                          fontSize: '0.9375rem',
+                        }}
                       >
                         Add to Cart
                       </Button>
@@ -277,8 +422,21 @@ const MenuPage: React.FC = () => {
       )}
 
       {/* Add to Cart Dialog */}
-      <Dialog open={!!selectedItem} onClose={() => setSelectedItem(null)} maxWidth="sm" fullWidth fullScreen={isMobile}>
-        <DialogTitle>{selectedItem?.name}</DialogTitle>
+      <Dialog
+        open={!!selectedItem}
+        onClose={() => setSelectedItem(null)}
+        maxWidth="sm"
+        fullWidth
+        fullScreen={isMobile}
+        PaperProps={{
+          sx: {
+            borderRadius: { xs: 0, sm: 3 },
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1, fontSize: '1.375rem', fontWeight: 600 }}>
+          {selectedItem?.name}
+        </DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2 }}>
             <TextField
@@ -337,25 +495,28 @@ const MenuPage: React.FC = () => {
             <Box
               sx={{
                 mt: 2,
-                p: 2,
-                bgcolor: 'primary.main',
+                p: 2.5,
+                background: 'linear-gradient(135deg, #2D5F3F 0%, #4A8862 100%)',
                 color: 'white',
-                borderRadius: 1,
+                borderRadius: 2,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
+                boxShadow: '0px 4px 12px rgba(45, 95, 63, 0.2)',
               }}
             >
-              <Typography variant="h6">Total:</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>Total:</Typography>
               <Typography variant="h5" fontWeight="bold">
                 ${calculateDialogPrice().toFixed(2)}
               </Typography>
             </Box>
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSelectedItem(null)}>Cancel</Button>
-          <Button variant="contained" onClick={handleConfirmAddToCart}>
+        <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+          <Button onClick={() => setSelectedItem(null)} variant="outlined" sx={{ minWidth: 100 }}>
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={handleConfirmAddToCart} sx={{ minWidth: 140 }}>
             Add to Cart
           </Button>
         </DialogActions>

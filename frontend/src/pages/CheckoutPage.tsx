@@ -362,13 +362,33 @@ const CheckoutForm: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="md" sx={{ py: { xs: 2, md: 4 } }}>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.75rem', md: '2.125rem' } }}>
+    <Container maxWidth="md" sx={{ py: { xs: 3, md: 5 } }}>
+      <Typography
+        variant="h4"
+        component="h1"
+        gutterBottom
+        sx={{
+          fontSize: { xs: '1.875rem', md: '2.25rem' },
+          fontWeight: 700,
+          mb: 3,
+          background: 'linear-gradient(135deg, #2D5F3F 0%, #4A8862 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+        }}
+      >
         Checkout
       </Typography>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
+      <Paper
+        sx={{
+          p: { xs: 2.5, sm: 3.5 },
+          mb: 3,
+          border: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2.5 }}>
           Order Summary
         </Typography>
 
@@ -428,11 +448,24 @@ const CheckoutForm: React.FC = () => {
           ))}
         </List>
 
-        <Divider sx={{ my: 2 }} />
+        <Divider sx={{ my: 3 }} />
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-          <Typography variant="h6">Total:</Typography>
-          <Typography variant="h6">${cartTotal.toFixed(2)}</Typography>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 3,
+            py: 2,
+            px: 2.5,
+            bgcolor: 'grey.50',
+            borderRadius: 2,
+          }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>Total:</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
+            ${cartTotal.toFixed(2)}
+          </Typography>
         </Box>
 
         <TextField
@@ -443,17 +476,29 @@ const CheckoutForm: React.FC = () => {
           value={deliveryNotes}
           onChange={(e) => setDeliveryNotes(e.target.value)}
           placeholder="e.g., Office location, special instructions..."
-          sx={{ mb: 3 }}
         />
       </Paper>
 
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
+      <Paper
+        sx={{
+          p: { xs: 2.5, sm: 3.5 },
+          border: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2.5 }}>
           {!isAuthenticated ? 'Your Information' : 'Payment Details'}
         </Typography>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert
+            severity="error"
+            sx={{
+              mb: 3,
+              borderLeft: '4px solid',
+              borderLeftColor: 'error.main',
+            }}
+          >
             {error}
           </Alert>
         )}
@@ -561,12 +606,13 @@ const CheckoutForm: React.FC = () => {
             />
           </Box>
 
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mt: 2 }}>
             <Button
               variant="outlined"
               onClick={() => navigate('/menu')}
               disabled={loading}
               fullWidth
+              sx={{ py: 1.5 }}
             >
               Back to Menu
             </Button>
@@ -576,15 +622,41 @@ const CheckoutForm: React.FC = () => {
               variant="contained"
               disabled={!stripe || loading}
               fullWidth
+              sx={{ py: 1.5, fontSize: '1rem' }}
             >
-              {loading ? <CircularProgress size={24} /> : `Pay $${cartTotal.toFixed(2)}`}
+              {loading ? <CircularProgress size={24} color="inherit" /> : `Pay $${cartTotal.toFixed(2)}`}
             </Button>
           </Box>
         </form>
       </Paper>
 
-      <Box sx={{ mt: 2, textAlign: 'center' }}>
-        <Typography variant="body2" color="text.secondary">
+      <Box
+        sx={{
+          mt: 3,
+          textAlign: 'center',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 1,
+          color: 'text.secondary',
+        }}
+      >
+        <Box
+          component="span"
+          sx={{
+            width: 20,
+            height: 20,
+            borderRadius: '50%',
+            bgcolor: 'success.light',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '0.75rem',
+          }}
+        >
+          🔒
+        </Box>
+        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
           Your payment information is securely processed by Stripe
         </Typography>
       </Box>

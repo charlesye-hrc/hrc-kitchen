@@ -42,49 +42,124 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose, orderingWindow }
   };
 
   return (
-    <Drawer anchor="right" open={open} onClose={onClose}>
-      <Box sx={{ width: { xs: '100vw', sm: 400 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Drawer
+      anchor="right"
+      open={open}
+      onClose={onClose}
+      PaperProps={{
+        sx: {
+          boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.12)',
+        }
+      }}
+    >
+      <Box sx={{ width: { xs: '100vw', sm: 420 }, height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
         {/* Header */}
-        <Box sx={{ p: { xs: 1.5, sm: 2 }, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <CartIcon color="primary" />
-            <Typography variant="h6" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>Your Cart</Typography>
-            <Chip label={getCartItemCount()} size="small" color="primary" />
+        <Box
+          sx={{
+            p: { xs: 2, sm: 2.5 },
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            bgcolor: 'background.paper',
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box
+              sx={{
+                p: 1,
+                borderRadius: 2,
+                bgcolor: 'primary.main',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <CartIcon sx={{ fontSize: '1.25rem' }} />
+            </Box>
+            <Box>
+              <Typography variant="h6" sx={{ fontSize: { xs: '1.125rem', sm: '1.25rem' }, fontWeight: 600, lineHeight: 1.2 }}>
+                Your Cart
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                {getCartItemCount()} {getCartItemCount() === 1 ? 'item' : 'items'}
+              </Typography>
+            </Box>
           </Box>
-          <IconButton onClick={onClose}>
+          <IconButton onClick={onClose} sx={{ color: 'text.secondary' }}>
             <CloseIcon />
           </IconButton>
         </Box>
 
-        <Divider />
-
         {/* Cart Items */}
-        <Box sx={{ flexGrow: 1, overflow: 'auto', p: { xs: 1, sm: 2 } }}>
+        <Box sx={{ flexGrow: 1, overflow: 'auto', p: { xs: 1.5, sm: 2 } }}>
           {items.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <Typography color="text.secondary">Your cart is empty</Typography>
+            <Box
+              sx={{
+                textAlign: 'center',
+                py: 8,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 2,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: '50%',
+                  bgcolor: 'grey.100',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <CartIcon sx={{ fontSize: 40, color: 'grey.400' }} />
+              </Box>
+              <Typography color="text.secondary" variant="body1" fontWeight={500}>
+                Your cart is empty
+              </Typography>
+              <Typography color="text.secondary" variant="body2">
+                Add items from the menu to get started
+              </Typography>
             </Box>
           ) : (
-            <List>
+            <List sx={{ p: 0 }}>
               {items.map((item) => (
                 <React.Fragment key={item.menuItem.id}>
                   <ListItem
                     sx={{
                       flexDirection: 'column',
                       alignItems: 'flex-start',
-                      gap: 1,
-                      py: { xs: 1.5, sm: 2 },
-                      px: { xs: 1, sm: 2 },
+                      gap: 1.5,
+                      py: 2,
+                      px: 2,
+                      bgcolor: 'background.paper',
+                      borderRadius: 2,
+                      mb: 1.5,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                      '&:hover': {
+                        boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08)',
+                      }
                     }}
                   >
-                    <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
-                      <Typography variant="subtitle1" fontWeight="bold">
+                    <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <Typography variant="subtitle1" fontWeight={600} sx={{ flex: 1, pr: 1 }}>
                         {item.menuItem.name}
                       </Typography>
                       <IconButton
                         size="small"
                         onClick={() => removeItem(item.menuItem.id)}
-                        color="error"
+                        sx={{
+                          color: 'error.main',
+                          '&:hover': {
+                            bgcolor: 'error.lighter',
+                          }
+                        }}
                       >
                         <DeleteIcon fontSize="small" />
                       </IconButton>
@@ -150,31 +225,48 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose, orderingWindow }
                     )}
 
                     {/* Quantity Controls */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1, flexWrap: 'wrap' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 0.5, width: '100%', justifyContent: 'space-between' }}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.5,
+                          bgcolor: 'grey.100',
+                          borderRadius: 2,
+                          p: 0.5,
+                        }}
+                      >
                         <IconButton
                           size="small"
                           onClick={() => updateQuantity(item.menuItem.id, item.quantity - 1)}
                           disabled={item.quantity <= 1}
+                          sx={{
+                            bgcolor: 'white',
+                            '&:hover': { bgcolor: 'grey.50' },
+                            '&.Mui-disabled': { bgcolor: 'grey.100' },
+                          }}
                         >
                           <RemoveIcon fontSize="small" />
                         </IconButton>
-                        <Typography sx={{ minWidth: 30, textAlign: 'center' }}>
+                        <Typography sx={{ minWidth: 32, textAlign: 'center', fontWeight: 600, fontSize: '0.9375rem' }}>
                           {item.quantity}
                         </Typography>
                         <IconButton
                           size="small"
                           onClick={() => updateQuantity(item.menuItem.id, item.quantity + 1)}
+                          sx={{
+                            bgcolor: 'white',
+                            '&:hover': { bgcolor: 'grey.50' },
+                          }}
                         >
                           <AddIcon fontSize="small" />
                         </IconButton>
                       </Box>
-                      <Typography variant="body2" sx={{ ml: 'auto', fontWeight: 'bold' }}>
+                      <Typography variant="body1" sx={{ fontWeight: 700, color: 'primary.main', fontSize: '1.0625rem' }}>
                         ${(calculateItemPrice(item) * item.quantity).toFixed(2)}
                       </Typography>
                     </Box>
                   </ListItem>
-                  <Divider />
                 </React.Fragment>
               ))}
             </List>
@@ -184,31 +276,68 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose, orderingWindow }
         {/* Footer */}
         {items.length > 0 && (
           <>
-            <Divider />
-            <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
+            <Box
+              sx={{
+                p: { xs: 2, sm: 2.5 },
+                bgcolor: 'background.paper',
+                borderTop: '1px solid',
+                borderColor: 'divider',
+              }}
+            >
               {isOrderingClosed && (
-                <Alert severity="error" sx={{ mb: 2 }}>
+                <Alert
+                  severity="error"
+                  sx={{
+                    mb: 2,
+                    borderLeft: '4px solid',
+                    borderLeftColor: 'error.main',
+                  }}
+                >
                   {orderingWindow.message || 'Ordering is currently closed'}
                   {orderingWindow.window?.start && orderingWindow.window?.end && (
-                    <Typography variant="body2" sx={{ mt: 1 }}>
+                    <Typography variant="body2" sx={{ mt: 1, fontWeight: 500 }}>
                       Ordering window: {orderingWindow.window.start} - {orderingWindow.window.end}
                     </Typography>
                   )}
                 </Alert>
               )}
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>Total:</Typography>
-                <Typography variant="h6" color="primary" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  mb: 2.5,
+                  py: 2,
+                  px: 2.5,
+                  bgcolor: 'grey.50',
+                  borderRadius: 2,
+                }}
+              >
+                <Typography variant="h6" sx={{ fontSize: '1.125rem', fontWeight: 600 }}>
+                  Total:
+                </Typography>
+                <Typography
+                  variant="h5"
+                  sx={{
+                    fontSize: '1.5rem',
+                    fontWeight: 700,
+                    color: 'primary.main',
+                  }}
+                >
                   ${getCartTotal().toFixed(2)}
                 </Typography>
               </Box>
-              <Stack spacing={1}>
+              <Stack spacing={1.5}>
                 <Button
                   fullWidth
                   variant="contained"
                   size="large"
                   onClick={handleCheckout}
                   disabled={items.length === 0 || isOrderingClosed}
+                  sx={{
+                    py: 1.5,
+                    fontSize: '1rem',
+                  }}
                 >
                   Proceed to Checkout
                 </Button>
@@ -217,6 +346,9 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose, orderingWindow }
                   variant="outlined"
                   color="error"
                   onClick={clearCart}
+                  sx={{
+                    py: 1.25,
+                  }}
                 >
                   Clear Cart
                 </Button>
