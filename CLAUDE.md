@@ -20,8 +20,8 @@ HRC Kitchen is a web-based lunch ordering system for Huon Regional Care staff, f
 - Non-technical menu management interface
 
 ## Development Status
-- **Current Phase**: Application Separation (Public vs Admin Apps)
-- **Previous Phase**: MVP Complete + Apple Pay/Google Pay Integration
+- **Current Phase**: Phase 6 Complete - Application Separation
+- **Architecture**: Dual-application system (Public Ordering + Internal Management)
 - **Completed**:
   - ✅ Project structure and monorepo setup
   - ✅ Backend API foundation (Node.js/Express/TypeScript)
@@ -125,6 +125,41 @@ HRC Kitchen is a web-based lunch ordering system for Huon Regional Care staff, f
       - Menu routes made public (no authentication required)
       - Guest users can browse menu and add items to cart
       - Login optional for ordering (supports guest checkout)
+  - ✅ **Phase 6 Complete**: Application Separation (Public + Internal Management)
+    - **Architecture**:
+      - Separated monolithic app into two distinct applications
+      - Shared backend API (single source of truth)
+      - Unified authentication with domain-based access control
+      - Frontend workspaces: frontend-public (port 5173), frontend-admin (port 5174)
+    - **Backend - Domain Validation** (`backend/src/middleware/domainValidation.ts`):
+      - Email domain restrictions stored in database (`restricted_role_domain` config)
+      - Middleware validates domain for kitchen/admin/finance routes
+      - `hasAdminAccess` flag returned in login response
+      - Applied to `/api/v1/kitchen/*`, `/api/v1/admin/*`, `/api/v1/finance/*` routes
+    - **Backend - Order Service Improvements**:
+      - Fixed order number race condition (moved generation inside transaction)
+      - Added retry logic (3 attempts) for unique constraint violations
+      - Improved sequence number detection using highest order number
+      - Random delay between retries to reduce collision probability
+    - **Frontend-Public** (Customer-Facing Ordering App):
+      - Port 5173
+      - Open to anyone (no domain restrictions)
+      - Guest checkout enabled
+      - Self-registration allowed
+      - Features: Menu browsing, cart, checkout, order history
+      - No admin/kitchen/finance functionality
+    - **Frontend-Admin** (Internal Management App):
+      - Port 5174
+      - Domain-restricted access (`@huonregionalcare.org.au`)
+      - Role-based navigation (Kitchen/Admin/Finance)
+      - Domain validation at login (shows error on login page if denied)
+      - Automatic role-based redirect after login
+      - Features: Kitchen Dashboard, Admin Panel, Finance Reports
+      - ProtectedRoute component with domain and role checks
+    - **Shared Library** (`frontend-common`):
+      - Shared types, utilities, formatters, validators
+      - Reusable across both frontend apps
+      - Peer dependencies: React, Material-UI, Axios
 
 - **Next Steps** (Optional Enhancements):
   1. Email notifications for order status updates
@@ -142,15 +177,37 @@ HRC Kitchen is a web-based lunch ordering system for Huon Regional Care staff, f
 - **Seeding**: Test data available via `npm run db:seed`
 
 ### Test Accounts
-After seeding, the following accounts are available:
-- **Admin**: admin@hrc-kitchen.com / Admin123!
-- **Kitchen**: kitchen@hrc-kitchen.com / Kitchen123!
+After seeding (`npm run db:seed`), the following accounts are available:
+
+**Management App** (domain-restricted - `@huonregionalcare.org.au`):
+- **Admin**: admin@huonregionalcare.org.au / Admin123!
+- **Kitchen**: kitchen@huonregionalcare.org.au / Kitchen123!
+- **Finance**: finance@huonregionalcare.org.au / Finance123!
+
+**Public Ordering App** (no domain restrictions):
 - **Staff**: staff@hrc-kitchen.com / Staff123!
+- All domain users can also use the public app
 
 ### Running Locally
 ```bash
-npm run dev  # Starts both backend (port 3000) and frontend (port 5173)
+# Option 1: Run original frontend (legacy - port 5173)
+npm run dev
+
+# Option 2: Run public ordering app (port 5173)
+npm run dev:public
+
+# Option 3: Run internal management app (port 5174)
+npm run dev:admin
+
+# Run backend only
+npm run dev:backend
 ```
+
+**Access URLs:**
+- Backend API: `http://localhost:3000`
+- Public Ordering App: `http://localhost:5173`
+- Internal Management App: `http://localhost:5174`
+- Original Frontend (legacy): `http://localhost:5173` (via `npm run dev:frontend`)
 
 ### Testing Apple Pay / Google Pay
 **Development Testing:**
