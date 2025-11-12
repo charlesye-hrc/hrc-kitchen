@@ -6,13 +6,13 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting database seeding...');
 
-  // Create admin user
+  // Create admin user (with correct domain for management app access)
   const adminPassword = await bcrypt.hash('Admin123!', 10);
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@hrc-kitchen.com' },
+    where: { email: 'admin@huonregionalcare.org.au' },
     update: {},
     create: {
-      email: 'admin@hrc-kitchen.com',
+      email: 'admin@huonregionalcare.org.au',
       passwordHash: adminPassword,
       fullName: 'System Administrator',
       department: 'IT',
@@ -23,13 +23,13 @@ async function main() {
   });
   console.log('✅ Admin user created:', admin.email);
 
-  // Create kitchen staff user
+  // Create kitchen staff user (with correct domain for management app access)
   const kitchenPassword = await bcrypt.hash('Kitchen123!', 10);
   const kitchen = await prisma.user.upsert({
-    where: { email: 'kitchen@hrc-kitchen.com' },
+    where: { email: 'kitchen@huonregionalcare.org.au' },
     update: {},
     create: {
-      email: 'kitchen@hrc-kitchen.com',
+      email: 'kitchen@huonregionalcare.org.au',
       passwordHash: kitchenPassword,
       fullName: 'Kitchen Staff',
       department: 'Kitchen',
@@ -40,7 +40,24 @@ async function main() {
   });
   console.log('✅ Kitchen user created:', kitchen.email);
 
-  // Create test staff user
+  // Create finance user (with correct domain for management app access)
+  const financePassword = await bcrypt.hash('Finance123!', 10);
+  const finance = await prisma.user.upsert({
+    where: { email: 'finance@huonregionalcare.org.au' },
+    update: {},
+    create: {
+      email: 'finance@huonregionalcare.org.au',
+      passwordHash: financePassword,
+      fullName: 'Finance Staff',
+      department: 'Finance',
+      role: UserRole.FINANCE,
+      emailVerified: true,
+      isActive: true,
+    },
+  });
+  console.log('✅ Finance user created:', finance.email);
+
+  // Create test staff user (without domain - for public app only)
   const staffPassword = await bcrypt.hash('Staff123!', 10);
   const staff = await prisma.user.upsert({
     where: { email: 'staff@hrc-kitchen.com' },
@@ -266,8 +283,11 @@ async function main() {
 
   console.log('🎉 Database seeding completed successfully!');
   console.log('\n📝 Test Credentials:');
-  console.log('Admin: admin@hrc-kitchen.com / Admin123!');
-  console.log('Kitchen: kitchen@hrc-kitchen.com / Kitchen123!');
+  console.log('--- Management App (domain-restricted) ---');
+  console.log('Admin: admin@huonregionalcare.org.au / Admin123!');
+  console.log('Kitchen: kitchen@huonregionalcare.org.au / Kitchen123!');
+  console.log('Finance: finance@huonregionalcare.org.au / Finance123!');
+  console.log('\n--- Public Ordering App ---');
   console.log('Staff: staff@hrc-kitchen.com / Staff123!');
 }
 

@@ -130,9 +130,6 @@ export class OrderService {
     // Round to 2 decimal places
     totalAmount = Math.round(totalAmount * 100) / 100;
 
-    // Generate order number
-    const orderNumber = await this.generateOrderNumber();
-
     // Get today's date (without time)
     const today = new Date();
     const orderDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -140,21 +137,30 @@ export class OrderService {
     // Build special requests string
     const specialRequests = orderData.deliveryNotes || null;
 
-    // Create order with payment in a transaction
-    const result = await prisma.$transaction(async (tx) => {
-      // Create payment intent with Stripe first
-      console.log(`[Order Service] Creating payment intent for ${customerInfo.customerEmail}, amount: $${totalAmount}`);
-      const paymentIntent = await PaymentService.createPaymentIntent({
-        amount: totalAmount,
-        customerEmail: customerInfo.customerEmail,
-        orderId: undefined // We don't have the orderId yet
-      });
-      console.log(`[Order Service] Payment intent created: ${paymentIntent.id}`);
+    // Retry logic for unique constraint violations (race condition on order number)
+    let retries = 3;
+    let lastError: any;
 
-      // Create order
-      const order = await tx.order.create({
-        data: {
-          orderNumber,
+    while (retries > 0) {
+      try {
+        // Create order with payment in a transaction
+        const result = await prisma.$transaction(async (tx) => {
+          // Generate order number inside transaction to reduce race condition window
+          const orderNumber = await this.generateOrderNumber();
+
+          // Create payment intent with Stripe first
+          console.log(`[Order Service] Creating payment intent for ${customerInfo.customerEmail}, amount: $${totalAmount}`);
+          const paymentIntent = await PaymentService.createPaymentIntent({
+            amount: totalAmount,
+            customerEmail: customerInfo.customerEmail,
+            orderId: undefined // We don't have the orderId yet
+          });
+          console.log(`[Order Service] Payment intent created: ${paymentIntent.id}`);
+
+          // Create order
+          const order = await tx.order.create({
+            data: {
+              orderNumber,
           userId: customerInfo.userId || null,
           guestEmail: customerInfo.guestEmail || null,
           guestFirstName: customerInfo.guestFirstName || null,
@@ -184,14 +190,33 @@ export class OrderService {
         }
       });
 
-      return { order, clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id };
-    });
+          return { order, clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id };
+        });
 
-    // Update payment intent metadata with orderId after transaction completes
-    console.log(`[Order Service] Updating payment intent ${result.paymentIntentId} with orderId ${result.order.id}`);
-    await PaymentService.updatePaymentIntentMetadata(result.paymentIntentId, result.order.id);
+        // Update payment intent metadata with orderId after transaction completes
+        console.log(`[Order Service] Updating payment intent ${result.paymentIntentId} with orderId ${result.order.id}`);
+        await PaymentService.updatePaymentIntentMetadata(result.paymentIntentId, result.order.id);
 
-    return result;
+        return result;
+      } catch (error: any) {
+        // Check if this is a unique constraint error on order_number
+        if (error.code === 'P2002' && error.meta?.target?.includes('order_number')) {
+          retries--;
+          lastError = error;
+          if (retries > 0) {
+            console.log(`[Order Service] Order number collision detected, retrying... (${retries} retries left)`);
+            // Small random delay to reduce collision probability
+            await new Promise(resolve => setTimeout(resolve, Math.random() * 100));
+            continue;
+          }
+        }
+        // Re-throw if not a unique constraint error or out of retries
+        throw error;
+      }
+    }
+
+    // If we get here, we ran out of retries
+    throw lastError || new Error('Failed to create order after multiple retries');
   }
 
   async getOrderById(orderId: string, userId: string): Promise<any | null> {
@@ -328,23 +353,33 @@ export class OrderService {
     const today = new Date();
     const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
 
-    // Get count of orders today
-    const todayStart = new Date(today);
-    todayStart.setHours(0, 0, 0, 0);
+    // Get count of orders today with pattern ORD-{dateStr}-*
+    // This uses a unique constraint check to avoid race conditions
+    const prefix = `ORD-${dateStr}-`;
 
-    const todayEnd = new Date(today);
-    todayEnd.setHours(23, 59, 59, 999);
-
-    const count = await prisma.order.count({
+    // Find the highest sequence number for today
+    const latestOrder = await prisma.order.findFirst({
       where: {
-        createdAt: {
-          gte: todayStart,
-          lte: todayEnd
+        orderNumber: {
+          startsWith: prefix
         }
+      },
+      orderBy: {
+        orderNumber: 'desc'
+      },
+      select: {
+        orderNumber: true
       }
     });
 
-    const sequence = String(count + 1).padStart(4, '0');
-    return `ORD-${dateStr}-${sequence}`;
+    let sequence = 1;
+    if (latestOrder) {
+      // Extract sequence number from order number (ORD-20251112-0001 -> 0001)
+      const parts = latestOrder.orderNumber.split('-');
+      const lastSeq = parseInt(parts[parts.length - 1], 10);
+      sequence = lastSeq + 1;
+    }
+
+    return `${prefix}${String(sequence).padStart(4, '0')}`;
   }
 }
