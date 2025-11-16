@@ -1,6 +1,8 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { AuthRequest } from '../middleware/auth';
 import { ReportService, ReportDateRange } from '../services/report.service';
-import { PaymentStatus, OrderStatus } from '@prisma/client';
+import { PaymentStatus, OrderStatus, UserRole } from '@prisma/client';
+import locationService from '../services/location.service';
 
 export class ReportController {
   private reportService: ReportService;
@@ -10,10 +12,34 @@ export class ReportController {
   }
 
   /**
+   * Get allowed location IDs for the current user based on role
+   * - ADMIN: null (all locations)
+   * - KITCHEN/FINANCE: array of assigned location IDs
+   */
+  private async getAllowedLocationIds(req: AuthRequest): Promise<string[] | null> {
+    const user = req.user!;
+
+    // ADMIN users can access all locations
+    if (user.role === UserRole.ADMIN) {
+      return null;
+    }
+
+    // KITCHEN and FINANCE users are restricted to their assigned locations
+    if (user.role === UserRole.KITCHEN || user.role === UserRole.FINANCE) {
+      const assignedLocations = await locationService.getUserAssignedLocations(user.id);
+      return assignedLocations.map(loc => loc.id);
+    }
+
+    // Default: no locations (shouldn't happen based on route authorization)
+    return [];
+  }
+
+  /**
    * Get revenue by user report
    * GET /api/v1/admin/reports/revenue-by-user?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD&format=json|csv
+   * KITCHEN/FINANCE users are restricted to their assigned locations
    */
-  getRevenueByUser = async (req: Request, res: Response): Promise<void> => {
+  getRevenueByUser = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const { startDate, endDate, format = 'json', locationId } = req.query;
 
@@ -25,10 +51,14 @@ export class ReportController {
         return;
       }
 
+      // Get allowed locations based on user role
+      const allowedLocationIds = await this.getAllowedLocationIds(req);
+
       const dateRange: ReportDateRange = {
         startDate: startDate as string,
         endDate: endDate as string,
-        locationId: locationId as string | undefined
+        locationId: locationId as string | undefined,
+        allowedLocationIds
       };
 
       const data = await this.reportService.getRevenueByUser(dateRange);
@@ -57,8 +87,9 @@ export class ReportController {
   /**
    * Get popular items report
    * GET /api/v1/admin/reports/popular-items?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD&format=json|csv
+   * KITCHEN/FINANCE users are restricted to their assigned locations
    */
-  getPopularItems = async (req: Request, res: Response): Promise<void> => {
+  getPopularItems = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const { startDate, endDate, format = 'json', locationId } = req.query;
 
@@ -70,10 +101,14 @@ export class ReportController {
         return;
       }
 
+      // Get allowed locations based on user role
+      const allowedLocationIds = await this.getAllowedLocationIds(req);
+
       const dateRange: ReportDateRange = {
         startDate: startDate as string,
         endDate: endDate as string,
-        locationId: locationId as string | undefined
+        locationId: locationId as string | undefined,
+        allowedLocationIds
       };
 
       const data = await this.reportService.getPopularItems(dateRange);
@@ -102,8 +137,9 @@ export class ReportController {
   /**
    * Get summary statistics report
    * GET /api/v1/admin/reports/summary?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+   * KITCHEN/FINANCE users are restricted to their assigned locations
    */
-  getSummary = async (req: Request, res: Response): Promise<void> => {
+  getSummary = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const { startDate, endDate, locationId } = req.query;
 
@@ -115,10 +151,14 @@ export class ReportController {
         return;
       }
 
+      // Get allowed locations based on user role
+      const allowedLocationIds = await this.getAllowedLocationIds(req);
+
       const dateRange: ReportDateRange = {
         startDate: startDate as string,
         endDate: endDate as string,
-        locationId: locationId as string | undefined
+        locationId: locationId as string | undefined,
+        allowedLocationIds
       };
 
       const data = await this.reportService.getSummaryReport(dateRange);
@@ -139,10 +179,11 @@ export class ReportController {
   /**
    * Get detailed orders report
    * GET /api/v1/admin/reports/orders?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD&paymentStatus=COMPLETED&fulfillmentStatus=FULFILLED&format=json|csv
+   * KITCHEN/FINANCE users are restricted to their assigned locations
    */
-  getOrders = async (req: Request, res: Response): Promise<void> => {
+  getOrders = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-      const { startDate, endDate, paymentStatus, fulfillmentStatus, format = 'json' } = req.query;
+      const { startDate, endDate, paymentStatus, fulfillmentStatus, format = 'json', locationId } = req.query;
 
       if (!startDate || !endDate) {
         res.status(400).json({
@@ -152,9 +193,14 @@ export class ReportController {
         return;
       }
 
+      // Get allowed locations based on user role
+      const allowedLocationIds = await this.getAllowedLocationIds(req);
+
       const dateRange: ReportDateRange = {
         startDate: startDate as string,
-        endDate: endDate as string
+        endDate: endDate as string,
+        locationId: locationId as string | undefined,
+        allowedLocationIds
       };
 
       const filters: any = {};

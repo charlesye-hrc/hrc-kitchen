@@ -94,7 +94,7 @@ const MenuPage: React.FC = () => {
       // First time setting location
       setCartLocation(selectedLocation.id);
     }
-  }, [menuItems, loading]);
+  }, [selectedLocation, cartLocationId, menuItems, loading, cartItems, locations, validateCartForLocation, removeItem, setCartLocation, selectLocation]);
 
   const fetchTodaysMenu = async () => {
     if (!selectedLocation) return;

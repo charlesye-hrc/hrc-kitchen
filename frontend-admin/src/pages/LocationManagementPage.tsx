@@ -23,7 +23,13 @@ import {
   CircularProgress,
   Chip,
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import {
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  ToggleOff as DeactivateIcon,
+  ToggleOn as ActivateIcon,
+} from '@mui/icons-material';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -44,8 +50,19 @@ const LocationManagementPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deactivateDialogOpen, setDeactivateDialogOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [deletingLocation, setDeletingLocation] = useState<Location | null>(null);
+  const [deactivatingLocation, setDeactivatingLocation] = useState<Location | null>(null);
+  const [removalPreview, setRemovalPreview] = useState<{
+    action: 'CAN_DELETE' | 'CAN_CASCADE' | 'BLOCKED';
+    dependencies: {
+      menuItems: number;
+      users: number;
+      orders: number;
+    };
+    reasons: string[];
+  } | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -156,31 +173,110 @@ const LocationManagementPage: React.FC = () => {
     }
   };
 
-  const handleOpenDeleteDialog = (location: Location) => {
+  const handleOpenDeleteDialog = async (location: Location) => {
     setDeletingLocation(location);
-    setDeleteDialogOpen(true);
+    setSubmitting(true);
+
+    try {
+      // Fetch removal preview
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/admin/locations/${location.id}/removal-preview`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        setRemovalPreview(response.data.data);
+        setDeleteDialogOpen(true);
+      }
+    } catch (err: any) {
+      console.error('Error fetching removal preview:', err);
+      setError(err.response?.data?.message || 'Failed to load deletion preview');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleCloseDeleteDialog = () => {
     setDeleteDialogOpen(false);
     setDeletingLocation(null);
+    setRemovalPreview(null);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (forceUnassign = false) => {
     if (!deletingLocation) return;
 
     try {
       setSubmitting(true);
-      await axios.delete(
-        `${import.meta.env.VITE_API_URL}/admin/locations/${deletingLocation.id}`,
+      const url = forceUnassign
+        ? `${import.meta.env.VITE_API_URL}/admin/locations/${deletingLocation.id}?forceUnassign=true`
+        : `${import.meta.env.VITE_API_URL}/admin/locations/${deletingLocation.id}`;
+
+      await axios.delete(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      await fetchLocations();
+      handleCloseDeleteDialog();
+      setError(null);
+    } catch (err: any) {
+      console.error('Error deleting location:', err);
+      // Keep the dialog open to show the error
+      setError(err.response?.data?.message || 'Failed to delete location');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeactivateInstead = async () => {
+    if (!deletingLocation) return;
+
+    try {
+      setSubmitting(true);
+      await axios.patch(
+        `${import.meta.env.VITE_API_URL}/admin/locations/${deletingLocation.id}/deactivate`,
+        {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       await fetchLocations();
       handleCloseDeleteDialog();
+      setError(null);
     } catch (err: any) {
-      console.error('Error deleting location:', err);
-      setError(err.response?.data?.message || 'Failed to delete location');
+      console.error('Error deactivating location:', err);
+      setError(err.response?.data?.message || 'Failed to deactivate location');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleOpenDeactivateDialog = (location: Location) => {
+    setDeactivatingLocation(location);
+    setDeactivateDialogOpen(true);
+  };
+
+  const handleCloseDeactivateDialog = () => {
+    setDeactivateDialogOpen(false);
+    setDeactivatingLocation(null);
+  };
+
+  const handleToggleActive = async () => {
+    if (!deactivatingLocation) return;
+
+    try {
+      setSubmitting(true);
+      const endpoint = deactivatingLocation.isActive ? 'deactivate' : 'activate';
+      await axios.patch(
+        `${import.meta.env.VITE_API_URL}/admin/locations/${deactivatingLocation.id}/${endpoint}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      await fetchLocations();
+      handleCloseDeactivateDialog();
+      setError(null);
+    } catch (err: any) {
+      console.error('Error toggling location status:', err);
+      setError(err.response?.data?.message || 'Failed to update location status');
     } finally {
       setSubmitting(false);
     }
@@ -254,13 +350,28 @@ const LocationManagementPage: React.FC = () => {
                       size="small"
                       onClick={() => handleOpenDialog(location)}
                       sx={{ mr: 1 }}
+                      title="Edit location"
                     >
                       <EditIcon fontSize="small" />
                     </IconButton>
                     <IconButton
                       size="small"
+                      onClick={() => handleOpenDeactivateDialog(location)}
+                      color={location.isActive ? 'warning' : 'success'}
+                      sx={{ mr: 1 }}
+                      title={location.isActive ? 'Deactivate location' : 'Activate location'}
+                    >
+                      {location.isActive ? (
+                        <DeactivateIcon fontSize="small" />
+                      ) : (
+                        <ActivateIcon fontSize="small" />
+                      )}
+                    </IconButton>
+                    <IconButton
+                      size="small"
                       onClick={() => handleOpenDeleteDialog(location)}
                       color="error"
+                      title="Delete location"
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>
@@ -339,28 +450,145 @@ const LocationManagementPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog}>
-        <DialogTitle>Confirm Delete</DialogTitle>
+      {/* Smart Delete Dialog - Dynamic based on preview */}
+      <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog} maxWidth="sm" fullWidth>
+        {removalPreview?.action === 'CAN_DELETE' && (
+          <>
+            <DialogTitle>Delete Location</DialogTitle>
+            <DialogContent>
+              <Typography gutterBottom>
+                Are you sure you want to permanently delete <strong>{deletingLocation?.name}</strong>?
+              </Typography>
+              <Alert severity="success" sx={{ mt: 2 }}>
+                ✓ No dependencies found. This location can be safely deleted.
+              </Alert>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
+              <Button onClick={handleCloseDeleteDialog} disabled={submitting}>
+                Cancel
+              </Button>
+              <Button onClick={() => handleDelete()} variant="contained" color="error" disabled={submitting}>
+                {submitting ? <CircularProgress size={24} /> : 'Delete'}
+              </Button>
+            </DialogActions>
+          </>
+        )}
+
+        {removalPreview?.action === 'CAN_CASCADE' && (
+          <>
+            <DialogTitle>Delete Location</DialogTitle>
+            <DialogContent>
+              <Typography gutterBottom>
+                Are you sure you want to permanently delete <strong>{deletingLocation?.name}</strong>?
+              </Typography>
+              <Alert severity="info" sx={{ mt: 2 }}>
+                {removalPreview.dependencies.menuItems > 0 && (
+                  <>⚠ {removalPreview.dependencies.menuItems} menu item assignment(s) will be removed.<br /></>
+                )}
+                {removalPreview.dependencies.orders > 0 && (
+                  <>✓ {removalPreview.dependencies.orders} historical order(s) are preserved via snapshots.<br /></>
+                )}
+                ✓ No user assignments found.
+              </Alert>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                Historical orders will continue to show this location's name, even after deletion.
+                {removalPreview.dependencies.menuItems > 0 && ' Menu items themselves are not deleted, only their assignment to this location.'}
+              </Typography>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
+              <Button onClick={handleCloseDeleteDialog} disabled={submitting}>
+                Cancel
+              </Button>
+              <Button onClick={() => handleDelete()} variant="contained" color="error" disabled={submitting}>
+                {submitting ? <CircularProgress size={24} /> : 'Delete Location'}
+              </Button>
+            </DialogActions>
+          </>
+        )}
+
+        {removalPreview?.action === 'BLOCKED' && (
+          <>
+            <DialogTitle>Cannot Delete Location</DialogTitle>
+            <DialogContent>
+              <Typography gutterBottom>
+                Cannot delete <strong>{deletingLocation?.name}</strong> due to active assignments
+              </Typography>
+              <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
+                ❌ {removalPreview.dependencies.users} user(s) assigned to this location (KITCHEN/FINANCE staff)
+                {removalPreview.dependencies.menuItems > 0 && (
+                  <>
+                    <br />⚠ {removalPreview.dependencies.menuItems} menu item(s) assigned to this location
+                  </>
+                )}
+              </Alert>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                <strong>Options:</strong>
+                <ul style={{ marginTop: '8px', marginBottom: 0 }}>
+                  <li>Manually unassign users in User Location Assignment page</li>
+                  <li>Or: Use "Unassign All & Delete" to automatically remove all assignments</li>
+                </ul>
+              </Alert>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2 }}>
+              <Button onClick={handleCloseDeleteDialog} disabled={submitting}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => handleDelete(true)}
+                variant="contained"
+                color="error"
+                disabled={submitting}
+              >
+                {submitting ? <CircularProgress size={24} /> : 'Unassign All & Delete'}
+              </Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
+
+      {/* Deactivate/Activate Confirmation Dialog */}
+      <Dialog open={deactivateDialogOpen} onClose={handleCloseDeactivateDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {deactivatingLocation?.isActive ? 'Deactivate' : 'Activate'} Location
+        </DialogTitle>
         <DialogContent>
-          <Typography>
-            Are you sure you want to delete the location <strong>{deletingLocation?.name}</strong>?
+          <Typography gutterBottom>
+            Are you sure you want to {deactivatingLocation?.isActive ? 'deactivate' : 'activate'} the location{' '}
+            <strong>{deactivatingLocation?.name}</strong>?
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-            This action cannot be undone. Orders associated with this location will still reference it.
-          </Typography>
+          {deactivatingLocation?.isActive ? (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              Deactivating this location will:
+              <ul style={{ marginTop: '8px', marginBottom: 0 }}>
+                <li>Hide it from active location lists</li>
+                <li>Preserve all historical orders and data</li>
+                <li>Keep menu item and user assignments intact</li>
+                <li>Allow reactivation at any time</li>
+              </ul>
+            </Alert>
+          ) : (
+            <Alert severity="success" sx={{ mt: 2 }}>
+              Activating this location will make it available for selection and ordering again.
+            </Alert>
+          )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleCloseDeleteDialog} disabled={submitting}>
+          <Button onClick={handleCloseDeactivateDialog} disabled={submitting}>
             Cancel
           </Button>
           <Button
-            onClick={handleDelete}
+            onClick={handleToggleActive}
             variant="contained"
-            color="error"
+            color={deactivatingLocation?.isActive ? 'warning' : 'success'}
             disabled={submitting}
           >
-            {submitting ? <CircularProgress size={24} /> : 'Delete'}
+            {submitting ? (
+              <CircularProgress size={24} />
+            ) : deactivatingLocation?.isActive ? (
+              'Deactivate'
+            ) : (
+              'Activate'
+            )}
           </Button>
         </DialogActions>
       </Dialog>

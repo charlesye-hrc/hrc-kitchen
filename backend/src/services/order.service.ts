@@ -12,17 +12,26 @@ export class OrderService {
   }
 
   async createOrder(userId: string, orderData: CreateOrderDto): Promise<{ order: any; clientSecret: string }> {
-    // Get user email for payment intent
+    // Get user data for payment intent and snapshot
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { email: true }
+      select: {
+        email: true,
+        fullName: true,
+        department: true
+      }
     });
 
     if (!user) {
       throw new Error('User not found');
     }
 
-    return this.createOrderInternal(orderData, { userId, customerEmail: user.email });
+    return this.createOrderInternal(orderData, {
+      userId,
+      customerEmail: user.email,
+      customerFullName: user.fullName,
+      customerDepartment: user.department
+    });
   }
 
   async createGuestOrder(
@@ -39,7 +48,15 @@ export class OrderService {
 
   private async createOrderInternal(
     orderData: CreateOrderDto,
-    customerInfo: { userId?: string; guestEmail?: string; guestFirstName?: string; guestLastName?: string; customerEmail: string }
+    customerInfo: {
+      userId?: string;
+      guestEmail?: string;
+      guestFirstName?: string;
+      guestLastName?: string;
+      customerEmail: string;
+      customerFullName?: string;
+      customerDepartment?: string;
+    }
   ): Promise<{ order: any; clientSecret: string }> {
     // Validate ordering window
     const windowStatus = await this.configService.isOrderingWindowActive();
@@ -47,11 +64,26 @@ export class OrderService {
       throw new Error(windowStatus.message || 'Ordering is currently not available');
     }
 
+    // Fetch location data for snapshot (if locationId is provided)
+    let locationSnapshot: { name?: string; address?: string; phone?: string } = {};
+    if (orderData.locationId) {
+      const location = await prisma.location.findUnique({
+        where: { id: orderData.locationId },
+        select: { name: true, address: true, phone: true }
+      });
+      if (location) {
+        locationSnapshot = {
+          name: location.name,
+          address: location.address || undefined,
+          phone: location.phone || undefined
+        };
+      }
+    }
+
     // Validate items exist and calculate total
     const menuItems = await prisma.menuItem.findMany({
       where: {
-        id: { in: orderData.items.map(item => item.menuItemId) },
-        isActive: true
+        id: { in: orderData.items.map(item => item.menuItemId) }
       },
       include: {
         variationGroups: {
@@ -146,7 +178,13 @@ export class OrderService {
         selectedVariations: selectedVariations ? {
           variations: selectedVariations,
           totalModifier: variationModifier
-        } : null
+        } : null,
+        // Snapshot menu item data for historical preservation
+        itemName: menuItem.name,
+        itemDescription: menuItem.description,
+        itemCategory: menuItem.category,
+        itemImageUrl: menuItem.imageUrl,
+        itemBasePrice: menuItem.price,
       };
     });
 
@@ -189,6 +227,14 @@ export class OrderService {
           guestEmail: customerInfo.guestEmail || null,
           guestFirstName: customerInfo.guestFirstName || null,
           guestLastName: customerInfo.guestLastName || null,
+          // Location snapshots
+          locationName: locationSnapshot.name || null,
+          locationAddress: locationSnapshot.address || null,
+          locationPhone: locationSnapshot.phone || null,
+          // Customer snapshots (for registered users - guests use guestXxx fields)
+          customerFullName: customerInfo.customerFullName || null,
+          customerEmail: customerInfo.customerEmail || null,
+          customerDepartment: customerInfo.customerDepartment || null,
           totalAmount,
           paymentStatus: 'PENDING',
           fulfillmentStatus: 'PLACED',

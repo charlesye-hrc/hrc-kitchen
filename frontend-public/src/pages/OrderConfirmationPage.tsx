@@ -30,11 +30,16 @@ interface OrderItem {
   quantity: number;
   priceAtPurchase: number;
   customizations: any | null;
-  menuItem: {
+  // Relation (null if menu item deleted)
+  menuItem?: {
     name: string;
     description: string | null;
     price: number;
-  };
+  } | null;
+  // Snapshots (preserved even after deletion)
+  itemName?: string | null;
+  itemDescription?: string | null;
+  itemCategory?: string | null;
 }
 
 interface Order {
@@ -48,11 +53,15 @@ interface Order {
   createdAt: string;
   paymentId: string | null;
   orderItems: OrderItem[];
+  // Relation (null if location deleted)
   location?: {
     id: string;
     name: string;
     address?: string;
-  };
+  } | null;
+  // Snapshots (preserved even after deletion)
+  locationName?: string | null;
+  locationAddress?: string | null;
 }
 
 const OrderConfirmationPage: React.FC = () => {
@@ -343,7 +352,7 @@ const OrderConfirmationPage: React.FC = () => {
               </Typography>
             </Box>
 
-            {order.location && (
+            {(order.location?.name || order.locationName) && (
               <Box
                 sx={{
                   p: 2.5,
@@ -357,11 +366,11 @@ const OrderConfirmationPage: React.FC = () => {
                   Delivery Location
                 </Typography>
                 <Typography variant="body1" fontWeight={600} sx={{ fontSize: '1.0625rem' }}>
-                  {order.location.name}
+                  {order.location?.name || order.locationName}
                 </Typography>
-                {order.location.address && (
+                {(order.location?.address || order.locationAddress) && (
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    {order.location.address}
+                    {order.location?.address || order.locationAddress}
                   </Typography>
                 )}
               </Box>
@@ -391,7 +400,7 @@ const OrderConfirmationPage: React.FC = () => {
               return (
                 <ListItem key={item.id} sx={{ px: 0 }}>
                   <ListItemText
-                    primary={`${item.menuItem.name} × ${item.quantity}`}
+                    primary={`${item.menuItem?.name || item.itemName || 'Unknown Item'} × ${item.quantity}`}
                     secondary={
                       <>
                         {item.customizations?.customizations && (

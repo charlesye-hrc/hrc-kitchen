@@ -12,11 +12,11 @@ const router = Router();
 router.use(authenticate);
 router.use(validateAdminDomain);
 
-// Report routes - accessible by FINANCE and ADMIN
-router.get('/reports/revenue-by-user', authorize(UserRole.FINANCE, UserRole.ADMIN), reportController.getRevenueByUser);
-router.get('/reports/popular-items', authorize(UserRole.FINANCE, UserRole.ADMIN), reportController.getPopularItems);
-router.get('/reports/summary', authorize(UserRole.FINANCE, UserRole.ADMIN), reportController.getSummary);
-router.get('/reports/orders', authorize(UserRole.FINANCE, UserRole.ADMIN), reportController.getOrders);
+// Report routes - accessible by KITCHEN, FINANCE and ADMIN
+router.get('/reports/revenue-by-user', authorize(UserRole.KITCHEN, UserRole.FINANCE, UserRole.ADMIN), reportController.getRevenueByUser);
+router.get('/reports/popular-items', authorize(UserRole.KITCHEN, UserRole.FINANCE, UserRole.ADMIN), reportController.getPopularItems);
+router.get('/reports/summary', authorize(UserRole.KITCHEN, UserRole.FINANCE, UserRole.ADMIN), reportController.getSummary);
+router.get('/reports/orders', authorize(UserRole.KITCHEN, UserRole.FINANCE, UserRole.ADMIN), reportController.getOrders);
 
 // All other admin routes require ADMIN role only
 router.use(authorize(UserRole.ADMIN));
@@ -211,11 +211,32 @@ router.post('/locations', locationController.createLocation);
 router.put('/locations/:id', locationController.updateLocation);
 
 /**
+ * @route   GET /api/v1/admin/locations/:id/removal-preview
+ * @desc    Get preview of what will happen when removing a location
+ * @access  Admin only
+ */
+router.get('/locations/:id/removal-preview', locationController.getRemovalPreview);
+
+/**
  * @route   DELETE /api/v1/admin/locations/:id
- * @desc    Delete a location
+ * @desc    Delete a location (validates dependencies, supports cascade)
  * @access  Admin only
  */
 router.delete('/locations/:id', locationController.deleteLocation);
+
+/**
+ * @route   PATCH /api/v1/admin/locations/:id/deactivate
+ * @desc    Deactivate a location (soft delete)
+ * @access  Admin only
+ */
+router.patch('/locations/:id/deactivate', locationController.deactivateLocation);
+
+/**
+ * @route   PATCH /api/v1/admin/locations/:id/activate
+ * @desc    Activate a location
+ * @access  Admin only
+ */
+router.patch('/locations/:id/activate', locationController.activateLocation);
 
 /**
  * @route   GET /api/v1/admin/users/:userId/locations

@@ -47,7 +47,6 @@ export class MenuService {
             weekdays: {
               has: weekday,
             },
-            isActive: true,
           },
         },
         include: {
@@ -75,7 +74,6 @@ export class MenuService {
           weekdays: {
             has: weekday,
           },
-          isActive: true,
         },
         include: {
           customizations: true,
@@ -108,9 +106,6 @@ export class MenuService {
    */
   async getWeeklyMenu() {
     const items = await prisma.menuItem.findMany({
-      where: {
-        isActive: true,
-      },
       include: {
         customizations: true,
         variationGroups: {

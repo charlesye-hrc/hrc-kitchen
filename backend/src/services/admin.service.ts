@@ -1,4 +1,4 @@
-import { Weekday, Category, UserRole, VariationGroupType } from '@prisma/client';
+import { Weekday, MenuCategory, UserRole, VariationGroupType } from '@prisma/client';
 import prisma from '../lib/prisma';
 import {
   CreateVariationGroupInput,
@@ -11,22 +11,20 @@ interface CreateMenuItemData {
   name: string;
   description: string;
   price: number;
-  category: Category;
+  category: MenuCategory;
   weekdays: Weekday[];
   imageUrl?: string;
   dietaryTags?: string[];
-  isActive: boolean;
 }
 
 interface UpdateMenuItemData {
   name?: string;
   description?: string;
   price?: number;
-  category?: Category;
+  category?: MenuCategory;
   weekdays?: Weekday[];
   imageUrl?: string;
   dietaryTags?: string[];
-  isActive?: boolean;
 }
 
 interface UserFilters {
@@ -49,7 +47,6 @@ export class AdminService {
         weekdays: data.weekdays,
         imageUrl: data.imageUrl || null,
         dietaryTags: data.dietaryTags || [],
-        isActive: data.isActive,
       },
       include: {
         customizations: true,
@@ -89,14 +86,10 @@ export class AdminService {
 
   /**
    * Delete a menu item permanently
+   * Cascades: customizations, variations, location assignments
+   * Orders: preserved via snapshots (menuItemId set to null)
    */
   async deleteMenuItem(itemId: string) {
-    // First delete associated customizations
-    await prisma.menuItemCustomization.deleteMany({
-      where: { menuItemId: itemId },
-    });
-
-    // Then delete the menu item
     await prisma.menuItem.delete({
       where: { id: itemId },
     });

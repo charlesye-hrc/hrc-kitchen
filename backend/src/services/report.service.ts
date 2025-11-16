@@ -4,7 +4,8 @@ import prisma from '../lib/prisma';
 export interface ReportDateRange {
   startDate: string; // YYYY-MM-DD
   endDate: string;   // YYYY-MM-DD
-  locationId?: string; // Optional location filter
+  locationId?: string; // Optional specific location filter (user-selected)
+  allowedLocationIds?: string[] | null; // Role-based location restrictions (null = all locations allowed)
 }
 
 export interface RevenueByUserReport {
@@ -41,8 +42,9 @@ export interface SummaryReport {
   averageOrderValue: number;
   ordersByStatus: {
     PLACED: number;
-    PARTIALLY_FULFILLED: number;
-    FULFILLED: number;
+    PREPARING: number;
+    READY: number;
+    COMPLETED: number;
   };
   ordersByPayment: {
     PENDING: number;
@@ -59,6 +61,7 @@ export interface SummaryReport {
 export class ReportService {
   /**
    * Get revenue by user over a custom date range
+   * Respects role-based location restrictions
    */
   async getRevenueByUser(dateRange: ReportDateRange): Promise<RevenueByUserReport[]> {
     const startDate = new Date(dateRange.startDate + 'T00:00:00');
@@ -73,10 +76,19 @@ export class ReportService {
       userId: { not: null } // Exclude guest orders (they don't have a user)
     };
 
-    // Add location filter if provided
+    // Apply location filtering
     if (dateRange.locationId) {
+      // Specific location selected by user
       whereClause.locationId = dateRange.locationId;
+    } else if (dateRange.allowedLocationIds !== null && dateRange.allowedLocationIds !== undefined) {
+      // Role-based restriction: KITCHEN/FINANCE users
+      // If allowedLocationIds is an empty array, no data should be returned
+      if (dateRange.allowedLocationIds.length === 0) {
+        return [];
+      }
+      whereClause.locationId = { in: dateRange.allowedLocationIds };
     }
+    // If allowedLocationIds is null, it means ADMIN - no restriction, show all
 
     const orders = await prisma.order.findMany({
       where: whereClause,
@@ -128,6 +140,7 @@ export class ReportService {
 
   /**
    * Get most popular items over a custom date range
+   * Respects role-based location restrictions
    */
   async getPopularItems(dateRange: ReportDateRange): Promise<PopularItemReport[]> {
     const startDate = new Date(dateRange.startDate + 'T00:00:00');
@@ -143,10 +156,18 @@ export class ReportService {
       }
     };
 
-    // Add location filter if provided
+    // Apply location filtering
     if (dateRange.locationId) {
+      // Specific location selected by user
       whereClause.order.locationId = dateRange.locationId;
+    } else if (dateRange.allowedLocationIds !== null && dateRange.allowedLocationIds !== undefined) {
+      // Role-based restriction: KITCHEN/FINANCE users
+      if (dateRange.allowedLocationIds.length === 0) {
+        return [];
+      }
+      whereClause.order.locationId = { in: dateRange.allowedLocationIds };
     }
+    // If allowedLocationIds is null, it means ADMIN - no restriction, show all
 
     const orderItems = await prisma.orderItem.findMany({
       where: whereClause,
@@ -171,6 +192,9 @@ export class ReportService {
     const itemStats: Record<string, PopularItemReport> = {};
 
     for (const item of orderItems) {
+      // Skip items where menu item has been deleted
+      if (!item.menuItem) continue;
+
       const menuItemId = item.menuItem.id;
 
       if (!itemStats[menuItemId]) {
@@ -193,6 +217,7 @@ export class ReportService {
 
   /**
    * Get overall summary statistics for a date range
+   * Respects role-based location restrictions
    */
   async getSummaryReport(dateRange: ReportDateRange): Promise<SummaryReport> {
     const startDate = new Date(dateRange.startDate + 'T00:00:00');
@@ -205,10 +230,26 @@ export class ReportService {
       }
     };
 
-    // Add location filter if provided
+    // Apply location filtering
     if (dateRange.locationId) {
+      // Specific location selected by user
       whereClause.locationId = dateRange.locationId;
+    } else if (dateRange.allowedLocationIds !== null && dateRange.allowedLocationIds !== undefined) {
+      // Role-based restriction: KITCHEN/FINANCE users
+      if (dateRange.allowedLocationIds.length === 0) {
+        // Return empty summary
+        return {
+          totalOrders: 0,
+          totalRevenue: 0,
+          averageOrderValue: 0,
+          ordersByStatus: { PLACED: 0, PREPARING: 0, READY: 0, COMPLETED: 0 },
+          ordersByPayment: { PENDING: 0, COMPLETED: 0, FAILED: 0, REFUNDED: 0 },
+          dateRange: { startDate: dateRange.startDate, endDate: dateRange.endDate }
+        };
+      }
+      whereClause.locationId = { in: dateRange.allowedLocationIds };
     }
+    // If allowedLocationIds is null, it means ADMIN - no restriction, show all
 
     const orders = await prisma.order.findMany({
       where: whereClause
@@ -223,8 +264,9 @@ export class ReportService {
 
     const ordersByStatus = {
       PLACED: 0,
-      PARTIALLY_FULFILLED: 0,
-      FULFILLED: 0
+      PREPARING: 0,
+      READY: 0,
+      COMPLETED: 0
     };
 
     const ordersByPayment = {
@@ -254,6 +296,7 @@ export class ReportService {
 
   /**
    * Get detailed orders report with filters
+   * Respects role-based location restrictions
    */
   async getOrdersReport(dateRange: ReportDateRange, filters?: {
     paymentStatus?: PaymentStatus;
@@ -268,6 +311,19 @@ export class ReportService {
         lte: endDate
       }
     };
+
+    // Apply location filtering
+    if (dateRange.locationId) {
+      // Specific location selected by user
+      where.locationId = dateRange.locationId;
+    } else if (dateRange.allowedLocationIds !== null && dateRange.allowedLocationIds !== undefined) {
+      // Role-based restriction: KITCHEN/FINANCE users
+      if (dateRange.allowedLocationIds.length === 0) {
+        return [];
+      }
+      where.locationId = { in: dateRange.allowedLocationIds };
+    }
+    // If allowedLocationIds is null, it means ADMIN - no restriction, show all
 
     if (filters?.paymentStatus) {
       where.paymentStatus = filters.paymentStatus;

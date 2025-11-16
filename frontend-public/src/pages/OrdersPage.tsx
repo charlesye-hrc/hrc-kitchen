@@ -23,9 +23,14 @@ interface OrderItem {
   id: string;
   quantity: number;
   priceAtPurchase: number;
-  menuItem: {
+  // Relation (null if menu item deleted)
+  menuItem?: {
     name: string;
-  };
+  } | null;
+  // Snapshots (preserved even after deletion)
+  itemName?: string | null;
+  itemDescription?: string | null;
+  itemCategory?: string | null;
 }
 
 interface Order {
@@ -37,11 +42,15 @@ interface Order {
   orderDate: string;
   createdAt: string;
   orderItems: OrderItem[];
+  // Relation (null if location deleted)
   location?: {
     id: string;
     name: string;
     address?: string;
-  };
+  } | null;
+  // Snapshots (preserved even after deletion)
+  locationName?: string | null;
+  locationAddress?: string | null;
 }
 
 interface PaginationData {
@@ -285,10 +294,10 @@ const OrdersPage: React.FC = () => {
                           day: 'numeric',
                         })}
                       </Typography>
-                      {order.location && (
+                      {(order.location?.name || order.locationName) && (
                         <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                           <Box component="span" sx={{ fontWeight: 500 }}>📍</Box>
-                          {order.location.name}
+                          {order.location?.name || order.locationName}
                         </Typography>
                       )}
                     </Box>
@@ -339,7 +348,7 @@ const OrdersPage: React.FC = () => {
                         }}
                       >
                         <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {item.menuItem.name} × {item.quantity}
+                          {item.menuItem?.name || item.itemName || 'Unknown Item'} × {item.quantity}
                         </Typography>
                         <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
                           ${(Number(item.priceAtPurchase) * item.quantity).toFixed(2)}

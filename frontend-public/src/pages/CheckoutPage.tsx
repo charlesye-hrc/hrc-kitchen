@@ -160,6 +160,11 @@ const CheckoutForm: React.FC = () => {
 
     // Handle payment method
     pr.on('paymentmethod', async (event) => {
+      // Prevent double-processing
+      if (loading) {
+        event.complete('fail');
+        return;
+      }
       setLoading(true);
       setError(null);
 
@@ -294,14 +299,23 @@ const CheckoutForm: React.FC = () => {
       return;
     }
 
+    // Set loading IMMEDIATELY to prevent double-submission
+    if (loading) {
+      return; // Already processing
+    }
+    setLoading(true);
+    setError(null);
+
     // Validate guest info if not authenticated
     if (!isAuthenticated) {
       if (!guestFirstName || !guestLastName || !guestEmail) {
         setError('Please fill in all guest information fields');
+        setLoading(false);
         return;
       }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail)) {
         setError('Please enter a valid email address');
+        setLoading(false);
         return;
       }
     }
@@ -309,11 +323,9 @@ const CheckoutForm: React.FC = () => {
     // Validate locationId
     if (!cartLocationId) {
       setError('Please select a location before placing an order');
+      setLoading(false);
       return;
     }
-
-    setLoading(true);
-    setError(null);
 
     try {
       // Create order and get payment intent

@@ -89,7 +89,6 @@ export class ConfigService {
         weekdays: {
           has: currentWeekday,
         },
-        isActive: true,
       },
     });
 

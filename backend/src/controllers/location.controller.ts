@@ -251,30 +251,103 @@ export class LocationController {
   }
 
   /**
+   * GET /api/v1/admin/locations/:id/removal-preview
+   * Get preview of what will happen when removing a location (Admin only)
+   */
+  async getRemovalPreview(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const preview = await locationService.getRemovalPreview(id);
+
+      res.json({
+        success: true,
+        data: preview,
+      });
+    } catch (error: any) {
+      console.error('Error getting removal preview:', error);
+      res.status(404).json({
+        success: false,
+        message: error.message || 'Failed to get removal preview',
+      });
+    }
+  }
+
+  /**
    * DELETE /api/v1/admin/locations/:id
    * Delete a location (Admin only)
+   * Validates dependencies and handles cascade deletion
    */
   async deleteLocation(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
-      const success = await locationService.deleteLocation(id);
+      const { forceUnassign } = req.query;
 
-      if (!success) {
-        return res.status(400).json({
-          success: false,
-          message: 'Cannot delete location. It may have associated orders.',
-        });
+      let result;
+      if (forceUnassign === 'true') {
+        // Unassign all and delete
+        result = await locationService.unassignAllAndDelete(id);
+      } else {
+        // Regular delete with cascade
+        result = await locationService.deleteLocation(id);
       }
 
       res.json({
         success: true,
+        data: result,
         message: 'Location deleted successfully',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting location:', error);
+      res.status(400).json({
+        success: false,
+        message: error.message || 'Failed to delete location',
+      });
+    }
+  }
+
+  /**
+   * PATCH /api/v1/admin/locations/:id/deactivate
+   * Deactivate a location (Admin only)
+   * Soft-delete that preserves historical data
+   */
+  async deactivateLocation(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const location = await locationService.deactivateLocation(id);
+
+      res.json({
+        success: true,
+        data: location,
+        message: 'Location deactivated successfully',
+      });
+    } catch (error: any) {
+      console.error('Error deactivating location:', error);
       res.status(500).json({
         success: false,
-        message: 'Failed to delete location',
+        message: error.message || 'Failed to deactivate location',
+      });
+    }
+  }
+
+  /**
+   * PATCH /api/v1/admin/locations/:id/activate
+   * Activate a location (Admin only)
+   */
+  async activateLocation(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const location = await locationService.activateLocation(id);
+
+      res.json({
+        success: true,
+        data: location,
+        message: 'Location activated successfully',
+      });
+    } catch (error: any) {
+      console.error('Error activating location:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to activate location',
       });
     }
   }

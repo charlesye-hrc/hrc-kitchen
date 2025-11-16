@@ -99,21 +99,13 @@ export class AdminController {
   async deleteMenuItem(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
-      const { permanent = false } = req.query;
 
-      if (permanent === 'true') {
-        // Permanently delete
-        await adminService.deleteMenuItem(id);
-      } else {
-        // Soft delete (deactivate)
-        await adminService.updateMenuItem(id, { isActive: false });
-      }
+      // Hard delete only (snapshots preserve historical order data)
+      await adminService.deleteMenuItem(id);
 
       res.json({
         success: true,
-        message: permanent === 'true'
-          ? 'Menu item deleted permanently'
-          : 'Menu item deactivated',
+        message: 'Menu item deleted successfully',
       });
     } catch (error) {
       console.error('Error deleting menu item:', error);

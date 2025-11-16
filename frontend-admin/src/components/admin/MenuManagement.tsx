@@ -54,7 +54,6 @@ interface MenuItem {
   weekdays: string[];
   imageUrl: string | null;
   dietaryTags: string[];
-  isActive: boolean;
   customizations: Array<{
     id: string;
     name: string;
@@ -96,7 +95,6 @@ const MenuManagement = () => {
     weekdays: [] as string[],
     imageUrl: '',
     dietaryTags: [] as string[],
-    isActive: true,
   });
 
   useEffect(() => {

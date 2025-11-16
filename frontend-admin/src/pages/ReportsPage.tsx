@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
@@ -27,7 +27,7 @@ import {
   Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import { useLocationContext, LocationSelector } from '@hrc-kitchen/common';
+import { LocationSelector, Location } from '@hrc-kitchen/common';
 import axios from 'axios';
 
 interface RevenueByUser {
@@ -76,7 +76,8 @@ interface SummaryStats {
 
 const ReportsPage = () => {
   const { token } = useAuth();
-  const { locations, selectedLocation, selectLocation, isLoading: locationsLoading } = useLocationContext();
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [locationsLoading, setLocationsLoading] = useState(false);
   const [locationFilter, setLocationFilter] = useState<string>('all');
   const [tabValue, setTabValue] = useState(0);
   const [startDate, setStartDate] = useState(() => {
@@ -93,6 +94,32 @@ const ReportsPage = () => {
   const [summaryStats, setSummaryStats] = useState<SummaryStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Fetch active locations for report filtering
+  // Inactive locations are only included when "All Locations" is selected
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        setLocationsLoading(true);
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/admin/locations`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (response.data.success) {
+          // Only show active locations in the dropdown
+          // Users must select "All Locations" to include inactive ones in reports
+          const activeLocations = response.data.data.filter((loc: Location) => loc.isActive);
+          setLocations(activeLocations);
+        }
+      } catch (err) {
+        console.error('Error fetching locations:', err);
+      } finally {
+        setLocationsLoading(false);
+      }
+    };
+
+    fetchLocations();
+  }, [token]);
 
   const loadRevenueByUser = async () => {
     try {
