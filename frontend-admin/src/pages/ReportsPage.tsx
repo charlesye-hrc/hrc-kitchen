@@ -102,7 +102,7 @@ const ReportsPage = () => {
       try {
         setLocationsLoading(true);
         const response = await axios.get(
-          `${import.meta.env.VITE_API_URL}/admin/locations`,
+          `${import.meta.env.VITE_API_URL}/locations`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (response.data.success) {

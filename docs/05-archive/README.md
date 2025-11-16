@@ -21,6 +21,7 @@ This folder contains historical documentation that has been superseded by newer 
 | KITCHEN_DASHBOARD_TESTING.md | 2025-11-12 | Feature complete and stable | Kitchen dashboard testing guide |
 | SESSION_SUMMARY_VARIATIONS_UX.md | 2025-11-12 | Session complete | Variations UX improvements session summary |
 | SESSION_MULTI_LOCATION_ENHANCEMENTS.md | 2025-11-16 | Session complete | Multi-location validation, checkout improvements, weekend menus |
+| 2025-01-17-bug-fixes.md | 2025-01-17 | Bug fixes documented | Finance reports revenue discrepancies, kitchen dashboard duplicate keys, deleted items grouping, reports page 403 error |
 
 ---
 
@@ -50,4 +51,4 @@ For current, active documentation, see:
 
 ---
 
-**Last Updated:** 2025-11-16
+**Last Updated:** 2025-01-17

@@ -270,7 +270,7 @@ hrc-kitchen/
 
 ---
 
-**Last Updated**: 2025-11-12
-**Document Version**: 2.0 (Reorganized for conciseness)
+**Last Updated**: 2025-01-17
+**Document Version**: 2.1 (Bug fixes - finance reports & kitchen dashboard)
 
-[Maintenance Guidelines](DOCUMENTATION_GUIDELINES.md) | [Archive](docs/05-archive/README.md)
+[Maintenance Guidelines](DOCUMENTATION_GUIDELINES.md) | [Archive](docs/05-archive/README.md) | [Recent Bug Fixes](docs/05-archive/2025-01-17-bug-fixes.md)
