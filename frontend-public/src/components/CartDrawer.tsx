@@ -153,7 +153,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose, orderingWindow }
                       </Typography>
                       <IconButton
                         size="small"
-                        onClick={() => removeItem(item.menuItem.id)}
+                        onClick={() => removeItem(item.cartItemId || item.menuItem.id)}
                         sx={{
                           color: 'error.main',
                           '&:hover': {
@@ -238,7 +238,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose, orderingWindow }
                       >
                         <IconButton
                           size="small"
-                          onClick={() => updateQuantity(item.menuItem.id, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.cartItemId || item.menuItem.id, item.quantity - 1)}
                           disabled={item.quantity <= 1}
                           sx={{
                             bgcolor: 'white',
@@ -253,7 +253,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose, orderingWindow }
                         </Typography>
                         <IconButton
                           size="small"
-                          onClick={() => updateQuantity(item.menuItem.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.cartItemId || item.menuItem.id, item.quantity + 1)}
                           sx={{
                             bgcolor: 'white',
                             '&:hover': { bgcolor: 'grey.50' },

@@ -135,6 +135,7 @@ model OrderItem {
   priceAtPurchase    Decimal      @map("price_at_purchase") @db.Decimal(10, 2)
   createdAt          DateTime     @default(now()) @map("created_at")
   selectedVariations Json?        @map("selected_variations")
+  fulfillmentStatus  OrderStatus  @default(PLACED) @map("fulfillment_status")
   // MenuItem snapshots - preserved even if menu item is deleted
   itemName           String?      @map("item_name")
   itemDescription    String?      @map("item_description")
@@ -214,6 +215,8 @@ enum UserRole {
 
 enum OrderStatus {
   PLACED
+  PARTIALLY_FULFILLED
+  FULFILLED
   PREPARING
   READY
   COMPLETED

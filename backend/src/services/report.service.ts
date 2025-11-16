@@ -72,8 +72,7 @@ export class ReportService {
         gte: startDate,
         lte: endDate
       },
-      paymentStatus: 'COMPLETED', // Only completed payments
-      userId: { not: null } // Exclude guest orders (they don't have a user)
+      paymentStatus: 'COMPLETED' // Only completed payments
     };
 
     // Apply location filtering
@@ -107,18 +106,37 @@ export class ReportService {
       }
     });
 
-    // Group by user
+    // Group by user (including guest orders)
     const revenueByUser: Record<string, RevenueByUserReport> = {};
 
     for (const order of orders) {
-      // Skip if user is null (shouldn't happen due to filter, but safety check)
-      if (!order.user) continue;
+      let userId: string;
+      let userData: {
+        id: string;
+        fullName: string;
+        email: string;
+        department: string | null;
+      };
 
-      const userId = order.user.id;
+      if (order.user) {
+        // Registered user
+        userId = order.user.id;
+        userData = order.user;
+      } else {
+        // Guest order - group by guest email
+        const guestEmail = order.guestEmail || 'unknown@guest.com';
+        userId = `guest_${guestEmail}`;
+        userData = {
+          id: userId,
+          fullName: `${order.guestFirstName || ''} ${order.guestLastName || ''}`.trim() || 'Guest',
+          email: guestEmail,
+          department: 'Guest'
+        };
+      }
 
       if (!revenueByUser[userId]) {
         revenueByUser[userId] = {
-          user: order.user,
+          user: userData,
           totalRevenue: 0,
           orderCount: 0,
           orders: []
@@ -188,27 +206,47 @@ export class ReportService {
       }
     });
 
-    // Group by menu item
+    // Group by menu item (using snapshot data for deleted items)
     const itemStats: Record<string, PopularItemReport> = {};
 
     for (const item of orderItems) {
-      // Skip items where menu item has been deleted
-      if (!item.menuItem) continue;
+      let groupKey: string;
+      let menuItemData: any;
 
-      const menuItemId = item.menuItem.id;
+      if (item.menuItemId) {
+        // Active menu item - use its ID
+        groupKey = item.menuItemId;
+        menuItemData = item.menuItem || {
+          id: item.menuItemId,
+          name: item.itemName || 'Unknown Item',
+          category: item.itemCategory || 'UNKNOWN',
+          price: item.itemBasePrice || item.priceAtPurchase
+        };
+      } else {
+        // Deleted item - group by snapshot name and category
+        const itemName = item.itemName || 'Deleted Item';
+        const itemCategory = item.itemCategory || 'UNKNOWN';
+        groupKey = `deleted_${itemName}_${itemCategory}`;
+        menuItemData = {
+          id: groupKey,
+          name: itemName,
+          category: itemCategory,
+          price: item.itemBasePrice || item.priceAtPurchase
+        };
+      }
 
-      if (!itemStats[menuItemId]) {
-        itemStats[menuItemId] = {
-          menuItem: item.menuItem,
+      if (!itemStats[groupKey]) {
+        itemStats[groupKey] = {
+          menuItem: menuItemData,
           totalQuantity: 0,
           orderCount: 0,
           totalRevenue: 0
         };
       }
 
-      itemStats[menuItemId].totalQuantity += item.quantity;
-      itemStats[menuItemId].orderCount++;
-      itemStats[menuItemId].totalRevenue += Number(item.priceAtPurchase) * item.quantity;
+      itemStats[groupKey].totalQuantity += item.quantity;
+      itemStats[groupKey].orderCount++;
+      itemStats[groupKey].totalRevenue += Number(item.priceAtPurchase) * item.quantity;
     }
 
     // Convert to array and sort by total quantity (most popular first)
@@ -255,12 +293,20 @@ export class ReportService {
       where: whereClause
     });
 
+    // Count all orders for statistics
     const totalOrders = orders.length;
+
+    // Only sum revenue from completed payments
+    let completedOrderCount = 0;
     const totalRevenue = orders.reduce((sum, order) => {
-      return sum + Number(order.totalAmount);
+      if (order.paymentStatus === 'COMPLETED') {
+        completedOrderCount++;
+        return sum + Number(order.totalAmount);
+      }
+      return sum;
     }, 0);
 
-    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    const averageOrderValue = completedOrderCount > 0 ? totalRevenue / completedOrderCount : 0;
 
     const ordersByStatus = {
       PLACED: 0,

@@ -7,6 +7,7 @@ export interface CartItem {
   customizations: string[];
   specialRequests?: string;
   selectedVariations?: VariationSelection[];
+  cartItemId?: string; // Unique ID for cart item (menuItemId + variations hash)
 }
 
 interface CartContextType {
@@ -50,6 +51,28 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [cartLocationId, setCartLocationId] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // Helper function to generate a unique cart item ID based on menu item and variations
+  const generateCartItemId = (menuItemId: string, selectedVariations?: VariationSelection[]): string => {
+    if (!selectedVariations || selectedVariations.length === 0) {
+      return menuItemId;
+    }
+
+    // Sort variations to ensure consistent ordering
+    const sortedVariations = [...selectedVariations].sort((a, b) => a.groupId.localeCompare(b.groupId));
+    const variationsString = sortedVariations
+      .map(v => `${v.groupId}:${[...v.optionIds].sort().join(',')}`)
+      .join('|');
+
+    return `${menuItemId}__${variationsString}`;
+  };
+
+  // Helper function to check if two cart items are the same (same menu item and variations)
+  const isSameCartItem = (item1: CartItem, menuItemId: string, selectedVariations?: VariationSelection[]): boolean => {
+    const id1 = item1.cartItemId || generateCartItemId(item1.menuItem.id, item1.selectedVariations);
+    const id2 = generateCartItemId(menuItemId, selectedVariations);
+    return id1 === id2;
+  };
+
   // Load cart from localStorage on mount
   useEffect(() => {
     const savedCart = localStorage.getItem('cart');
@@ -76,6 +99,14 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       } else {
         localStorage.removeItem('cartLocationId');
       }
+    }
+  }, [items, cartLocationId, isInitialized]);
+
+  // Clear cart location when cart becomes empty
+  useEffect(() => {
+    if (isInitialized && items.length === 0 && cartLocationId) {
+      console.log('[Cart] Cart is empty, clearing cart location');
+      setCartLocationId(null);
     }
   }, [items, cartLocationId, isInitialized]);
 
@@ -108,58 +139,64 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     selectedVariations?: VariationSelection[]
   ) => {
     setItems((prevItems) => {
-      // Check if item already exists in cart
+      // Check if item with same menu item ID and variations already exists in cart
       const existingItemIndex = prevItems.findIndex(
-        (item) => item.menuItem.id === menuItem.id
+        (item) => isSameCartItem(item, menuItem.id, selectedVariations)
       );
 
+      const cartItemId = generateCartItemId(menuItem.id, selectedVariations);
+
       if (existingItemIndex > -1) {
-        // Update existing item
+        // Update existing item - only increment quantity
         const updatedItems = [...prevItems];
         updatedItems[existingItemIndex] = {
           ...updatedItems[existingItemIndex],
           quantity: updatedItems[existingItemIndex].quantity + quantity,
-          customizations,
-          specialRequests,
-          selectedVariations,
         };
         return updatedItems;
       } else {
         // Add new item
-        return [...prevItems, { menuItem, quantity, customizations, specialRequests, selectedVariations }];
+        return [...prevItems, {
+          menuItem,
+          quantity,
+          customizations,
+          specialRequests,
+          selectedVariations,
+          cartItemId
+        }];
       }
     });
   };
 
-  const removeItem = (menuItemId: string) => {
-    setItems((prevItems) => prevItems.filter((item) => item.menuItem.id !== menuItemId));
+  const removeItem = (cartItemId: string) => {
+    setItems((prevItems) => prevItems.filter((item) => (item.cartItemId || item.menuItem.id) !== cartItemId));
   };
 
-  const updateQuantity = (menuItemId: string, quantity: number) => {
+  const updateQuantity = (cartItemId: string, quantity: number) => {
     if (quantity <= 0) {
-      removeItem(menuItemId);
+      removeItem(cartItemId);
       return;
     }
 
     setItems((prevItems) =>
       prevItems.map((item) =>
-        item.menuItem.id === menuItemId ? { ...item, quantity } : item
+        (item.cartItemId || item.menuItem.id) === cartItemId ? { ...item, quantity } : item
       )
     );
   };
 
-  const updateCustomizations = (menuItemId: string, customizations: string[]) => {
+  const updateCustomizations = (cartItemId: string, customizations: string[]) => {
     setItems((prevItems) =>
       prevItems.map((item) =>
-        item.menuItem.id === menuItemId ? { ...item, customizations } : item
+        (item.cartItemId || item.menuItem.id) === cartItemId ? { ...item, customizations } : item
       )
     );
   };
 
-  const updateSpecialRequests = (menuItemId: string, specialRequests: string) => {
+  const updateSpecialRequests = (cartItemId: string, specialRequests: string) => {
     setItems((prevItems) =>
       prevItems.map((item) =>
-        item.menuItem.id === menuItemId ? { ...item, specialRequests } : item
+        (item.cartItemId || item.menuItem.id) === cartItemId ? { ...item, specialRequests } : item
       )
     );
   };

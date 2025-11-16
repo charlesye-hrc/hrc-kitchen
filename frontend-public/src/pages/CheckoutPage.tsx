@@ -93,6 +93,10 @@ const CheckoutForm: React.FC = () => {
     const newLocation = locations.find(loc => loc.id === locationId);
     if (!newLocation) return;
 
+    // Get current cart location name
+    const currentCartLocation = locations.find(loc => loc.id === cartLocationId);
+    const currentLocationName = currentCartLocation?.name || 'current location';
+
     try {
       // Fetch menu items for the new location to validate cart
       const response = await menuApi.getTodaysMenu(locationId);
@@ -113,15 +117,28 @@ const CheckoutForm: React.FC = () => {
           );
 
           if (confirmRemove) {
-            unavailableItems.forEach(itemId => removeItem(itemId));
+            // Remove all cart items with unavailable menu items (including all variations)
+            unavailableItems.forEach(menuItemId => {
+              items.filter(item => item.menuItem.id === menuItemId).forEach(item => {
+                removeItem(item.cartItemId || item.menuItem.id);
+              });
+            });
             selectLocation(locationId);
             setCartLocation(locationId);
           }
           // If user cancels, don't change location
         } else {
-          // All items available at new location
-          selectLocation(locationId);
-          setCartLocation(locationId);
+          // All items ARE available at new location, but ask user to confirm
+          const confirmLocationChange = window.confirm(
+            `You have ${items.length} item(s) in your cart from ${currentLocationName}.\n\n` +
+            `Do you want to switch your cart location to ${newLocation.name}?`
+          );
+
+          if (confirmLocationChange) {
+            selectLocation(locationId);
+            setCartLocation(locationId);
+          }
+          // If user cancels, revert to cart location (don't change the dropdown)
         }
       }
     } catch (err) {
@@ -553,7 +570,7 @@ const CheckoutForm: React.FC = () => {
                       size="small"
                       onClick={() => {
                         if (item.quantity > 1) {
-                          updateQuantity(item.menuItem.id, item.quantity - 1);
+                          updateQuantity(item.cartItemId || item.menuItem.id, item.quantity - 1);
                         }
                       }}
                       disabled={item.quantity <= 1}
@@ -565,7 +582,7 @@ const CheckoutForm: React.FC = () => {
                     </Typography>
                     <IconButton
                       size="small"
-                      onClick={() => updateQuantity(item.menuItem.id, item.quantity + 1)}
+                      onClick={() => updateQuantity(item.cartItemId || item.menuItem.id, item.quantity + 1)}
                     >
                       <AddIcon fontSize="small" />
                     </IconButton>
@@ -578,7 +595,7 @@ const CheckoutForm: React.FC = () => {
                     <IconButton
                       size="small"
                       color="error"
-                      onClick={() => removeItem(item.menuItem.id)}
+                      onClick={() => removeItem(item.cartItemId || item.menuItem.id)}
                       aria-label="Remove item"
                     >
                       <DeleteIcon fontSize="small" />

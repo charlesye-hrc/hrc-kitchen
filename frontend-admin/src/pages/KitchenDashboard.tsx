@@ -79,6 +79,7 @@ interface OrderSummary {
   totalQuantity: number;
   orders: Array<{
     orderId: string;
+    orderItemId: string;
     orderNumber: string;
     quantity: number;
     customizations: any;
@@ -298,7 +299,7 @@ const KitchenDashboard = () => {
 
       orders.forEach(order => {
         order.orderItems.forEach(item => {
-          if (item.menuItem.id === menuItemId && item.fulfillmentStatus === 'PLACED') {
+          if (item.menuItem?.id === menuItemId && item.fulfillmentStatus === 'PLACED') {
             orderItemsToFulfill.push(item.id);
           }
         });
@@ -315,12 +316,12 @@ const KitchenDashboard = () => {
       setOrders(prevOrders =>
         prevOrders.map(order => {
           // Check if this order has any items for this menu item
-          const hasMenuItem = order.orderItems.some(item => item.menuItem.id === menuItemId);
+          const hasMenuItem = order.orderItems.some(item => item.menuItem?.id === menuItemId);
           if (!hasMenuItem) return order;
 
           // Update all items for this menu item to FULFILLED
           const updatedItems = order.orderItems.map(item =>
-            item.menuItem.id === menuItemId
+            item.menuItem?.id === menuItemId
               ? { ...item, fulfillmentStatus: 'FULFILLED' as 'PLACED' | 'FULFILLED' }
               : item
           );
@@ -561,24 +562,24 @@ const KitchenDashboard = () => {
                 const sortedSummary = filteredSummary.sort((a, b) => {
                   const aFulfilledCount = orders.reduce((count, order) => {
                     return count + order.orderItems.filter(
-                      oi => oi.menuItem.id === a.menuItem.id && oi.fulfillmentStatus === 'FULFILLED'
+                      oi => oi.menuItem?.id === a.menuItem?.id && oi.fulfillmentStatus === 'FULFILLED'
                     ).length;
                   }, 0);
                   const aTotalCount = orders.reduce((count, order) => {
                     return count + order.orderItems.filter(
-                      oi => oi.menuItem.id === a.menuItem.id
+                      oi => oi.menuItem?.id === a.menuItem?.id
                     ).length;
                   }, 0);
                   const aAllFulfilled = aFulfilledCount === aTotalCount;
 
                   const bFulfilledCount = orders.reduce((count, order) => {
                     return count + order.orderItems.filter(
-                      oi => oi.menuItem.id === b.menuItem.id && oi.fulfillmentStatus === 'FULFILLED'
+                      oi => oi.menuItem?.id === b.menuItem?.id && oi.fulfillmentStatus === 'FULFILLED'
                     ).length;
                   }, 0);
                   const bTotalCount = orders.reduce((count, order) => {
                     return count + order.orderItems.filter(
-                      oi => oi.menuItem.id === b.menuItem.id
+                      oi => oi.menuItem?.id === b.menuItem?.id
                     ).length;
                   }, 0);
                   const bAllFulfilled = bFulfilledCount === bTotalCount;
@@ -598,12 +599,12 @@ const KitchenDashboard = () => {
                       // Calculate fulfillment to determine order
                       const fulfilledCount = orders.reduce((count, order) => {
                         return count + order.orderItems.filter(
-                          oi => oi.menuItem.id === item.menuItem.id && oi.fulfillmentStatus === 'FULFILLED'
+                          oi => oi.menuItem?.id === item.menuItem?.id && oi.fulfillmentStatus === 'FULFILLED'
                         ).length;
                       }, 0);
                       const totalCount = orders.reduce((count, order) => {
                         return count + order.orderItems.filter(
-                          oi => oi.menuItem.id === item.menuItem.id
+                          oi => oi.menuItem?.id === item.menuItem?.id
                         ).length;
                       }, 0);
                       const isFullyFulfilled = fulfilledCount === totalCount;
@@ -612,10 +613,10 @@ const KitchenDashboard = () => {
                     <Grid
                       item
                       xs={12}
-                      key={item.menuItem.id}
+                      key={`summary-${item.menuItem?.id || 'unknown'}-${itemIndex}`}
                       sx={{
                         transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-                        transform: flashingCards[item.menuItem.id] ? 'scale(1.02)' : 'scale(1)',
+                        transform: flashingCards[item.menuItem?.id] ? 'scale(1.02)' : 'scale(1)',
                         order: isFullyFulfilled ? 1000 + itemIndex : itemIndex,
                       }}
                     >
@@ -623,12 +624,12 @@ const KitchenDashboard = () => {
                         // Calculate fulfillment progress
                         const fulfilledCount = orders.reduce((count, order) => {
                           return count + order.orderItems.filter(
-                            oi => oi.menuItem.id === item.menuItem.id && oi.fulfillmentStatus === 'FULFILLED'
+                            oi => oi.menuItem?.id === item.menuItem?.id && oi.fulfillmentStatus === 'FULFILLED'
                           ).length;
                         }, 0);
                         const totalCount = orders.reduce((count, order) => {
                           return count + order.orderItems.filter(
-                            oi => oi.menuItem.id === item.menuItem.id
+                            oi => oi.menuItem?.id === item.menuItem?.id
                           ).length;
                         }, 0);
                         const hasUnfulfilledItems = fulfilledCount < totalCount;
@@ -638,27 +639,27 @@ const KitchenDashboard = () => {
                           <Card
                             sx={{
                               transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-                              backgroundColor: flashingCards[item.menuItem.id]
+                              backgroundColor: flashingCards[item.menuItem?.id]
                                 ? 'rgba(76, 175, 80, 0.15)'
                                 : isFullyFulfilled
                                 ? 'rgba(76, 175, 80, 0.08)'
                                 : 'white',
-                              boxShadow: flashingCards[item.menuItem.id]
+                              boxShadow: flashingCards[item.menuItem?.id]
                                 ? '0 4px 20px rgba(76, 175, 80, 0.4)'
                                 : undefined,
                             }}
                           >
                             <CardContent>
                               {(() => {
-                                const isExpanded = expandedCards[item.menuItem.id] ?? false;
+                                const isExpanded = expandedCards[item.menuItem?.id] ?? false;
 
                                 return (
                                   <>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                    <Typography variant="h6">{item.menuItem.name}</Typography>
+                                    <Typography variant="h6">{item.menuItem?.name}</Typography>
                                     <Chip
-                                      label={item.menuItem.category}
+                                      label={item.menuItem?.category}
                                       size="small"
                                       variant="outlined"
                                       sx={{ fontSize: '0.75rem' }}
@@ -688,7 +689,7 @@ const KitchenDashboard = () => {
                                         size="small"
                                         onClick={() => setExpandedCards(prev => ({
                                           ...prev,
-                                          [item.menuItem.id]: !isExpanded
+                                          [item.menuItem?.id]: !isExpanded
                                         }))}
                                       >
                                         {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
@@ -706,10 +707,10 @@ const KitchenDashboard = () => {
                                       color="success"
                                       fullWidth
                                       startIcon={<CheckCircleIcon />}
-                                      onClick={() => handleBatchFulfillment(item.menuItem.id)}
+                                      onClick={() => handleBatchFulfillment(item.menuItem?.id)}
                                       sx={{ color: 'white' }}
                                     >
-                                      Mark All {item.menuItem.name} as Fulfilled
+                                      Mark All {item.menuItem?.name} as Fulfilled
                                     </Button>
                                   </Box>
                                 )}
@@ -720,16 +721,16 @@ const KitchenDashboard = () => {
                           <Collapse in={(() => {
                             const fulfilledCount = orders.reduce((count, order) => {
                               return count + order.orderItems.filter(
-                                oi => oi.menuItem.id === item.menuItem.id && oi.fulfillmentStatus === 'FULFILLED'
+                                oi => oi.menuItem?.id === item.menuItem?.id && oi.fulfillmentStatus === 'FULFILLED'
                               ).length;
                             }, 0);
                             const totalCount = orders.reduce((count, order) => {
                               return count + order.orderItems.filter(
-                                oi => oi.menuItem.id === item.menuItem.id
+                                oi => oi.menuItem?.id === item.menuItem?.id
                               ).length;
                             }, 0);
                             const hasUnfulfilledItems = fulfilledCount < totalCount;
-                            const isExpanded = expandedCards[item.menuItem.id] ?? false;
+                            const isExpanded = expandedCards[item.menuItem?.id] ?? false;
 
                             // Always show if has unfulfilled items, otherwise check expanded state
                             return hasUnfulfilledItems || isExpanded;
@@ -737,30 +738,30 @@ const KitchenDashboard = () => {
                             <Divider sx={{ my: 2 }} />
 
                             <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                            {item.orders.sort((a, b) => {
-                              // Sort unfulfilled items first
-                              const aOrder = orders.find(o => o.id === a.orderId);
-                              const aItem = aOrder?.orderItems.find(oi => oi.menuItem.id === item.menuItem.id);
-                              const aStatus = aItem?.fulfillmentStatus || 'PLACED';
+                              {item.orders.sort((a, b) => {
+                                // Sort unfulfilled items first
+                                const aOrder = orders.find(o => o.id === a.orderId);
+                                const aItem = aOrder?.orderItems.find(oi => oi.id === a.orderItemId);
+                                const aStatus = aItem?.fulfillmentStatus || 'PLACED';
 
-                              const bOrder = orders.find(o => o.id === b.orderId);
-                              const bItem = bOrder?.orderItems.find(oi => oi.menuItem.id === item.menuItem.id);
-                              const bStatus = bItem?.fulfillmentStatus || 'PLACED';
+                                const bOrder = orders.find(o => o.id === b.orderId);
+                                const bItem = bOrder?.orderItems.find(oi => oi.id === b.orderItemId);
+                                const bStatus = bItem?.fulfillmentStatus || 'PLACED';
 
-                              if (aStatus === 'PLACED' && bStatus === 'FULFILLED') return -1;
-                              if (aStatus === 'FULFILLED' && bStatus === 'PLACED') return 1;
-                              return 0;
-                            }).map((order, index) => {
-                              // Find the actual order to get the item status
-                              const fullOrder = orders.find(o => o.id === order.orderId);
-                              const orderItem = fullOrder?.orderItems.find(
-                                oi => oi.menuItem.id === item.menuItem.id
-                              );
-                              const itemStatus = orderItem?.fulfillmentStatus || 'PLACED';
+                                if (aStatus === 'PLACED' && bStatus === 'FULFILLED') return -1;
+                                if (aStatus === 'FULFILLED' && bStatus === 'PLACED') return 1;
+                                return 0;
+                              }).map((order, index) => {
+                                // Find the actual order to get the item status
+                                const fullOrder = orders.find(o => o.id === order.orderId);
+                                const orderItem = fullOrder?.orderItems.find(
+                                  oi => oi.id === order.orderItemId
+                                );
+                                const itemStatus = orderItem?.fulfillmentStatus || 'PLACED';
 
-                              return (
-                                <Box
-                                  key={order.orderId}
+                                return (
+                                  <Box
+                                    key={order.orderItemId}
                                   sx={{
                                     display: 'grid',
                                     gridTemplateColumns: {
@@ -939,7 +940,7 @@ const KitchenDashboard = () => {
                                 }}>
                                   <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                                     <Typography variant="body1">
-                                      <strong>{item.quantity}x</strong> {item.menuItem.name}
+                                      <strong>{item.quantity}x</strong> {item.menuItem?.name || item.itemName || 'Deleted Item'}
                                     </Typography>
                                     {item.selectedVariations && item.selectedVariations.variations && item.selectedVariations.variations.length > 0 && (
                                       <>

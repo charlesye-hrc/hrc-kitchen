@@ -56,13 +56,17 @@ const MenuPage: React.FC = () => {
     }
   }, [selectedLocation]);
 
-  // Handle cart validation after menu is fetched
-  useEffect(() => {
-    // Only validate if we have a location change and menu items are loaded
-    if (selectedLocation && cartLocationId && selectedLocation.id !== cartLocationId && menuItems.length > 0 && !loading) {
+  const validateCartForCurrentLocation = (newMenuItems: MenuItem[]) => {
+    if (!selectedLocation) return;
+
+    // Check if this is a location change (cart location differs from selected location)
+    if (cartLocationId && selectedLocation.id !== cartLocationId && cartItems.length > 0) {
       // Location has changed, validate cart against NEW location's menu
-      const availableMenuItemIds = menuItems.map(item => item.id);
+      const availableMenuItemIds = newMenuItems.map(item => item.id);
       const unavailableItems = validateCartForLocation(selectedLocation.id, availableMenuItemIds);
+
+      const cartLocation = locations.find(loc => loc.id === cartLocationId);
+      const cartLocationName = cartLocation?.name || 'previous location';
 
       if (unavailableItems.length > 0) {
         // Show warning about unavailable items
@@ -77,24 +81,40 @@ const MenuPage: React.FC = () => {
         );
 
         if (confirmRemove) {
-          unavailableItems.forEach(itemId => removeItem(itemId));
+          // Remove all cart items with unavailable menu items (including all variations)
+          unavailableItems.forEach(menuItemId => {
+            cartItems.filter(item => item.menuItem.id === menuItemId).forEach(item => {
+              removeItem(item.cartItemId || item.menuItem.id);
+            });
+          });
           setCartLocation(selectedLocation.id);
         } else {
           // User cancelled, revert to cart location
-          const cartLocation = locations.find(loc => loc.id === cartLocationId);
           if (cartLocation) {
             selectLocation(cartLocationId);
           }
         }
       } else {
-        // All items available at new location
-        setCartLocation(selectedLocation.id);
+        // All items ARE available at new location, but ask user to confirm location change
+        const confirmLocationChange = window.confirm(
+          `You have ${cartItems.length} item(s) in your cart from ${cartLocationName}.\n\n` +
+          `Do you want to switch your cart location to ${selectedLocation.name}?`
+        );
+
+        if (confirmLocationChange) {
+          setCartLocation(selectedLocation.id);
+        } else {
+          // User wants to keep cart at original location, revert
+          if (cartLocation) {
+            selectLocation(cartLocationId);
+          }
+        }
       }
-    } else if (selectedLocation && !cartLocationId && menuItems.length > 0 && !loading) {
+    } else if (!cartLocationId) {
       // First time setting location
       setCartLocation(selectedLocation.id);
     }
-  }, [selectedLocation, cartLocationId, menuItems, loading, cartItems, locations, validateCartForLocation, removeItem, setCartLocation, selectLocation]);
+  };
 
   const fetchTodaysMenu = async () => {
     if (!selectedLocation) return;
@@ -104,11 +124,15 @@ const MenuPage: React.FC = () => {
       const response = await menuApi.getTodaysMenu(selectedLocation.id);
 
       if (response.success) {
-        setMenuItems(response.data.items);
+        const newMenuItems = response.data.items;
+        setMenuItems(newMenuItems);
         setWeekday(response.data.weekday);
         setOrderingWindow(response.data.orderingWindow);
         // Clear any previous errors when successfully loading menu
         setError(null);
+
+        // Validate cart AFTER menu is loaded with the NEW menu items
+        validateCartForCurrentLocation(newMenuItems);
       } else {
         setError(response.message || 'Failed to load menu');
       }
@@ -153,6 +177,11 @@ const MenuPage: React.FC = () => {
           alert('Please select all required options');
           return;
         }
+      }
+
+      // If cart is empty and no location set, set it to current selected location
+      if (!cartLocationId && selectedLocation) {
+        setCartLocation(selectedLocation.id);
       }
 
       addItem(selectedItem, quantity, selectedCustomizations, specialRequests, selectedVariations);

@@ -23,6 +23,7 @@ interface OrderItem {
   id: string;
   quantity: number;
   priceAtPurchase: number;
+  selectedVariations?: any;
   // Relation (null if menu item deleted)
   menuItem?: {
     name: string;
@@ -338,8 +339,6 @@ const OrdersPage: React.FC = () => {
                       <Box
                         key={item.id}
                         sx={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
                           py: 1,
                           ...(index !== order.orderItems.length - 1 && {
                             borderBottom: '1px solid',
@@ -347,12 +346,28 @@ const OrdersPage: React.FC = () => {
                           })
                         }}
                       >
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {item.menuItem?.name || item.itemName || 'Unknown Item'} × {item.quantity}
-                        </Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                          ${(Number(item.priceAtPurchase) * item.quantity).toFixed(2)}
-                        </Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: item.selectedVariations ? 0.5 : 0 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {item.menuItem?.name || item.itemName || 'Unknown Item'} × {item.quantity}
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                            ${(Number(item.priceAtPurchase) * item.quantity).toFixed(2)}
+                          </Typography>
+                        </Box>
+                        {item.selectedVariations && item.selectedVariations.variations && item.selectedVariations.variations.length > 0 && (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                            {item.selectedVariations.variations.map((variation: any, idx: number) => (
+                              <Chip
+                                key={idx}
+                                label={`${variation.groupName}: ${variation.optionName}`}
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                                sx={{ fontSize: '0.7rem', height: '20px' }}
+                              />
+                            ))}
+                          </Box>
+                        )}
                       </Box>
                     ))}
                   </Box>

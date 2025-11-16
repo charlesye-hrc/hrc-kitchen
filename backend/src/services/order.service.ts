@@ -81,9 +81,12 @@ export class OrderService {
     }
 
     // Validate items exist and calculate total
+    // Get unique menu item IDs
+    const uniqueMenuItemIds = [...new Set(orderData.items.map(item => item.menuItemId))];
+
     const menuItems = await prisma.menuItem.findMany({
       where: {
-        id: { in: orderData.items.map(item => item.menuItemId) }
+        id: { in: uniqueMenuItemIds }
       },
       include: {
         variationGroups: {
@@ -94,7 +97,7 @@ export class OrderService {
       }
     });
 
-    if (menuItems.length !== orderData.items.length) {
+    if (menuItems.length !== uniqueMenuItemIds.length) {
       throw new Error('One or more menu items are invalid or unavailable');
     }
 
@@ -103,7 +106,7 @@ export class OrderService {
       const menuItemLocations = await prisma.menuItemLocation.findMany({
         where: {
           locationId: orderData.locationId,
-          menuItemId: { in: orderData.items.map(item => item.menuItemId) }
+          menuItemId: { in: uniqueMenuItemIds }
         }
       });
 

@@ -127,9 +127,11 @@ export class KitchenService {
       totalQuantity: number;
       orders: Array<{
         orderId: string;
+        orderItemId: string;
         orderNumber: string;
         quantity: number;
         customizations: any;
+        selectedVariations: any;
         customerName: string;
         fulfillmentStatus: OrderStatus;
       }>;
@@ -137,6 +139,12 @@ export class KitchenService {
 
     for (const order of orders) {
       for (const item of order.orderItems) {
+        // Skip items where menu item has been deleted
+        if (!item.menuItem) {
+          console.log(`[Kitchen Summary] Skipping order item with deleted menu item: ${item.itemName || 'Unknown'}`);
+          continue;
+        }
+
         const key = item.menuItemId;
 
         if (!summary[key]) {
@@ -150,6 +158,7 @@ export class KitchenService {
         summary[key].totalQuantity += item.quantity;
         summary[key].orders.push({
           orderId: order.id,
+          orderItemId: item.id,
           orderNumber: order.orderNumber,
           quantity: item.quantity,
           customizations: item.customizations,

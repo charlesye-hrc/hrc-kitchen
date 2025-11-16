@@ -30,6 +30,7 @@ interface OrderItem {
   quantity: number;
   priceAtPurchase: number;
   customizations: any | null;
+  selectedVariations?: any;
   // Relation (null if menu item deleted)
   menuItem?: {
     name: string;
@@ -398,11 +399,25 @@ const OrderConfirmationPage: React.FC = () => {
             {order.orderItems.map((item) => {
               const subtotal = Number(item.priceAtPurchase) * item.quantity;
               return (
-                <ListItem key={item.id} sx={{ px: 0 }}>
+                <ListItem key={item.id} sx={{ px: 0, alignItems: 'flex-start' }}>
                   <ListItemText
                     primary={`${item.menuItem?.name || item.itemName || 'Unknown Item'} × ${item.quantity}`}
                     secondary={
                       <>
+                        {item.selectedVariations && item.selectedVariations.variations && item.selectedVariations.variations.length > 0 && (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1, mb: item.customizations ? 1 : 0 }}>
+                            {item.selectedVariations.variations.map((variation: any, idx: number) => (
+                              <Chip
+                                key={idx}
+                                label={`${variation.groupName}: ${variation.optionName}`}
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                                sx={{ fontSize: '0.75rem' }}
+                              />
+                            ))}
+                          </Box>
+                        )}
                         {item.customizations?.customizations && (
                           <Typography variant="body2" color="text.secondary">
                             Customizations: {item.customizations.customizations}
@@ -416,7 +431,7 @@ const OrderConfirmationPage: React.FC = () => {
                       </>
                     }
                   />
-                  <Typography variant="body1">${subtotal.toFixed(2)}</Typography>
+                  <Typography variant="body1" sx={{ mt: 0.5 }}>${subtotal.toFixed(2)}</Typography>
                 </ListItem>
               );
             })}
