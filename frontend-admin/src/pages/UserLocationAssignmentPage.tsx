@@ -76,7 +76,11 @@ const UserLocationAssignmentPage: React.FC = () => {
       ]);
 
       if (usersRes.data.success) {
-        setUsers(usersRes.data.data);
+        // Filter out ADMIN and STAFF users - they don't need location assignments
+        const filteredUsers = usersRes.data.data.filter(
+          (user: User) => user.role !== 'ADMIN' && user.role !== 'STAFF'
+        );
+        setUsers(filteredUsers);
       }
       if (locationsRes.data.success) {
         setLocations(locationsRes.data.data.filter((loc: Location) => loc.isActive));
@@ -156,7 +160,7 @@ const UserLocationAssignmentPage: React.FC = () => {
           User Location Assignments
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Manage which locations each user can access. ADMIN users automatically have access to all locations.
+          Manage which locations KITCHEN and FINANCE users can access. ADMIN and STAFF users automatically have access to all locations.
         </Typography>
       </Box>
 
