@@ -15,7 +15,7 @@ export class ReportController {
    */
   getRevenueByUser = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { startDate, endDate, format = 'json' } = req.query;
+      const { startDate, endDate, format = 'json', locationId } = req.query;
 
       if (!startDate || !endDate) {
         res.status(400).json({
@@ -27,7 +27,8 @@ export class ReportController {
 
       const dateRange: ReportDateRange = {
         startDate: startDate as string,
-        endDate: endDate as string
+        endDate: endDate as string,
+        locationId: locationId as string | undefined
       };
 
       const data = await this.reportService.getRevenueByUser(dateRange);
@@ -59,7 +60,7 @@ export class ReportController {
    */
   getPopularItems = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { startDate, endDate, format = 'json' } = req.query;
+      const { startDate, endDate, format = 'json', locationId } = req.query;
 
       if (!startDate || !endDate) {
         res.status(400).json({
@@ -71,7 +72,8 @@ export class ReportController {
 
       const dateRange: ReportDateRange = {
         startDate: startDate as string,
-        endDate: endDate as string
+        endDate: endDate as string,
+        locationId: locationId as string | undefined
       };
 
       const data = await this.reportService.getPopularItems(dateRange);
@@ -103,7 +105,7 @@ export class ReportController {
    */
   getSummary = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, locationId } = req.query;
 
       if (!startDate || !endDate) {
         res.status(400).json({
@@ -115,7 +117,8 @@ export class ReportController {
 
       const dateRange: ReportDateRange = {
         startDate: startDate as string,
-        endDate: endDate as string
+        endDate: endDate as string,
+        locationId: locationId as string | undefined
       };
 
       const data = await this.reportService.getSummaryReport(dateRange);

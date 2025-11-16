@@ -5,6 +5,7 @@ export interface KitchenOrderFilters {
   date?: string; // ISO date string
   fulfillmentStatus?: OrderStatus;
   menuItemId?: string;
+  locationId?: string;
 }
 
 export class KitchenService {
@@ -12,7 +13,7 @@ export class KitchenService {
    * Get all orders for kitchen staff with optional filters
    */
   async getOrders(filters: KitchenOrderFilters = {}) {
-    const { date, fulfillmentStatus, menuItemId } = filters;
+    const { date, fulfillmentStatus, menuItemId, locationId } = filters;
 
     // Build where clause
     const where: any = {};
@@ -27,6 +28,11 @@ export class KitchenService {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       where.orderDate = today;
+    }
+
+    // Filter by location
+    if (locationId) {
+      where.locationId = locationId;
     }
 
     // Filter by fulfillment status
@@ -77,7 +83,7 @@ export class KitchenService {
   /**
    * Get order summary grouped by menu item for batch preparation
    */
-  async getOrderSummary(date?: string) {
+  async getOrderSummary(date?: string, locationId?: string) {
     // Build where clause for date
     let orderDate: Date;
     if (date) {
@@ -88,11 +94,18 @@ export class KitchenService {
       orderDate.setHours(0, 0, 0, 0);
     }
 
+    const where: any = {
+      orderDate
+      // Don't filter by payment status - show all orders for batch preparation
+    };
+
+    // Filter by location
+    if (locationId) {
+      where.locationId = locationId;
+    }
+
     const orders = await prisma.order.findMany({
-      where: {
-        orderDate
-        // Don't filter by payment status - show all orders for batch preparation
-      },
+      where,
       include: {
         user: {
           select: {
@@ -310,8 +323,8 @@ export class KitchenService {
   /**
    * Generate printable HTML for bulk summary
    */
-  async generatePrintableHTML(date?: string): Promise<string> {
-    const summary = await this.getOrderSummary(date);
+  async generatePrintableHTML(date?: string, locationId?: string): Promise<string> {
+    const summary = await this.getOrderSummary(date, locationId);
 
     let orderDate: Date;
     if (date) {
@@ -511,7 +524,7 @@ export class KitchenService {
   /**
    * Get daily statistics for kitchen dashboard
    */
-  async getDailyStats(date?: string) {
+  async getDailyStats(date?: string, locationId?: string) {
     let orderDate: Date;
     if (date) {
       // Parse date as local timezone by appending time
@@ -521,10 +534,17 @@ export class KitchenService {
       orderDate.setHours(0, 0, 0, 0);
     }
 
+    const where: any = {
+      orderDate
+    };
+
+    // Filter by location
+    if (locationId) {
+      where.locationId = locationId;
+    }
+
     const orders = await prisma.order.findMany({
-      where: {
-        orderDate
-      }
+      where
     });
 
     const stats = {

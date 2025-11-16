@@ -32,6 +32,7 @@ import {
   Print as PrintIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import { useLocationContext, LocationSelector } from '@hrc-kitchen/common';
 import api from '../services/api';
 
 interface Order {
@@ -108,6 +109,7 @@ interface DailyStats {
 
 const KitchenDashboard = () => {
   const { user } = useAuth();
+  const { locations, selectedLocation, selectLocation, isLoading: locationsLoading } = useLocationContext();
   const [tabValue, setTabValue] = useState(0);
   const [orders, setOrders] = useState<Order[]>([]);
   const [summary, setSummary] = useState<OrderSummary[]>([]);
@@ -128,16 +130,20 @@ const KitchenDashboard = () => {
   const cardPositions = useRef<Record<string, { top: number; height: number }>>({});
 
   useEffect(() => {
-    loadData();
-  }, [selectedDate, statusFilter]);
+    if (selectedLocation) {
+      loadData();
+    }
+  }, [selectedDate, statusFilter, selectedLocation]);
 
   const loadData = async () => {
+    if (!selectedLocation) return;
+
     try {
       setLoading(true);
       setError('');
 
       // Build query params
-      const params: any = { date: selectedDate };
+      const params: any = { date: selectedDate, locationId: selectedLocation.id };
       if (statusFilter !== 'all') {
         params.fulfillmentStatus = statusFilter;
       }
@@ -145,8 +151,8 @@ const KitchenDashboard = () => {
       // Load orders, summary, and stats in parallel
       const [ordersRes, summaryRes, statsRes] = await Promise.all([
         api.get('/kitchen/orders', { params }),
-        api.get('/kitchen/summary', { params: { date: selectedDate } }),
-        api.get('/kitchen/stats', { params: { date: selectedDate } })
+        api.get('/kitchen/summary', { params: { date: selectedDate, locationId: selectedLocation.id } }),
+        api.get('/kitchen/stats', { params: { date: selectedDate, locationId: selectedLocation.id } })
       ]);
 
       setOrders(ordersRes.data.data || []);
@@ -431,18 +437,29 @@ const KitchenDashboard = () => {
       {/* Date filter and stats */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={2.5}>
+            <LocationSelector
+              locations={locations}
+              selectedLocationId={selectedLocation?.id || null}
+              onLocationChange={selectLocation}
+              isLoading={locationsLoading}
+              size="small"
+              fullWidth
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={2.5}>
             <TextField
               label="Date"
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               fullWidth
+              size="small"
               InputLabelProps={{ shrink: true }}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
+          <Grid item xs={12} sm={6} md={2.5}>
+            <FormControl fullWidth size="small">
               <InputLabel>Status Filter</InputLabel>
               <Select
                 value={statusFilter}

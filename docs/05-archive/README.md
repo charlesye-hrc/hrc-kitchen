@@ -20,6 +20,7 @@ This folder contains historical documentation that has been superseded by newer 
 | VARIATIONS_IMPLEMENTATION.md | 2025-11-12 | Feature complete and stable | Product variations technical implementation |
 | KITCHEN_DASHBOARD_TESTING.md | 2025-11-12 | Feature complete and stable | Kitchen dashboard testing guide |
 | SESSION_SUMMARY_VARIATIONS_UX.md | 2025-11-12 | Session complete | Variations UX improvements session summary |
+| SESSION_MULTI_LOCATION_ENHANCEMENTS.md | 2025-11-16 | Session complete | Multi-location validation, checkout improvements, weekend menus |
 
 ---
 
@@ -49,4 +50,4 @@ For current, active documentation, see:
 
 ---
 
-**Last Updated:** 2025-11-12
+**Last Updated:** 2025-11-16

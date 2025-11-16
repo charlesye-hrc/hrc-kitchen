@@ -11,6 +11,7 @@ export interface CartItem {
 
 interface CartContextType {
   items: CartItem[];
+  cartLocationId: string | null;
   addItem: (
     menuItem: MenuItem,
     quantity: number,
@@ -26,6 +27,8 @@ interface CartContextType {
   getCartTotal: () => number;
   getCartItemCount: () => number;
   calculateItemPrice: (item: CartItem) => number;
+  setCartLocation: (locationId: string | null) => void;
+  validateCartForLocation: (locationId: string, availableMenuItemIds: string[]) => string[];
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -44,17 +47,22 @@ interface CartProviderProps {
 
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [cartLocationId, setCartLocationId] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Load cart from localStorage on mount
   useEffect(() => {
     const savedCart = localStorage.getItem('cart');
+    const savedLocationId = localStorage.getItem('cartLocationId');
     if (savedCart) {
       try {
         setItems(JSON.parse(savedCart));
       } catch (error) {
         console.error('Failed to load cart from localStorage:', error);
       }
+    }
+    if (savedLocationId) {
+      setCartLocationId(savedLocationId);
     }
     setIsInitialized(true);
   }, []);
@@ -63,8 +71,13 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   useEffect(() => {
     if (isInitialized) {
       localStorage.setItem('cart', JSON.stringify(items));
+      if (cartLocationId) {
+        localStorage.setItem('cartLocationId', cartLocationId);
+      } else {
+        localStorage.removeItem('cartLocationId');
+      }
     }
-  }, [items, isInitialized]);
+  }, [items, cartLocationId, isInitialized]);
 
   const calculateItemPrice = (item: CartItem): number => {
     let basePrice = Number(item.menuItem.price);
@@ -153,7 +166,9 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
   const clearCart = () => {
     setItems([]);
+    setCartLocationId(null);
     localStorage.removeItem('cart');
+    localStorage.removeItem('cartLocationId');
   };
 
   const getCartTotal = () => {
@@ -167,8 +182,26 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     return items.reduce((count, item) => count + (Number(item.quantity) || 0), 0);
   };
 
+  const setCartLocation = (locationId: string | null) => {
+    setCartLocationId(locationId);
+  };
+
+  const validateCartForLocation = (locationId: string, availableMenuItemIds: string[]): string[] => {
+    // Returns array of menu item IDs that are not available at the new location
+    const unavailableItems: string[] = [];
+
+    items.forEach((item) => {
+      if (!availableMenuItemIds.includes(item.menuItem.id)) {
+        unavailableItems.push(item.menuItem.id);
+      }
+    });
+
+    return unavailableItems;
+  };
+
   const value: CartContextType = {
     items,
+    cartLocationId,
     addItem,
     removeItem,
     updateQuantity,
@@ -178,6 +211,8 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     getCartTotal,
     getCartItemCount,
     calculateItemPrice,
+    setCartLocation,
+    validateCartForLocation,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

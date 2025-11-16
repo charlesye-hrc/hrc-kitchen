@@ -19,6 +19,8 @@
 
 ### Key Features
 - Self-service ordering with guest checkout
+- Multi-location support with location-based menu filtering
+- Weekend menu support (Monday-Sunday)
 - Domain-restricted management access
 - Stripe payment processing (Card, Apple Pay, Google Pay)
 - Real-time kitchen dashboard
@@ -116,10 +118,27 @@ hrc-kitchen/
 - Configurable via Admin UI → System Config
 - Default domain: `@huonregionalcare.org.au`
 
+### Multi-Location Support
+- Each location has separate menu item assignments
+- Users (except ADMIN) are assigned specific locations
+- Cart validates items against selected location
+- Orders include `locationId` and validate item availability
+- Location selector in menu and checkout pages
+- [Location Service](backend/src/services/location.service.ts)
+
+### Weekend Menu Support
+- Menu items can be assigned to any day (Monday-Sunday)
+- Ordering is **menu-driven**: allowed when items exist for that day
+- No hardcoded weekend restrictions
+- Same ordering window applies to all days
+- Admins assign items to weekend days in Menu Management
+- [Config Service](backend/src/services/config.service.ts)
+
 ### Order Processing
 - Order number format: `ORD-YYYYMMDD-####`
 - Race condition handling: Retry logic with transaction-safe generation
 - Guest checkout supported
+- Location-based validation: Items must be available at order's location
 - Stripe PaymentIntent created before order confirmation
 - [Order Service](backend/src/services/order.service.ts)
 
@@ -154,8 +173,11 @@ hrc-kitchen/
 
 **Key Tables**:
 - `users` - Authentication and roles
-- `menu_items` - Daily menu with weekdays, categories, variations
-- `orders` - Order tracking (supports guest orders)
+- `locations` - Multiple service locations
+- `user_locations` - User-location assignments
+- `menu_items` - Daily menu with weekdays (Mon-Sun), categories, variations
+- `menu_item_locations` - Menu item availability by location
+- `orders` - Order tracking (supports guest orders, includes locationId)
 - `order_items` - Line items with variations
 - `payments` - Stripe payment records
 - `system_config` - Configurable settings (ordering window, domain)

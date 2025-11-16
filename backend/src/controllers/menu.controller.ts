@@ -6,10 +6,12 @@ export class MenuController {
   /**
    * GET /api/v1/menu/today
    * Get today's menu items
+   * Optional query param: locationId
    */
   async getTodaysMenu(req: Request, res: Response) {
     try {
-      const result = await menuService.getTodaysMenu();
+      const locationId = req.query.locationId as string | undefined;
+      const result = await menuService.getTodaysMenu(locationId);
       const orderingWindow = await configService.isOrderingWindowActive();
 
       if (result.items.length === 0) {

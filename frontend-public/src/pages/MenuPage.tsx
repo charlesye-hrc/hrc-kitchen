@@ -30,6 +30,7 @@ import { menuApi, MenuItem, VariationSelection } from '../services/api';
 import { useCart } from '../contexts/CartContext';
 import CartDrawer from '../components/CartDrawer';
 import VariationSelector from '../components/VariationSelector';
+import { useLocationContext, LocationSelector } from '@hrc-kitchen/common';
 
 const MenuPage: React.FC = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -44,29 +45,72 @@ const MenuPage: React.FC = () => {
   const [cartOpen, setCartOpen] = useState(false);
   const [orderingWindow, setOrderingWindow] = useState<any>(null);
 
-  const { addItem, getCartItemCount } = useCart();
+  const { items: cartItems, addItem, getCartItemCount, cartLocationId, setCartLocation, validateCartForLocation, removeItem } = useCart();
+  const { locations, selectedLocation, selectLocation, isLoading: locationsLoading } = useLocationContext();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   useEffect(() => {
-    fetchTodaysMenu();
-  }, []);
+    if (selectedLocation) {
+      fetchTodaysMenu();
+    }
+  }, [selectedLocation]);
+
+  // Handle cart validation after menu is fetched
+  useEffect(() => {
+    // Only validate if we have a location change and menu items are loaded
+    if (selectedLocation && cartLocationId && selectedLocation.id !== cartLocationId && menuItems.length > 0 && !loading) {
+      // Location has changed, validate cart against NEW location's menu
+      const availableMenuItemIds = menuItems.map(item => item.id);
+      const unavailableItems = validateCartForLocation(selectedLocation.id, availableMenuItemIds);
+
+      if (unavailableItems.length > 0) {
+        // Show warning about unavailable items
+        const unavailableNames = unavailableItems
+          .map(id => cartItems.find(item => item.menuItem.id === id)?.menuItem.name)
+          .filter(Boolean);
+
+        const confirmRemove = window.confirm(
+          `The following items in your cart are not available at ${selectedLocation.name}:\n\n` +
+          unavailableNames.join('\n') +
+          '\n\nThese items will be removed from your cart. Continue?'
+        );
+
+        if (confirmRemove) {
+          unavailableItems.forEach(itemId => removeItem(itemId));
+          setCartLocation(selectedLocation.id);
+        } else {
+          // User cancelled, revert to cart location
+          const cartLocation = locations.find(loc => loc.id === cartLocationId);
+          if (cartLocation) {
+            selectLocation(cartLocationId);
+          }
+        }
+      } else {
+        // All items available at new location
+        setCartLocation(selectedLocation.id);
+      }
+    } else if (selectedLocation && !cartLocationId && menuItems.length > 0 && !loading) {
+      // First time setting location
+      setCartLocation(selectedLocation.id);
+    }
+  }, [menuItems, loading]);
 
   const fetchTodaysMenu = async () => {
+    if (!selectedLocation) return;
+
     try {
       setLoading(true);
-      const response = await menuApi.getTodaysMenu();
+      const response = await menuApi.getTodaysMenu(selectedLocation.id);
 
       if (response.success) {
         setMenuItems(response.data.items);
         setWeekday(response.data.weekday);
         setOrderingWindow(response.data.orderingWindow);
-
-        if (response.message) {
-          setError(response.message);
-        }
+        // Clear any previous errors when successfully loading menu
+        setError(null);
       } else {
-        setError('Failed to load menu');
+        setError(response.message || 'Failed to load menu');
       }
     } catch (err: any) {
       console.error('Error fetching menu:', err);
@@ -187,37 +231,49 @@ const MenuPage: React.FC = () => {
     <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
       <Box sx={{
         display: 'flex',
-        flexDirection: { xs: 'row', sm: 'row' },
+        flexDirection: { xs: 'column', sm: 'row' },
         justifyContent: 'space-between',
-        alignItems: { xs: 'center', sm: 'center' },
+        alignItems: { xs: 'stretch', sm: 'center' },
         mb: 4,
-        gap: { xs: 1, sm: 0 },
+        gap: { xs: 2, sm: 2 },
         pb: 2
       }}>
-        <Box>
-          <Typography
-            variant="h4"
-            component="h1"
-            gutterBottom
-            sx={{
-              fontSize: { xs: '1.875rem', md: '2.25rem' },
-              fontWeight: 700,
-              mb: 0.5,
-              background: 'linear-gradient(135deg, #2D5F3F 0%, #4A8862 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}
-          >
-            Today's Menu
-          </Typography>
-          {weekday && (
-            <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 500 }}>
-              {weekday}
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, gap: { xs: 1.5, sm: 3 } }}>
+          <Box>
+            <Typography
+              variant="h4"
+              component="h1"
+              gutterBottom
+              sx={{
+                fontSize: { xs: '1.875rem', md: '2.25rem' },
+                fontWeight: 700,
+                mb: 0.5,
+                background: 'linear-gradient(135deg, #2D5F3F 0%, #4A8862 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              Today's Menu
             </Typography>
-          )}
+            {weekday && (
+              <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 500 }}>
+                {weekday}
+              </Typography>
+            )}
+          </Box>
+          <Box sx={{ minWidth: { xs: '100%', sm: 250 }, mt: { xs: 0, sm: 1 } }}>
+            <LocationSelector
+              locations={locations}
+              selectedLocationId={selectedLocation?.id || null}
+              onLocationChange={selectLocation}
+              isLoading={locationsLoading}
+              size="small"
+              fullWidth={isMobile}
+            />
+          </Box>
         </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'flex-end', sm: 'center' }, mt: { xs: -1, sm: 0 } }}>
           <IconButton
             color="primary"
             size="large"

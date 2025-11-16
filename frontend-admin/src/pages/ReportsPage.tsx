@@ -27,6 +27,7 @@ import {
   Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import { useLocationContext, LocationSelector } from '@hrc-kitchen/common';
 import axios from 'axios';
 
 interface RevenueByUser {
@@ -75,6 +76,8 @@ interface SummaryStats {
 
 const ReportsPage = () => {
   const { token } = useAuth();
+  const { locations, selectedLocation, selectLocation, isLoading: locationsLoading } = useLocationContext();
+  const [locationFilter, setLocationFilter] = useState<string>('all');
   const [tabValue, setTabValue] = useState(0);
   const [startDate, setStartDate] = useState(() => {
     const today = new Date();
@@ -95,11 +98,15 @@ const ReportsPage = () => {
     try {
       setLoading(true);
       setError('');
+      const params: any = { startDate, endDate };
+      if (locationFilter !== 'all') {
+        params.locationId = locationFilter;
+      }
       const response = await axios.get(
         `${import.meta.env.VITE_API_URL}/admin/reports/revenue-by-user`,
         {
           headers: { Authorization: `Bearer ${token}` },
-          params: { startDate, endDate }
+          params
         }
       );
       setRevenueData(response.data.data);
@@ -114,11 +121,15 @@ const ReportsPage = () => {
     try {
       setLoading(true);
       setError('');
+      const params: any = { startDate, endDate };
+      if (locationFilter !== 'all') {
+        params.locationId = locationFilter;
+      }
       const response = await axios.get(
         `${import.meta.env.VITE_API_URL}/admin/reports/popular-items`,
         {
           headers: { Authorization: `Bearer ${token}` },
-          params: { startDate, endDate }
+          params
         }
       );
       setPopularItems(response.data.data);
@@ -133,11 +144,15 @@ const ReportsPage = () => {
     try {
       setLoading(true);
       setError('');
+      const params: any = { startDate, endDate };
+      if (locationFilter !== 'all') {
+        params.locationId = locationFilter;
+      }
       const response = await axios.get(
         `${import.meta.env.VITE_API_URL}/admin/reports/summary`,
         {
           headers: { Authorization: `Bearer ${token}` },
-          params: { startDate, endDate }
+          params
         }
       );
       setSummaryStats(response.data.data);
@@ -150,14 +165,18 @@ const ReportsPage = () => {
 
   const downloadCSV = async (reportType: string) => {
     try {
+      const params: any = {
+        startDate,
+        endDate,
+        format: 'csv'
+      };
+      if (locationFilter !== 'all') {
+        params.locationId = locationFilter;
+      }
       const response = await axios.get(
         `${import.meta.env.VITE_API_URL}/admin/reports/${reportType}`,
         {
-          params: {
-            startDate,
-            endDate,
-            format: 'csv'
-          },
+          params,
           headers: {
             Authorization: `Bearer ${token}`
           },
@@ -208,35 +227,49 @@ const ReportsPage = () => {
       {/* Date Range Filter */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={2.5}>
+            <LocationSelector
+              locations={locations}
+              selectedLocationId={locationFilter}
+              onLocationChange={setLocationFilter}
+              isLoading={locationsLoading}
+              size="small"
+              fullWidth
+              includeAll={true}
+              allLabel="All Locations"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={2.5}>
             <TextField
               label="Start Date"
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               fullWidth
+              size="small"
               InputLabelProps={{ shrink: true }}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={2.5}>
             <TextField
               label="End Date"
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               fullWidth
+              size="small"
               InputLabelProps={{ shrink: true }}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={2.5}>
             <Button
               variant="contained"
               color="primary"
               fullWidth
               onClick={handleGenerate}
-              startIcon={<RefreshIcon />}
               disabled={loading}
-              sx={{ height: '56px' }}
+              startIcon={<RefreshIcon />}
+              sx={{ height: '40px' }}
             >
               Generate Report
             </Button>

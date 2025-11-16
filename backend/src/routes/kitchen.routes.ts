@@ -18,12 +18,13 @@ router.use(validateAdminDomain);
  */
 router.get('/orders', async (req: Request, res: Response) => {
   try {
-    const { date, fulfillmentStatus, menuItemId } = req.query;
+    const { date, fulfillmentStatus, menuItemId, locationId } = req.query;
 
     const filters: any = {};
     if (date) filters.date = date as string;
     if (fulfillmentStatus) filters.fulfillmentStatus = fulfillmentStatus as OrderStatus;
     if (menuItemId) filters.menuItemId = menuItemId as string;
+    if (locationId) filters.locationId = locationId as string;
 
     const orders = await kitchenService.getOrders(filters);
 
@@ -46,9 +47,12 @@ router.get('/orders', async (req: Request, res: Response) => {
  */
 router.get('/summary', async (req: Request, res: Response) => {
   try {
-    const { date } = req.query;
+    const { date, locationId } = req.query;
 
-    const summary = await kitchenService.getOrderSummary(date as string | undefined);
+    const summary = await kitchenService.getOrderSummary(
+      date as string | undefined,
+      locationId as string | undefined
+    );
 
     res.json({
       success: true,
@@ -151,9 +155,12 @@ router.patch('/order-items/:id/status', async (req: Request, res: Response) => {
  */
 router.get('/stats', async (req: Request, res: Response) => {
   try {
-    const { date } = req.query;
+    const { date, locationId } = req.query;
 
-    const stats = await kitchenService.getDailyStats(date as string | undefined);
+    const stats = await kitchenService.getDailyStats(
+      date as string | undefined,
+      locationId as string | undefined
+    );
 
     res.json({
       success: true,
@@ -174,9 +181,12 @@ router.get('/stats', async (req: Request, res: Response) => {
  */
 router.get('/print', async (req: Request, res: Response) => {
   try {
-    const { date } = req.query;
+    const { date, locationId } = req.query;
 
-    const html = await kitchenService.generatePrintableHTML(date as string | undefined);
+    const html = await kitchenService.generatePrintableHTML(
+      date as string | undefined,
+      locationId as string | undefined
+    );
 
     res.setHeader('Content-Type', 'text/html');
     res.send(html);

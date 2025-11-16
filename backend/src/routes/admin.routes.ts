@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import adminController from '../controllers/admin.controller';
 import reportController from '../controllers/report.controller';
+import locationController from '../controllers/location.controller';
 import { authenticate, authorize } from '../middleware/auth';
 import { validateAdminDomain } from '../middleware/domainValidation';
 import { UserRole } from '@prisma/client';
@@ -183,5 +184,65 @@ router.post('/upload/signature', adminController.getUploadSignature);
  * @access  Admin only
  */
 router.post('/upload/image', adminController.uploadImage);
+
+/**
+ * Location Management Routes
+ */
+
+/**
+ * @route   GET /api/v1/admin/locations
+ * @desc    Get all locations (including inactive)
+ * @access  Admin only
+ */
+router.get('/locations', locationController.getAdminLocations);
+
+/**
+ * @route   POST /api/v1/admin/locations
+ * @desc    Create a new location
+ * @access  Admin only
+ */
+router.post('/locations', locationController.createLocation);
+
+/**
+ * @route   PUT /api/v1/admin/locations/:id
+ * @desc    Update a location
+ * @access  Admin only
+ */
+router.put('/locations/:id', locationController.updateLocation);
+
+/**
+ * @route   DELETE /api/v1/admin/locations/:id
+ * @desc    Delete a location
+ * @access  Admin only
+ */
+router.delete('/locations/:id', locationController.deleteLocation);
+
+/**
+ * @route   GET /api/v1/admin/users/:userId/locations
+ * @desc    Get locations assigned to a user
+ * @access  Admin only
+ */
+router.get('/users/:userId/locations', locationController.getUserAssignedLocations);
+
+/**
+ * @route   PUT /api/v1/admin/users/:userId/locations
+ * @desc    Assign locations to a user
+ * @access  Admin only
+ */
+router.put('/users/:userId/locations', locationController.assignLocationsToUser);
+
+/**
+ * @route   GET /api/v1/admin/menu-items/:menuItemId/locations
+ * @desc    Get locations where a menu item is available
+ * @access  Admin only
+ */
+router.get('/menu-items/:menuItemId/locations', locationController.getMenuItemLocations);
+
+/**
+ * @route   PUT /api/v1/admin/menu-items/:menuItemId/locations
+ * @desc    Assign menu item to locations
+ * @access  Admin only
+ */
+router.put('/menu-items/:menuItemId/locations', locationController.assignMenuItemToLocations);
 
 export default router;

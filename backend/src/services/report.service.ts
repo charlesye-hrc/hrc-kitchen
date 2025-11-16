@@ -4,6 +4,7 @@ import prisma from '../lib/prisma';
 export interface ReportDateRange {
   startDate: string; // YYYY-MM-DD
   endDate: string;   // YYYY-MM-DD
+  locationId?: string; // Optional location filter
 }
 
 export interface RevenueByUserReport {
@@ -63,14 +64,22 @@ export class ReportService {
     const startDate = new Date(dateRange.startDate + 'T00:00:00');
     const endDate = new Date(dateRange.endDate + 'T23:59:59');
 
-    const orders = await prisma.order.findMany({
-      where: {
-        orderDate: {
-          gte: startDate,
-          lte: endDate
-        },
-        paymentStatus: 'COMPLETED' // Only completed payments
+    const whereClause: any = {
+      orderDate: {
+        gte: startDate,
+        lte: endDate
       },
+      paymentStatus: 'COMPLETED', // Only completed payments
+      userId: { not: null } // Exclude guest orders (they don't have a user)
+    };
+
+    // Add location filter if provided
+    if (dateRange.locationId) {
+      whereClause.locationId = dateRange.locationId;
+    }
+
+    const orders = await prisma.order.findMany({
+      where: whereClause,
       include: {
         user: {
           select: {
@@ -90,6 +99,9 @@ export class ReportService {
     const revenueByUser: Record<string, RevenueByUserReport> = {};
 
     for (const order of orders) {
+      // Skip if user is null (shouldn't happen due to filter, but safety check)
+      if (!order.user) continue;
+
       const userId = order.user.id;
 
       if (!revenueByUser[userId]) {
@@ -121,16 +133,23 @@ export class ReportService {
     const startDate = new Date(dateRange.startDate + 'T00:00:00');
     const endDate = new Date(dateRange.endDate + 'T23:59:59');
 
+    const whereClause: any = {
+      order: {
+        orderDate: {
+          gte: startDate,
+          lte: endDate
+        },
+        paymentStatus: 'COMPLETED' // Only completed orders
+      }
+    };
+
+    // Add location filter if provided
+    if (dateRange.locationId) {
+      whereClause.order.locationId = dateRange.locationId;
+    }
+
     const orderItems = await prisma.orderItem.findMany({
-      where: {
-        order: {
-          orderDate: {
-            gte: startDate,
-            lte: endDate
-          },
-          paymentStatus: 'COMPLETED' // Only completed orders
-        }
-      },
+      where: whereClause,
       include: {
         menuItem: {
           select: {
@@ -179,13 +198,20 @@ export class ReportService {
     const startDate = new Date(dateRange.startDate + 'T00:00:00');
     const endDate = new Date(dateRange.endDate + 'T23:59:59');
 
-    const orders = await prisma.order.findMany({
-      where: {
-        orderDate: {
-          gte: startDate,
-          lte: endDate
-        }
+    const whereClause: any = {
+      orderDate: {
+        gte: startDate,
+        lte: endDate
       }
+    };
+
+    // Add location filter if provided
+    if (dateRange.locationId) {
+      whereClause.locationId = dateRange.locationId;
+    }
+
+    const orders = await prisma.order.findMany({
+      where: whereClause
     });
 
     const totalOrders = orders.length;

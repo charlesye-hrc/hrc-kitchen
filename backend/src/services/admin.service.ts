@@ -192,6 +192,11 @@ export class AdminService {
           emailVerified: true,
           createdAt: true,
           updatedAt: true,
+          userLocations: {
+            include: {
+              location: true,
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',

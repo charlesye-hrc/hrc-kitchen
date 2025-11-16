@@ -9,7 +9,7 @@ export class FinanceController {
    */
   async getDailyRevenueReport(req: AuthRequest, res: Response) {
     try {
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, locationId } = req.query;
 
       if (!startDate || !endDate) {
         return res.status(400).json({
@@ -18,10 +18,13 @@ export class FinanceController {
         });
       }
 
-      const report = await financeService.getDailyRevenueReport({
-        startDate: new Date(startDate as string),
-        endDate: new Date(endDate as string),
-      });
+      const report = await financeService.getDailyRevenueReport(
+        {
+          startDate: new Date(startDate as string),
+          endDate: new Date(endDate as string),
+        },
+        locationId as string | undefined
+      );
 
       res.json({
         success: true,
@@ -42,7 +45,7 @@ export class FinanceController {
    */
   async getOrderDetailsReport(req: AuthRequest, res: Response) {
     try {
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, locationId } = req.query;
 
       if (!startDate || !endDate) {
         return res.status(400).json({
@@ -51,10 +54,13 @@ export class FinanceController {
         });
       }
 
-      const report = await financeService.getOrderDetailsReport({
-        startDate: new Date(startDate as string),
-        endDate: new Date(endDate as string),
-      });
+      const report = await financeService.getOrderDetailsReport(
+        {
+          startDate: new Date(startDate as string),
+          endDate: new Date(endDate as string),
+        },
+        locationId as string | undefined
+      );
 
       res.json({
         success: true,
@@ -75,7 +81,7 @@ export class FinanceController {
    */
   async getMenuItemSalesReport(req: AuthRequest, res: Response) {
     try {
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, locationId } = req.query;
 
       if (!startDate || !endDate) {
         return res.status(400).json({
@@ -84,10 +90,13 @@ export class FinanceController {
         });
       }
 
-      const report = await financeService.getMenuItemSalesReport({
-        startDate: new Date(startDate as string),
-        endDate: new Date(endDate as string),
-      });
+      const report = await financeService.getMenuItemSalesReport(
+        {
+          startDate: new Date(startDate as string),
+          endDate: new Date(endDate as string),
+        },
+        locationId as string | undefined
+      );
 
       res.json({
         success: true,
@@ -108,7 +117,7 @@ export class FinanceController {
    */
   async getSummaryStatistics(req: AuthRequest, res: Response) {
     try {
-      const { startDate, endDate } = req.query;
+      const { startDate, endDate, locationId } = req.query;
 
       if (!startDate || !endDate) {
         return res.status(400).json({
@@ -117,10 +126,13 @@ export class FinanceController {
         });
       }
 
-      const stats = await financeService.getSummaryStatistics({
-        startDate: new Date(startDate as string),
-        endDate: new Date(endDate as string),
-      });
+      const stats = await financeService.getSummaryStatistics(
+        {
+          startDate: new Date(startDate as string),
+          endDate: new Date(endDate as string),
+        },
+        locationId as string | undefined
+      );
 
       res.json({
         success: true,

@@ -1,5 +1,3 @@
-// Prisma schema for HRC Kitchen
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,17 +7,204 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id                     String         @id @default(uuid())
+  email                  String         @unique
+  passwordHash           String         @map("password_hash")
+  fullName               String         @map("full_name")
+  department             String?
+  location               String?
+  phone                  String?
+  role                   UserRole       @default(STAFF)
+  emailVerified          Boolean        @default(false) @map("email_verified")
+  isActive               Boolean        @default(true) @map("is_active")
+  createdAt              DateTime       @default(now()) @map("created_at")
+  updatedAt              DateTime       @updatedAt @map("updated_at")
+  lastSelectedLocationId String?        @map("last_selected_location_id")
+  orders                 Order[]
+  configUpdates          SystemConfig[] @relation("ConfigUpdatedBy")
+  userLocations          UserLocation[]
+  lastSelectedLocation   Location?      @relation("UserLastLocation", fields: [lastSelectedLocationId], references: [id])
+
+  @@map("users")
+}
+
+model MenuItem {
+  id                String                  @id @default(uuid())
+  name              String
+  description       String?
+  price             Decimal                 @db.Decimal(10, 2)
+  category          MenuCategory
+  imageUrl          String?                 @map("image_url")
+  dietaryTags       String[]                @default([]) @map("dietary_tags")
+  isActive          Boolean                 @default(true) @map("is_active")
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+  weekdays          Weekday[]               @default([])
+  customizations    MenuItemCustomization[]
+  menuItemLocations MenuItemLocation[]
+  orderItems        OrderItem[]
+  variationGroups   VariationGroup[]
+
+  @@index([isActive])
+  @@map("menu_items")
+}
+
+model MenuItemCustomization {
+  id                String   @id @default(uuid())
+  menuItemId        String   @map("menu_item_id")
+  customizationName String   @map("customization_name")
+  createdAt         DateTime @default(now()) @map("created_at")
+  menuItem          MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@index([menuItemId])
+  @@map("menu_item_customizations")
+}
+
+model VariationGroup {
+  id           String             @id @default(uuid())
+  menuItemId   String             @map("menu_item_id")
+  name         String
+  type         VariationGroupType @default(SINGLE_SELECT)
+  required     Boolean            @default(false)
+  displayOrder Int                @default(0) @map("display_order")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+  menuItem     MenuItem           @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  options      VariationOption[]
+
+  @@index([menuItemId])
+  @@map("variation_groups")
+}
+
+model VariationOption {
+  id               String         @id @default(uuid())
+  variationGroupId String         @map("variation_group_id")
+  name             String
+  priceModifier    Decimal        @default(0) @map("price_modifier") @db.Decimal(10, 2)
+  isDefault        Boolean        @default(false) @map("is_default")
+  displayOrder     Int            @default(0) @map("display_order")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  variationGroup   VariationGroup @relation(fields: [variationGroupId], references: [id], onDelete: Cascade)
+
+  @@index([variationGroupId])
+  @@map("variation_options")
+}
+
+model Order {
+  id                String        @id @default(uuid())
+  userId            String?       @map("user_id")
+  orderNumber       String        @unique @map("order_number")
+  totalAmount       Decimal       @map("total_amount") @db.Decimal(10, 2)
+  paymentStatus     PaymentStatus @default(PENDING) @map("payment_status")
+  paymentId         String?       @map("payment_id")
+  fulfillmentStatus OrderStatus   @default(PLACED) @map("fulfillment_status")
+  specialRequests   String?       @map("special_requests")
+  orderDate         DateTime      @map("order_date") @db.Date
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  guestEmail        String?       @map("guest_email")
+  guestFirstName    String?       @map("guest_first_name")
+  guestLastName     String?       @map("guest_last_name")
+  locationId        String?       @map("location_id")
+  orderItems        OrderItem[]
+  location          Location?     @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  user              User?         @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([locationId])
+  @@index([guestEmail])
+  @@index([orderDate])
+  @@index([fulfillmentStatus])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                 String   @id @default(uuid())
+  orderId            String   @map("order_id")
+  menuItemId         String   @map("menu_item_id")
+  quantity           Int      @default(1)
+  customizations     Json?
+  priceAtPurchase    Decimal  @map("price_at_purchase") @db.Decimal(10, 2)
+  createdAt          DateTime @default(now()) @map("created_at")
+  selectedVariations Json?    @map("selected_variations")
+  menuItem           MenuItem @relation(fields: [menuItemId], references: [id])
+  order              Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([menuItemId])
+  @@map("order_items")
+}
+
+model SystemConfig {
+  id          String   @id @default(uuid())
+  configKey   String   @unique @map("config_key")
+  configValue String   @map("config_value")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  updatedBy   String?  @map("updated_by")
+  updater     User?    @relation("ConfigUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@map("system_config")
+}
+
+model Location {
+  id                    String             @id @default(uuid())
+  name                  String             @unique
+  address               String?
+  phone                 String?
+  isActive              Boolean            @default(true) @map("is_active")
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+  menuItemLocations     MenuItemLocation[]
+  orders                Order[]
+  userLocations         UserLocation[]
+  usersWithLastLocation User[]             @relation("UserLastLocation")
+
+  @@index([isActive])
+  @@map("locations")
+}
+
+model MenuItemLocation {
+  id         String   @id @default(uuid())
+  menuItemId String   @map("menu_item_id")
+  locationId String   @map("location_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@unique([menuItemId, locationId])
+  @@index([menuItemId])
+  @@index([locationId])
+  @@map("menu_item_locations")
+}
+
+model UserLocation {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  locationId String   @map("location_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, locationId])
+  @@index([userId])
+  @@index([locationId])
+  @@map("user_locations")
+}
+
 enum UserRole {
   STAFF
   KITCHEN
-  FINANCE
   ADMIN
+  FINANCE
 }
 
 enum OrderStatus {
   PLACED
-  PARTIALLY_FULFILLED
-  FULFILLED
+  PREPARING
+  READY
+  COMPLETED
 }
 
 enum PaymentStatus {
@@ -43,161 +228,11 @@ enum Weekday {
   WEDNESDAY
   THURSDAY
   FRIDAY
+  SATURDAY
+  SUNDAY
 }
 
 enum VariationGroupType {
   SINGLE_SELECT
   MULTI_SELECT
-}
-
-model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  passwordHash  String    @map("password_hash")
-  fullName      String    @map("full_name")
-  department    String?
-  location      String?
-  phone         String?
-  role          UserRole  @default(STAFF)
-  emailVerified Boolean   @default(false) @map("email_verified")
-  isActive      Boolean   @default(true) @map("is_active")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-
-  // Relations
-  orders        Order[]
-  configUpdates SystemConfig[] @relation("ConfigUpdatedBy")
-
-  @@map("users")
-}
-
-model MenuItem {
-  id              String        @id @default(uuid())
-  name            String
-  description     String?
-  price           Decimal       @db.Decimal(10, 2)
-  category        MenuCategory
-  imageUrl        String?       @map("image_url")
-  weekdays        Weekday[]     @default([])
-  dietaryTags     String[]      @default([]) @map("dietary_tags")
-  isActive        Boolean       @default(true) @map("is_active")
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
-
-  // Relations
-  customizations  MenuItemCustomization[]
-  variationGroups VariationGroup[]
-  orderItems      OrderItem[]
-
-  @@index([isActive])
-  @@map("menu_items")
-}
-
-model MenuItemCustomization {
-  id                String    @id @default(uuid())
-  menuItemId        String    @map("menu_item_id")
-  customizationName String    @map("customization_name")
-  createdAt         DateTime  @default(now()) @map("created_at")
-
-  // Relations
-  menuItem          MenuItem  @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
-
-  @@index([menuItemId])
-  @@map("menu_item_customizations")
-}
-
-model VariationGroup {
-  id           String              @id @default(uuid())
-  menuItemId   String              @map("menu_item_id")
-  name         String              // "Protein Choice", "Spice Level", "Size", etc.
-  type         VariationGroupType  @default(SINGLE_SELECT)
-  required     Boolean             @default(false)
-  displayOrder Int                 @default(0) @map("display_order")
-  createdAt    DateTime            @default(now()) @map("created_at")
-  updatedAt    DateTime            @updatedAt @map("updated_at")
-
-  // Relations
-  menuItem     MenuItem            @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
-  options      VariationOption[]
-
-  @@index([menuItemId])
-  @@map("variation_groups")
-}
-
-model VariationOption {
-  id               String         @id @default(uuid())
-  variationGroupId String         @map("variation_group_id")
-  name             String         // "Grilled Chicken", "Mild", "Large", etc.
-  priceModifier    Decimal        @default(0) @db.Decimal(10, 2) @map("price_modifier")
-  isDefault        Boolean        @default(false) @map("is_default")
-  displayOrder     Int            @default(0) @map("display_order")
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
-
-  // Relations
-  variationGroup   VariationGroup @relation(fields: [variationGroupId], references: [id], onDelete: Cascade)
-
-  @@index([variationGroupId])
-  @@map("variation_options")
-}
-
-model Order {
-  id                String        @id @default(uuid())
-  userId            String?       @map("user_id")
-  guestEmail        String?       @map("guest_email")
-  guestFirstName    String?       @map("guest_first_name")
-  guestLastName     String?       @map("guest_last_name")
-  orderNumber       String        @unique @map("order_number")
-  totalAmount       Decimal       @db.Decimal(10, 2) @map("total_amount")
-  paymentStatus     PaymentStatus @default(PENDING) @map("payment_status")
-  paymentId         String?       @map("payment_id")
-  fulfillmentStatus OrderStatus   @default(PLACED) @map("fulfillment_status")
-  specialRequests   String?       @map("special_requests")
-  orderDate         DateTime      @map("order_date") @db.Date
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
-
-  // Relations
-  user              User?         @relation(fields: [userId], references: [id])
-  orderItems        OrderItem[]
-
-  @@index([userId])
-  @@index([guestEmail])
-  @@index([orderDate])
-  @@index([fulfillmentStatus])
-  @@map("orders")
-}
-
-model OrderItem {
-  id                 String      @id @default(uuid())
-  orderId            String      @map("order_id")
-  menuItemId         String      @map("menu_item_id")
-  quantity           Int         @default(1)
-  customizations     Json?       @db.JsonB  // Legacy: old free-text customizations
-  selectedVariations Json?       @map("selected_variations") @db.JsonB  // New: structured variations with pricing
-  priceAtPurchase    Decimal     @db.Decimal(10, 2) @map("price_at_purchase")
-  fulfillmentStatus  OrderStatus @default(PLACED) @map("fulfillment_status")
-  createdAt          DateTime    @default(now()) @map("created_at")
-
-  // Relations
-  order             Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  menuItem          MenuItem    @relation(fields: [menuItemId], references: [id])
-
-  @@index([orderId])
-  @@index([menuItemId])
-  @@index([fulfillmentStatus])
-  @@map("order_items")
-}
-
-model SystemConfig {
-  id          String   @id @default(uuid())
-  configKey   String   @unique @map("config_key")
-  configValue String   @map("config_value")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  updatedBy   String?  @map("updated_by")
-
-  // Relations
-  updater     User?    @relation("ConfigUpdatedBy", fields: [updatedBy], references: [id])
-
-  @@map("system_config")
 }

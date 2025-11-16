@@ -64,16 +64,38 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                 </Button>
               )}
               {user?.role === 'ADMIN' && (
-                <Button
-                  color="inherit"
-                  onClick={() => navigate('/admin')}
-                  sx={{
-                    fontWeight: isActive('/admin') ? 'bold' : 'normal',
-                    textDecoration: isActive('/admin') ? 'underline' : 'none',
-                  }}
-                >
-                  Admin
-                </Button>
+                <>
+                  <Button
+                    color="inherit"
+                    onClick={() => navigate('/admin')}
+                    sx={{
+                      fontWeight: isActive('/admin') ? 'bold' : 'normal',
+                      textDecoration: isActive('/admin') ? 'underline' : 'none',
+                    }}
+                  >
+                    Admin
+                  </Button>
+                  <Button
+                    color="inherit"
+                    onClick={() => navigate('/admin/locations')}
+                    sx={{
+                      fontWeight: isActive('/admin/locations') ? 'bold' : 'normal',
+                      textDecoration: isActive('/admin/locations') ? 'underline' : 'none',
+                    }}
+                  >
+                    Locations
+                  </Button>
+                  <Button
+                    color="inherit"
+                    onClick={() => navigate('/admin/user-locations')}
+                    sx={{
+                      fontWeight: isActive('/admin/user-locations') ? 'bold' : 'normal',
+                      textDecoration: isActive('/admin/user-locations') ? 'underline' : 'none',
+                    }}
+                  >
+                    User Access
+                  </Button>
+                </>
               )}
               {(user?.role === 'FINANCE' || user?.role === 'ADMIN') && (
                 <Button

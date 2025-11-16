@@ -6,6 +6,7 @@ import kitchenRoutes from './kitchen.routes';
 import adminRoutes from './admin.routes';
 import financeRoutes from './finance.routes';
 import paymentRoutes from './payment.routes';
+import locationRoutes from './location.routes';
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use('/kitchen', kitchenRoutes);
 router.use('/admin', adminRoutes);
 router.use('/finance', financeRoutes);
 router.use('/payment', paymentRoutes);
+router.use('/locations', locationRoutes);
 
 export default router;

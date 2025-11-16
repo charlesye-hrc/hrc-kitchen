@@ -1,3 +1,12 @@
+export interface Location {
+    id: string;
+    name: string;
+    address?: string | null;
+    phone?: string | null;
+    isActive: boolean;
+    createdAt?: string;
+    updatedAt?: string;
+}
 export interface User {
     id: string;
     email: string;
@@ -7,11 +16,13 @@ export interface User {
     department?: string;
     location?: string;
     phone?: string;
+    lastSelectedLocationId?: string | null;
 }
 export interface AuthResponse {
     user: User;
     token: string;
     hasAdminAccess: boolean;
+    accessibleLocations?: Location[];
 }
 export interface RegisterData {
     email: string;
@@ -22,7 +33,7 @@ export interface RegisterData {
     phone?: string;
 }
 export type MenuCategory = 'MAIN' | 'SIDE' | 'DRINK' | 'DESSERT' | 'OTHER';
-export type Weekday = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY';
+export type Weekday = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
 export type VariationGroupType = 'SINGLE_SELECT' | 'MULTI_SELECT';
 export interface MenuItem {
     id: string;
@@ -82,6 +93,7 @@ export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
 export interface Order {
     id: string;
     userId?: string | null;
+    locationId?: string | null;
     guestEmail?: string | null;
     guestFirstName?: string | null;
     guestLastName?: string | null;
@@ -94,6 +106,7 @@ export interface Order {
     orderDate: string;
     orderItems: OrderItem[];
     user?: User;
+    location?: Location;
     createdAt: string;
     updatedAt: string;
 }
@@ -115,6 +128,17 @@ export interface CartItem {
     customizations: string[];
     selectedVariations: SelectedVariation[];
     specialRequest?: string;
+}
+export interface CreateOrderData {
+    items: Array<{
+        menuItemId: string;
+        quantity: number;
+        customizations?: string;
+        selectedVariations?: VariationSelection[];
+        specialRequests?: string;
+    }>;
+    deliveryNotes?: string;
+    locationId: string;
 }
 export interface SystemConfig {
     ordering_window_start: string;

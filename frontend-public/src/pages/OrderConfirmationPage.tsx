@@ -48,6 +48,11 @@ interface Order {
   createdAt: string;
   paymentId: string | null;
   orderItems: OrderItem[];
+  location?: {
+    id: string;
+    name: string;
+    address?: string;
+  };
 }
 
 const OrderConfirmationPage: React.FC = () => {
@@ -337,6 +342,30 @@ const OrderConfirmationPage: React.FC = () => {
                 ${Number(order.totalAmount).toFixed(2)}
               </Typography>
             </Box>
+
+            {order.location && (
+              <Box
+                sx={{
+                  p: 2.5,
+                  bgcolor: 'grey.50',
+                  borderRadius: 2,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                }}
+              >
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.75, fontWeight: 500 }}>
+                  Delivery Location
+                </Typography>
+                <Typography variant="body1" fontWeight={600} sx={{ fontSize: '1.0625rem' }}>
+                  {order.location.name}
+                </Typography>
+                {order.location.address && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    {order.location.address}
+                  </Typography>
+                )}
+              </Box>
+            )}
           </Box>
 
           {order.specialRequests && (

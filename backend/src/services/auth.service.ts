@@ -25,9 +25,14 @@ export interface AuthResponse {
     email: string;
     fullName: string;
     role: UserRole;
+    lastSelectedLocationId?: string | null;
   };
   token: string;
   hasAdminAccess: boolean; // NEW: Indicates if user can access management app
+  accessibleLocations?: Array<{
+    id: string;
+    name: string;
+  }>;
 }
 
 export class AuthService {
@@ -75,6 +80,18 @@ export class AuthService {
     // Find user
     const user = await prisma.user.findUnique({
       where: { email: data.email },
+      include: {
+        userLocations: {
+          include: {
+            location: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!user) {
@@ -103,15 +120,31 @@ export class AuthService {
     // Check if user has admin domain access
     const hasAdminAccess = await hasAdminDomainAccess(user.email);
 
+    // Get accessible locations
+    // ADMIN role has access to all locations
+    let accessibleLocations;
+    if (user.role === UserRole.ADMIN) {
+      const allLocations = await prisma.location.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      });
+      accessibleLocations = allLocations;
+    } else {
+      accessibleLocations = user.userLocations.map((ul) => ul.location);
+    }
+
     return {
       user: {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
         role: user.role,
+        lastSelectedLocationId: user.lastSelectedLocationId,
       },
       token,
       hasAdminAccess, // Indicates if email domain allows management app access
+      accessibleLocations,
     };
   }
 

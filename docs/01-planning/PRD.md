@@ -229,7 +229,7 @@ Product variations enable menu items to have structured options with price modif
 - FR-6.4: System displays countdown timer during active window
 - FR-6.5: Clear messaging when window is closed
 - FR-6.6: Window configuration: separate start/end times
-- FR-6.7: Window applies Monday-Friday (weekends disabled)
+- FR-6.7: Window applies all days (Monday-Sunday, menu-driven availability)
 
 #### 4.3.2 Order Placement
 **Priority**: P0 (Must Have)

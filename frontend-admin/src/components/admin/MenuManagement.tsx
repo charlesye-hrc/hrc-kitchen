@@ -61,7 +61,7 @@ interface MenuItem {
   }>;
 }
 
-const WEEKDAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
+const WEEKDAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 const CATEGORIES = ['MAIN', 'SIDE', 'DRINK', 'DESSERT', 'OTHER'];
 const DIETARY_TAGS = ['Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Nut-Free', 'Halal'];
 
@@ -81,6 +81,11 @@ const MenuManagement = () => {
   const [viewMode, setViewMode] = useState<'weekday' | 'category' | 'all'>('weekday');
   const [selectedCategory, setSelectedCategory] = useState<string>('MAIN');
   const [dialogTab, setDialogTab] = useState(0);
+
+  // Location state
+  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
+  const [loadingLocations, setLoadingLocations] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -113,7 +118,7 @@ const MenuManagement = () => {
     }
   };
 
-  const handleOpenDialog = (item?: MenuItem) => {
+  const handleOpenDialog = async (item?: MenuItem) => {
     if (item) {
       // Editing existing item
       setEditingItem(item);
@@ -127,6 +132,19 @@ const MenuManagement = () => {
         dietaryTags: item.dietaryTags,
         isActive: item.isActive,
       });
+
+      // Fetch assigned locations for this menu item
+      try {
+        setLoadingLocations(true);
+        const response = await api.get(`/admin/menu-items/${item.id}/locations`);
+        if (response.data.success) {
+          setSelectedLocationIds(response.data.data.map((loc: any) => loc.id));
+        }
+      } catch (err) {
+        console.error('Failed to fetch menu item locations:', err);
+      } finally {
+        setLoadingLocations(false);
+      }
     } else {
       // Creating new item
       setEditingItem(null);
@@ -140,7 +158,22 @@ const MenuManagement = () => {
         dietaryTags: [],
         isActive: true,
       });
+      setSelectedLocationIds([]);
     }
+
+    // Fetch all locations
+    try {
+      setLoadingLocations(true);
+      const response = await api.get('/admin/locations');
+      if (response.data.success) {
+        setLocations(response.data.data.filter((loc: any) => loc.isActive));
+      }
+    } catch (err) {
+      console.error('Failed to fetch locations:', err);
+    } finally {
+      setLoadingLocations(false);
+    }
+
     setOpenDialog(true);
   };
 
@@ -148,6 +181,8 @@ const MenuManagement = () => {
     setOpenDialog(false);
     setEditingItem(null);
     setDialogTab(0);
+    setSelectedLocationIds([]);
+    setLocations([]);
   };
 
   const handleSaveItem = async () => {
@@ -169,12 +204,27 @@ const MenuManagement = () => {
         price: parseFloat(formData.price),
       };
 
+      let menuItemId: string;
+
       if (editingItem) {
         // Update existing item
         await api.put(`/admin/menu/items/${editingItem.id}`, itemData);
+        menuItemId = editingItem.id;
       } else {
         // Create new item
-        await api.post('/admin/menu/items', itemData);
+        const response = await api.post('/admin/menu/items', itemData);
+        menuItemId = response.data.data.id;
+      }
+
+      // Save location assignments
+      try {
+        await api.put(`/admin/menu-items/${menuItemId}/locations`, {
+          locationIds: selectedLocationIds,
+        });
+      } catch (err) {
+        console.error('Failed to save location assignments:', err);
+        setError('Menu item saved, but failed to save location assignments');
+        return;
       }
 
       handleCloseDialog();
@@ -543,6 +593,7 @@ const MenuManagement = () => {
         >
           <Tab label="Basic Info" />
           <Tab label="Variations" disabled={!editingItem} />
+          <Tab label="Locations" disabled={!editingItem} />
         </Tabs>
         <DialogContent>
           {dialogTab === 0 && (
@@ -718,10 +769,76 @@ const MenuManagement = () => {
               />
             </Box>
           )}
+
+          {dialogTab === 2 && editingItem && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Select which locations will offer this menu item. Customers will only see items available at their selected location.
+              </Typography>
+
+              {loadingLocations ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress />
+                </Box>
+              ) : locations.length === 0 ? (
+                <Alert severity="info">
+                  No active locations available. Please create locations first in the Locations page.
+                </Alert>
+              ) : (
+                <>
+                  <FormGroup>
+                    {locations.map((location) => (
+                      <FormControlLabel
+                        key={location.id}
+                        control={
+                          <Checkbox
+                            checked={selectedLocationIds.includes(location.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedLocationIds([...selectedLocationIds, location.id]);
+                              } else {
+                                setSelectedLocationIds(selectedLocationIds.filter(id => id !== location.id));
+                              }
+                            }}
+                          />
+                        }
+                        label={location.name}
+                      />
+                    ))}
+                  </FormGroup>
+
+                  {selectedLocationIds.length === 0 && (
+                    <Alert severity="warning" sx={{ mt: 2 }}>
+                      This menu item will not be available at any location. Please select at least one location.
+                    </Alert>
+                  )}
+
+                  <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+                    <Button
+                      onClick={async () => {
+                        try {
+                          await api.put(`/admin/menu-items/${editingItem.id}/locations`, {
+                            locationIds: selectedLocationIds,
+                          });
+                          setDialogTab(0);
+                        } catch (err) {
+                          console.error('Failed to save location assignments:', err);
+                          setError('Failed to save location assignments');
+                        }
+                      }}
+                      variant="contained"
+                    >
+                      Save Location Assignments
+                    </Button>
+                  </Box>
+                </>
+              )}
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>
-            {dialogTab === 1 ? 'Done' : 'Cancel'}
+            {dialogTab === 1 || dialogTab === 2 ? 'Done' : 'Cancel'}
           </Button>
           {dialogTab === 0 && (
             <Button onClick={handleSaveItem} variant="contained">

@@ -16,12 +16,16 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  IconButton,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
+import { Add as AddIcon, Remove as RemoveIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useLocationContext, LocationSelector } from '@hrc-kitchen/common';
+import { menuApi } from '../services/api';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements, PaymentRequestButtonElement } from '@stripe/react-stripe-js';
 import type { PaymentRequest } from '@stripe/stripe-js';
@@ -30,8 +34,9 @@ import axios from 'axios';
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 const CheckoutForm: React.FC = () => {
-  const { items, clearCart, getCartTotal, calculateItemPrice } = useCart();
+  const { items, clearCart, getCartTotal, calculateItemPrice, cartLocationId, removeItem, updateQuantity, setCartLocation, validateCartForLocation } = useCart();
   const { token, isAuthenticated } = useAuth();
+  const { locations, selectedLocation, selectLocation, isLoading: locationsLoading } = useLocationContext();
   const navigate = useNavigate();
   const stripe = useStripe();
   const elements = useElements();
@@ -83,6 +88,48 @@ const CheckoutForm: React.FC = () => {
     checkOrderingWindow();
   }, [navigate]);
 
+  // Handle location change and validate cart
+  const handleLocationChange = async (locationId: string) => {
+    const newLocation = locations.find(loc => loc.id === locationId);
+    if (!newLocation) return;
+
+    try {
+      // Fetch menu items for the new location to validate cart
+      const response = await menuApi.getTodaysMenu(locationId);
+      if (response.success) {
+        const availableMenuItemIds = response.data.items.map((item: any) => item.id);
+        const unavailableItems = validateCartForLocation(locationId, availableMenuItemIds);
+
+        if (unavailableItems.length > 0) {
+          // Get item names
+          const unavailableNames = unavailableItems
+            .map(id => items.find(item => item.menuItem.id === id)?.menuItem.name)
+            .filter(Boolean);
+
+          const confirmRemove = window.confirm(
+            `The following items in your cart are not available at ${newLocation.name}:\n\n` +
+            unavailableNames.join('\n') +
+            '\n\nThese items will be removed from your cart. Continue?'
+          );
+
+          if (confirmRemove) {
+            unavailableItems.forEach(itemId => removeItem(itemId));
+            selectLocation(locationId);
+            setCartLocation(locationId);
+          }
+          // If user cancels, don't change location
+        } else {
+          // All items available at new location
+          selectLocation(locationId);
+          setCartLocation(locationId);
+        }
+      }
+    } catch (err) {
+      console.error('Error validating cart for new location:', err);
+      setError('Failed to validate cart for new location');
+    }
+  };
+
   // Initialize Payment Request Button for Apple Pay / Google Pay
   useEffect(() => {
     if (!stripe) {
@@ -133,6 +180,14 @@ const CheckoutForm: React.FC = () => {
           }
         }
 
+        // Validate locationId
+        if (!cartLocationId) {
+          event.complete('fail');
+          setError('Please select a location before placing an order');
+          setLoading(false);
+          return;
+        }
+
         // Create order and get payment intent
         const orderData = {
           items: items.map(item => ({
@@ -143,6 +198,7 @@ const CheckoutForm: React.FC = () => {
             selectedVariations: item.selectedVariations || [],
           })),
           deliveryNotes: deliveryNotes || undefined,
+          locationId: cartLocationId,
         };
 
         let response;
@@ -250,6 +306,12 @@ const CheckoutForm: React.FC = () => {
       }
     }
 
+    // Validate locationId
+    if (!cartLocationId) {
+      setError('Please select a location before placing an order');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -264,6 +326,7 @@ const CheckoutForm: React.FC = () => {
           selectedVariations: item.selectedVariations || [],
         })),
         deliveryNotes: deliveryNotes || undefined,
+        locationId: cartLocationId,
       };
 
       let response;
@@ -407,6 +470,31 @@ const CheckoutForm: React.FC = () => {
         Checkout
       </Typography>
 
+      {/* Location Selector */}
+      <Paper
+        sx={{
+          p: { xs: 2.5, sm: 3.5 },
+          mb: 3,
+          border: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 1 }}>
+          Delivery Location
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Select the location where you'd like to receive your order
+        </Typography>
+        <LocationSelector
+          locations={locations}
+          selectedLocationId={selectedLocation?.id || null}
+          onLocationChange={handleLocationChange}
+          isLoading={locationsLoading}
+          label="Delivery Location"
+          size="medium"
+        />
+      </Paper>
+
       <Paper
         sx={{
           p: { xs: 2.5, sm: 3.5 },
@@ -422,19 +510,72 @@ const CheckoutForm: React.FC = () => {
         <List>
           {items.map(item => (
             <ListItem key={item.menuItem.id} sx={{ px: 0, py: { xs: 1.5, sm: 2 }, flexDirection: 'column', alignItems: 'flex-start' }}>
-              <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body1" fontWeight="bold">
-                  {item.menuItem.name} × {item.quantity}
-                </Typography>
-                <Typography variant="body1" fontWeight="bold">
-                  ${(calculateItemPrice(item) * item.quantity).toFixed(2)}
-                </Typography>
+              <Box sx={{
+                width: '100%',
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                justifyContent: 'space-between',
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                mb: 1,
+                gap: { xs: 1, sm: 0 }
+              }}>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="body1" fontWeight="bold">
+                    {item.menuItem.name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    ${calculateItemPrice(item).toFixed(2)} each
+                  </Typography>
+                </Box>
+
+                <Box sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  width: { xs: '100%', sm: 'auto' },
+                  gap: { xs: 2, sm: 1 }
+                }}>
+                  {/* Quantity Controls */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        if (item.quantity > 1) {
+                          updateQuantity(item.menuItem.id, item.quantity - 1);
+                        }
+                      }}
+                      disabled={item.quantity <= 1}
+                    >
+                      <RemoveIcon fontSize="small" />
+                    </IconButton>
+                    <Typography sx={{ minWidth: '30px', textAlign: 'center', fontWeight: 500 }}>
+                      {item.quantity}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={() => updateQuantity(item.menuItem.id, item.quantity + 1)}
+                    >
+                      <AddIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="body1" fontWeight="bold" sx={{ minWidth: '60px', textAlign: 'right' }}>
+                      ${(calculateItemPrice(item) * item.quantity).toFixed(2)}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => removeItem(item.menuItem.id)}
+                      aria-label="Remove item"
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Box>
               </Box>
 
-              <Box sx={{ width: '100%', pl: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  ${calculateItemPrice(item).toFixed(2)} each
-                </Typography>
+              <Box sx={{ width: '100%', pl: { xs: 0, sm: 2 } }}>
 
                 {/* Display selected variations */}
                 {item.selectedVariations && item.selectedVariations.length > 0 && (

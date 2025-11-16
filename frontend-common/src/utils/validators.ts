@@ -99,6 +99,8 @@ export const hasMaxLength = (value: string, maxLength: number): boolean => {
 
 /**
  * Checks if a date is a weekday (Monday-Friday)
+ * Note: With weekend menu support, this is kept for backward compatibility
+ * but ordering is now menu-driven (based on item availability)
  */
 export const isWeekday = (date: Date): boolean => {
   const day = date.getDay();
@@ -107,15 +109,14 @@ export const isWeekday = (date: Date): boolean => {
 
 /**
  * Checks if current time is within ordering window
+ * Note: No longer checks for weekends - ordering is menu-driven based on item availability
  */
 export const isWithinOrderingWindow = (
   startTime: string,
   endTime: string,
   currentDate: Date = new Date()
 ): boolean => {
-  if (!isWeekday(currentDate)) {
-    return false;
-  }
+  // Removed weekend check - ordering is now menu-driven
 
   const [startHour, startMin] = startTime.split(':').map(Number);
   const [endHour, endMin] = endTime.split(':').map(Number);

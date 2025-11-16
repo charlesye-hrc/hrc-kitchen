@@ -1,3 +1,14 @@
+// Location Types
+export interface Location {
+  id: string;
+  name: string;
+  address?: string | null;
+  phone?: string | null;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 // User and Auth Types
 export interface User {
   id: string;
@@ -8,12 +19,14 @@ export interface User {
   department?: string;
   location?: string;
   phone?: string;
+  lastSelectedLocationId?: string | null;
 }
 
 export interface AuthResponse {
   user: User;
   token: string;
-  hasAdminAccess: boolean; // NEW: Indicates if user can access management app
+  hasAdminAccess: boolean;
+  accessibleLocations?: Location[];
 }
 
 export interface RegisterData {
@@ -27,7 +40,7 @@ export interface RegisterData {
 
 // Menu and Product Types
 export type MenuCategory = 'MAIN' | 'SIDE' | 'DRINK' | 'DESSERT' | 'OTHER';
-export type Weekday = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY';
+export type Weekday = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
 export type VariationGroupType = 'SINGLE_SELECT' | 'MULTI_SELECT';
 
 export interface MenuItem {
@@ -96,6 +109,7 @@ export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
 export interface Order {
   id: string;
   userId?: string | null;
+  locationId?: string | null;
   guestEmail?: string | null;
   guestFirstName?: string | null;
   guestLastName?: string | null;
@@ -108,6 +122,7 @@ export interface Order {
   orderDate: string;
   orderItems: OrderItem[];
   user?: User;
+  location?: Location;
   createdAt: string;
   updatedAt: string;
 }
@@ -132,6 +147,18 @@ export interface CartItem {
   customizations: string[];
   selectedVariations: SelectedVariation[];
   specialRequest?: string;
+}
+
+export interface CreateOrderData {
+  items: Array<{
+    menuItemId: string;
+    quantity: number;
+    customizations?: string;
+    selectedVariations?: VariationSelection[];
+    specialRequests?: string;
+  }>;
+  deliveryNotes?: string;
+  locationId: string;
 }
 
 // System Config Types

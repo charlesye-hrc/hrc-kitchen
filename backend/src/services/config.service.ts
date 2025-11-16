@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma';
+import { Weekday } from '@prisma/client';
 
 export class ConfigService {
   /**
@@ -70,12 +71,33 @@ export class ConfigService {
     const now = new Date();
     const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
 
-    // Check if it's a weekend
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
+    // Get current weekday as Prisma enum
+    const weekdayMap: { [key: number]: Weekday } = {
+      0: 'SUNDAY',
+      1: 'MONDAY',
+      2: 'TUESDAY',
+      3: 'WEDNESDAY',
+      4: 'THURSDAY',
+      5: 'FRIDAY',
+      6: 'SATURDAY',
+    };
+    const currentWeekday = weekdayMap[dayOfWeek];
+
+    // Check if there are any menu items available for today
+    const menuItemsToday = await prisma.menuItem.count({
+      where: {
+        weekdays: {
+          has: currentWeekday,
+        },
+        isActive: true,
+      },
+    });
+
+    if (menuItemsToday === 0) {
       return {
         active: false,
         window: { start: '', end: '' },
-        message: 'Ordering is not available on weekends',
+        message: 'No menu items available for today',
       };
     }
 

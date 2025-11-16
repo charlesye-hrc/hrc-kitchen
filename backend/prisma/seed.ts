@@ -106,6 +106,81 @@ async function main() {
   });
   console.log('✅ System configuration created');
 
+  // Create sample locations
+  const location1 = await prisma.location.upsert({
+    where: { name: 'Main Campus - Huonville' },
+    update: {},
+    create: {
+      name: 'Main Campus - Huonville',
+      address: '123 Main Street, Huonville TAS 7109',
+      phone: '03 6264 1234',
+      isActive: true,
+    },
+  });
+
+  const location2 = await prisma.location.upsert({
+    where: { name: 'South Campus - Cygnet' },
+    update: {},
+    create: {
+      name: 'South Campus - Cygnet',
+      address: '45 Mary Street, Cygnet TAS 7112',
+      phone: '03 6295 5678',
+      isActive: true,
+    },
+  });
+
+  const location3 = await prisma.location.upsert({
+    where: { name: 'North Campus - Franklin' },
+    update: {},
+    create: {
+      name: 'North Campus - Franklin',
+      address: '78 Huon Highway, Franklin TAS 7113',
+      phone: '03 6266 9012',
+      isActive: true,
+    },
+  });
+  console.log('✅ Sample locations created');
+
+  // Assign locations to users
+  // Admin has access to all locations (will be handled by role)
+  // Kitchen staff has access to Main and South campuses
+  await prisma.userLocation.createMany({
+    data: [
+      { userId: kitchen.id, locationId: location1.id },
+      { userId: kitchen.id, locationId: location2.id },
+    ],
+    skipDuplicates: true,
+  });
+
+  // Finance has access to all locations
+  await prisma.userLocation.createMany({
+    data: [
+      { userId: finance.id, locationId: location1.id },
+      { userId: finance.id, locationId: location2.id },
+      { userId: finance.id, locationId: location3.id },
+    ],
+    skipDuplicates: true,
+  });
+
+  // Set default location for users
+  await prisma.user.update({
+    where: { id: admin.id },
+    data: { lastSelectedLocationId: location1.id },
+  });
+  await prisma.user.update({
+    where: { id: kitchen.id },
+    data: { lastSelectedLocationId: location1.id },
+  });
+  await prisma.user.update({
+    where: { id: finance.id },
+    data: { lastSelectedLocationId: location1.id },
+  });
+  await prisma.user.update({
+    where: { id: staff.id },
+    data: { lastSelectedLocationId: location1.id },
+  });
+  console.log('✅ User-location assignments and preferences created');
+
   // Create sample menu items for all weekdays
   const menuItems = [
     // Items available multiple days
@@ -251,9 +326,10 @@ async function main() {
     },
   ];
 
+  const createdMenuItems = [];
   for (const item of menuItems) {
     const itemId = item.name.toLowerCase().replace(/\s+/g, '-');
-    await prisma.menuItem.upsert({
+    const menuItem = await prisma.menuItem.upsert({
       where: { id: itemId },
       update: {},
       create: {
@@ -261,8 +337,46 @@ async function main() {
         ...item,
       },
     });
+    createdMenuItems.push(menuItem);
   }
   console.log('✅ Sample menu items created with multiple weekdays support');
+
+  // Link menu items to locations
+  // Most items available at all locations
+  for (const menuItem of createdMenuItems) {
+    await prisma.menuItemLocation.createMany({
+      data: [
+        { menuItemId: menuItem.id, locationId: location1.id },
+        { menuItemId: menuItem.id, locationId: location2.id },
+        { menuItemId: menuItem.id, locationId: location3.id },
+      ],
+      skipDuplicates: true,
+    });
+  }
+
+  // Make some items location-specific (for testing)
+  // Remove "Butter Chicken" from North Campus
+  const butterChicken = createdMenuItems.find(item => item.name === 'Butter Chicken');
+  if (butterChicken) {
+    await prisma.menuItemLocation.deleteMany({
+      where: {
+        menuItemId: butterChicken.id,
+        locationId: location3.id,
+      },
+    });
+  }
+
+  // Remove "Fish & Chips" from South Campus
+  const fishAndChips = createdMenuItems.find(item => item.name === 'Fish & Chips');
+  if (fishAndChips) {
+    await prisma.menuItemLocation.deleteMany({
+      where: {
+        menuItemId: fishAndChips.id,
+        locationId: location2.id,
+      },
+    });
+  }
+  console.log('✅ Menu items linked to locations');
 
   // Add customizations for some items
   const caesarSalad = await prisma.menuItem.findFirst({

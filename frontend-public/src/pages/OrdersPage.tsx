@@ -37,6 +37,11 @@ interface Order {
   orderDate: string;
   createdAt: string;
   orderItems: OrderItem[];
+  location?: {
+    id: string;
+    name: string;
+    address?: string;
+  };
 }
 
 interface PaginationData {
@@ -273,13 +278,19 @@ const OrdersPage: React.FC = () => {
                           minute: '2-digit',
                         })}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                         For {orderDate.toLocaleDateString('en-US', {
                           weekday: 'long',
                           month: 'long',
                           day: 'numeric',
                         })}
                       </Typography>
+                      {order.location && (
+                        <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <Box component="span" sx={{ fontWeight: 500 }}>📍</Box>
+                          {order.location.name}
+                        </Typography>
+                      )}
                     </Box>
                     <Box sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
                       <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main', mb: 1.5 }}>

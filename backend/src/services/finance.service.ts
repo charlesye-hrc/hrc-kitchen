@@ -42,14 +42,20 @@ export class FinanceService {
   /**
    * Get daily revenue report for a date range
    */
-  async getDailyRevenueReport(dateRange: DateRange): Promise<RevenueReport[]> {
-    const orders = await prisma.order.findMany({
-      where: {
-        orderDate: {
-          gte: dateRange.startDate,
-          lte: dateRange.endDate,
-        },
+  async getDailyRevenueReport(dateRange: DateRange, locationId?: string): Promise<RevenueReport[]> {
+    const where: any = {
+      orderDate: {
+        gte: dateRange.startDate,
+        lte: dateRange.endDate,
       },
+    };
+
+    if (locationId) {
+      where.locationId = locationId;
+    }
+
+    const orders = await prisma.order.findMany({
+      where,
       select: {
         orderDate: true,
         totalAmount: true,
@@ -94,14 +100,20 @@ export class FinanceService {
   /**
    * Get detailed order report for a date range
    */
-  async getOrderDetailsReport(dateRange: DateRange): Promise<OrderDetailsReport[]> {
-    const orders = await prisma.order.findMany({
-      where: {
-        orderDate: {
-          gte: dateRange.startDate,
-          lte: dateRange.endDate,
-        },
+  async getOrderDetailsReport(dateRange: DateRange, locationId?: string): Promise<OrderDetailsReport[]> {
+    const where: any = {
+      orderDate: {
+        gte: dateRange.startDate,
+        lte: dateRange.endDate,
       },
+    };
+
+    if (locationId) {
+      where.locationId = locationId;
+    }
+
+    const orders = await prisma.order.findMany({
+      where,
       include: {
         user: {
           select: {
@@ -146,16 +158,22 @@ export class FinanceService {
   /**
    * Get menu item sales report for a date range
    */
-  async getMenuItemSalesReport(dateRange: DateRange): Promise<MenuItemSalesReport[]> {
+  async getMenuItemSalesReport(dateRange: DateRange, locationId?: string): Promise<MenuItemSalesReport[]> {
+    const where: any = {
+      orderDate: {
+        gte: dateRange.startDate,
+        lte: dateRange.endDate,
+      },
+      paymentStatus: PaymentStatus.COMPLETED,
+    };
+
+    if (locationId) {
+      where.locationId = locationId;
+    }
+
     const orderItems = await prisma.orderItem.findMany({
       where: {
-        order: {
-          orderDate: {
-            gte: dateRange.startDate,
-            lte: dateRange.endDate,
-          },
-          paymentStatus: PaymentStatus.COMPLETED,
-        },
+        order: where,
       },
       include: {
         menuItem: {
@@ -193,14 +211,20 @@ export class FinanceService {
   /**
    * Get summary statistics for a date range
    */
-  async getSummaryStatistics(dateRange: DateRange) {
-    const orders = await prisma.order.findMany({
-      where: {
-        orderDate: {
-          gte: dateRange.startDate,
-          lte: dateRange.endDate,
-        },
+  async getSummaryStatistics(dateRange: DateRange, locationId?: string) {
+    const where: any = {
+      orderDate: {
+        gte: dateRange.startDate,
+        lte: dateRange.endDate,
       },
+    };
+
+    if (locationId) {
+      where.locationId = locationId;
+    }
+
+    const orders = await prisma.order.findMany({
+      where,
       select: {
         totalAmount: true,
         paymentStatus: true,

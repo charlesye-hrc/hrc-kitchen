@@ -11,6 +11,7 @@ export interface CreateOrderItemDto {
 export interface CreateOrderDto {
   items: CreateOrderItemDto[];
   deliveryNotes?: string;
+  locationId: string;
 }
 
 export interface OrderWithDetails {

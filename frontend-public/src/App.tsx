@@ -9,6 +9,9 @@ import OrdersPage from './pages/OrdersPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
+import { LocationProvider } from '@hrc-kitchen/common';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
 /**
  * Public Ordering App
@@ -20,27 +23,29 @@ import { CartProvider } from './contexts/CartContext';
 function App() {
   return (
     <AuthProvider>
-      <CartProvider>
-        <Layout>
-          <Routes>
-            {/* Redirect root to menu */}
-            <Route path="/" element={<Navigate to="/menu" replace />} />
+      <LocationProvider apiUrl={API_URL}>
+        <CartProvider>
+          <Layout>
+            <Routes>
+              {/* Redirect root to menu */}
+              <Route path="/" element={<Navigate to="/menu" replace />} />
 
-            {/* Public Routes */}
-            <Route path="/menu" element={<MenuPage />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+              {/* Public Routes */}
+              <Route path="/menu" element={<MenuPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/order-confirmation/:orderId" element={<OrderConfirmationPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
 
-            {/* Protected Routes (Authenticated Users Only) */}
-            <Route path="/orders" element={<OrdersPage />} />
+              {/* Protected Routes (Authenticated Users Only) */}
+              <Route path="/orders" element={<OrdersPage />} />
 
-            {/* 404 - Catch-all route */}
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </Layout>
-      </CartProvider>
+              {/* 404 - Catch-all route */}
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </Layout>
+        </CartProvider>
+      </LocationProvider>
     </AuthProvider>
   );
 }

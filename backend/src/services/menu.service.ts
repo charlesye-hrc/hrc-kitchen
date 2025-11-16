@@ -9,11 +9,13 @@ export class MenuService {
     const day = new Date().getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 
     const weekdayMap: { [key: number]: Weekday } = {
+      0: 'SUNDAY',
       1: 'MONDAY',
       2: 'TUESDAY',
       3: 'WEDNESDAY',
       4: 'THURSDAY',
       5: 'FRIDAY',
+      6: 'SATURDAY',
     };
 
     return weekdayMap[day] || null;
@@ -21,42 +23,78 @@ export class MenuService {
 
   /**
    * Get today's menu items (current weekday only)
+   * Optionally filtered by location
    */
-  async getTodaysMenu() {
+  async getTodaysMenu(locationId?: string) {
     const weekday = this.getCurrentWeekday();
 
     if (!weekday) {
       return {
         items: [],
-        message: 'Menu not available on weekends',
+        message: 'Unable to determine current day',
         weekday: null,
       };
     }
 
-    const items = await prisma.menuItem.findMany({
-      where: {
-        weekdays: {
-          has: weekday,
+    let items;
+
+    if (locationId) {
+      // Get menu items filtered by location
+      const menuItemLocations = await prisma.menuItemLocation.findMany({
+        where: {
+          locationId,
+          menuItem: {
+            weekdays: {
+              has: weekday,
+            },
+            isActive: true,
+          },
         },
-        isActive: true,
-      },
-      include: {
-        customizations: true,
-        variationGroups: {
-          where: {},
-          include: {
-            options: {
-              orderBy: { displayOrder: 'asc' },
+        include: {
+          menuItem: {
+            include: {
+              customizations: true,
+              variationGroups: {
+                include: {
+                  options: {
+                    orderBy: { displayOrder: 'asc' },
+                  },
+                },
+                orderBy: { displayOrder: 'asc' },
+              },
             },
           },
-          orderBy: { displayOrder: 'asc' },
         },
-      },
-      orderBy: [
-        { category: 'asc' },
-        { name: 'asc' },
-      ],
-    });
+      });
+
+      items = menuItemLocations.map(mil => mil.menuItem);
+    } else {
+      // Get all menu items (no location filter)
+      items = await prisma.menuItem.findMany({
+        where: {
+          weekdays: {
+            has: weekday,
+          },
+          isActive: true,
+        },
+        include: {
+          customizations: true,
+          variationGroups: {
+            where: {},
+            include: {
+              options: {
+                orderBy: { displayOrder: 'asc' },
+              },
+            },
+            orderBy: { displayOrder: 'asc' },
+          },
+        },
+        orderBy: [
+          { category: 'asc' },
+          { name: 'asc' },
+        ],
+      });
+    }
 
     return {
       items,
@@ -97,6 +135,8 @@ export class MenuService {
       WEDNESDAY: items.filter(item => item.weekdays.includes('WEDNESDAY')),
       THURSDAY: items.filter(item => item.weekdays.includes('THURSDAY')),
       FRIDAY: items.filter(item => item.weekdays.includes('FRIDAY')),
+      SATURDAY: items.filter(item => item.weekdays.includes('SATURDAY')),
+      SUNDAY: items.filter(item => item.weekdays.includes('SUNDAY')),
     };
 
     return groupedByWeekday;

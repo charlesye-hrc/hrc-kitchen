@@ -122,8 +122,9 @@ export interface WeeklyMenuResponse {
 
 // Menu API
 export const menuApi = {
-  getTodaysMenu: async (): Promise<TodaysMenuResponse> => {
-    const response = await api.get('/menu/today');
+  getTodaysMenu: async (locationId?: string): Promise<TodaysMenuResponse> => {
+    const params = locationId ? { locationId } : {};
+    const response = await api.get('/menu/today', { params });
     return response.data;
   },
 

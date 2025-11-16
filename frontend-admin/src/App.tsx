@@ -4,12 +4,17 @@ import LoginPage from './pages/LoginPage';
 import KitchenDashboard from './pages/KitchenDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import ReportsPage from './pages/ReportsPage';
+import LocationManagementPage from './pages/LocationManagementPage';
+import UserLocationAssignmentPage from './pages/UserLocationAssignmentPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
+import { LocationProvider } from '@hrc-kitchen/common';
 import { ReactNode, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CircularProgress, Box, Alert, Container } from '@mui/material';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
 /**
  * Internal Management App
@@ -138,6 +143,26 @@ const AppRoutes = () => {
         }
       />
 
+      {/* Protected Routes - Admin Only - Location Management */}
+      <Route
+        path="/admin/locations"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <LocationManagementPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Protected Routes - Admin Only - User Location Assignments */}
+      <Route
+        path="/admin/user-locations"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <UserLocationAssignmentPage />
+          </ProtectedRoute>
+        }
+      />
+
       {/* 404 - Catch-all route */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
@@ -147,9 +172,11 @@ const AppRoutes = () => {
 function App() {
   return (
     <AuthProvider>
-      <AdminLayout>
-        <AppRoutes />
-      </AdminLayout>
+      <LocationProvider apiUrl={API_URL}>
+        <AdminLayout>
+          <AppRoutes />
+        </AdminLayout>
+      </LocationProvider>
     </AuthProvider>
   );
 }

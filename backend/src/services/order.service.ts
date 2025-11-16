@@ -66,6 +66,29 @@ export class OrderService {
       throw new Error('One or more menu items are invalid or unavailable');
     }
 
+    // Validate all menu items are available at the specified location
+    if (orderData.locationId) {
+      const menuItemLocations = await prisma.menuItemLocation.findMany({
+        where: {
+          locationId: orderData.locationId,
+          menuItemId: { in: orderData.items.map(item => item.menuItemId) }
+        }
+      });
+
+      const availableMenuItemIds = menuItemLocations.map(mil => mil.menuItemId);
+      const unavailableItems = orderData.items.filter(
+        item => !availableMenuItemIds.includes(item.menuItemId)
+      );
+
+      if (unavailableItems.length > 0) {
+        const unavailableNames = unavailableItems
+          .map(item => menuItems.find(mi => mi.id === item.menuItemId)?.name)
+          .filter(Boolean)
+          .join(', ');
+        throw new Error(`The following items are not available at the selected location: ${unavailableNames}`);
+      }
+    }
+
     // Calculate total amount with variations
     let totalAmount = 0;
     const orderItems = orderData.items.map(item => {
@@ -162,6 +185,7 @@ export class OrderService {
             data: {
               orderNumber,
           userId: customerInfo.userId || null,
+          locationId: orderData.locationId,
           guestEmail: customerInfo.guestEmail || null,
           guestFirstName: customerInfo.guestFirstName || null,
           guestLastName: customerInfo.guestLastName || null,
@@ -226,6 +250,13 @@ export class OrderService {
         userId
       },
       include: {
+        location: {
+          select: {
+            id: true,
+            name: true,
+            address: true
+          }
+        },
         orderItems: {
           include: {
             menuItem: {
@@ -256,6 +287,13 @@ export class OrderService {
         userId: null // Guest orders only
       },
       include: {
+        location: {
+          select: {
+            id: true,
+            name: true,
+            address: true
+          }
+        },
         orderItems: {
           include: {
             menuItem: {
@@ -314,6 +352,13 @@ export class OrderService {
     const orders = await prisma.order.findMany({
       where,
       include: {
+        location: {
+          select: {
+            id: true,
+            name: true,
+            address: true
+          }
+        },
         orderItems: {
           include: {
             menuItem: {

@@ -39,10 +39,13 @@ export declare const hasMinLength: (value: string, minLength: number) => boolean
 export declare const hasMaxLength: (value: string, maxLength: number) => boolean;
 /**
  * Checks if a date is a weekday (Monday-Friday)
+ * Note: With weekend menu support, this is kept for backward compatibility
+ * but ordering is now menu-driven (based on item availability)
  */
 export declare const isWeekday: (date: Date) => boolean;
 /**
  * Checks if current time is within ordering window
+ * Note: No longer checks for weekends - ordering is menu-driven based on item availability
  */
 export declare const isWithinOrderingWindow: (startTime: string, endTime: string, currentDate?: Date) => boolean;
 /**
