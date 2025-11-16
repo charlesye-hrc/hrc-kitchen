@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
+import LogoutIcon from '@mui/icons-material/Logout';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -195,7 +196,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <Button color="inherit" component={Link} to="/orders">
                     Orders
                   </Button>
-                  <Button color="inherit" onClick={handleLogout}>
+                  <Button
+                    color="inherit"
+                    onClick={handleLogout}
+                    startIcon={<LogoutIcon />}
+                    sx={{
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      },
+                    }}
+                  >
                     Logout
                   </Button>
                 </>

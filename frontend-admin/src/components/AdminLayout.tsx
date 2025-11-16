@@ -6,14 +6,10 @@ import {
   Typography,
   Button,
   Container,
-  IconButton,
-  Menu,
-  MenuItem,
 } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import AccountCircle from '@mui/icons-material/AccountCircle';
-import { useState } from 'react';
+import LogoutIcon from '@mui/icons-material/Logout';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -23,19 +19,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-
-  const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
 
   const handleLogout = () => {
     logout();
-    handleClose();
     navigate('/login');
   };
 
@@ -113,37 +99,22 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
           )}
 
           {isAuthenticated ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="body2" sx={{ mr: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="body2">
                 {user?.fullName} ({user?.role})
               </Typography>
-              <IconButton
-                size="large"
-                aria-label="account of current user"
-                aria-controls="menu-appbar"
-                aria-haspopup="true"
-                onClick={handleMenu}
+              <Button
                 color="inherit"
-              >
-                <AccountCircle />
-              </IconButton>
-              <Menu
-                id="menu-appbar"
-                anchorEl={anchorEl}
-                anchorOrigin={{
-                  vertical: 'top',
-                  horizontal: 'right',
+                onClick={handleLogout}
+                startIcon={<LogoutIcon />}
+                sx={{
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  },
                 }}
-                keepMounted
-                transformOrigin={{
-                  vertical: 'top',
-                  horizontal: 'right',
-                }}
-                open={Boolean(anchorEl)}
-                onClose={handleClose}
               >
-                <MenuItem onClick={handleLogout}>Logout</MenuItem>
-              </Menu>
+                Logout
+              </Button>
             </Box>
           ) : (
             <Button color="inherit" onClick={() => navigate('/login')}>
