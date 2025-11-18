@@ -81,7 +81,7 @@ export const useLocation = (options?: UseLocationOptions): UseLocationReturn => 
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [API_URL]);
 
   useEffect(() => {
     fetchLocations();

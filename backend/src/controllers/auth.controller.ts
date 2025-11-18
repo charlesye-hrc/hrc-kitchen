@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../services/auth.service';
+import { EmailService } from '../services/email.service';
 import { ApiError } from '../middleware/errorHandler';
+import prisma from '../lib/prisma';
 
 export class AuthController {
   static async register(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -20,8 +22,9 @@ export class AuthController {
         phone,
       });
 
-      // TODO: Send verification email with token
-      // For now, return token in response (remove in production)
+      // Send verification email
+      await EmailService.sendVerificationEmail(user.email, user.fullName, verificationToken);
+
       res.status(201).json({
         message: 'Registration successful. Please check your email to verify your account.',
         user: {
@@ -29,8 +32,6 @@ export class AuthController {
           email: user.email,
           fullName: user.fullName,
         },
-        // Remove verificationToken from response in production - send via email instead
-        verificationToken,
       });
     } catch (error) {
       next(error);
@@ -66,6 +67,17 @@ export class AuthController {
 
       await AuthService.verifyEmail(userId);
 
+      // Get user info for welcome email
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { fullName: true, email: true },
+      });
+
+      // Send welcome email
+      if (user) {
+        await EmailService.sendWelcomeEmail(user.email, user.fullName);
+      }
+
       res.json({ message: 'Email verified successfully' });
     } catch (error) {
       next(error);
@@ -80,8 +92,14 @@ export class AuthController {
         throw new ApiError(400, 'Email is required');
       }
 
-      await AuthService.requestPasswordReset(email);
+      const result = await AuthService.requestPasswordReset(email);
 
+      // Send password reset email if user exists
+      if (result) {
+        await EmailService.sendPasswordResetEmail(email, result.fullName, result.resetToken);
+      }
+
+      // Always return same message to prevent email enumeration
       res.json({ message: 'If an account exists, a password reset link has been sent' });
     } catch (error) {
       next(error);
@@ -96,12 +114,29 @@ export class AuthController {
         throw new ApiError(400, 'Token and new password are required');
       }
 
-      // Validate token and extract userId
-      const { userId } = AuthService.verifyToken(token, 'password_reset');
+      // Verify reset token from database
+      const { userId } = await AuthService.verifyResetToken(token);
 
       await AuthService.resetPassword(userId, newPassword);
 
       res.json({ message: 'Password reset successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async verifyResetToken(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { token } = req.body;
+
+      if (!token) {
+        throw new ApiError(400, 'Token is required');
+      }
+
+      // Verify reset token from database (throws if invalid/expired)
+      await AuthService.verifyResetToken(token);
+
+      res.json({ valid: true, message: 'Token is valid' });
     } catch (error) {
       next(error);
     }

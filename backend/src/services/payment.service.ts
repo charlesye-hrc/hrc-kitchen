@@ -1,6 +1,9 @@
 import Stripe from 'stripe';
 import { PrismaClient } from '@prisma/client';
 import { ApiError } from '../middleware/errorHandler';
+import { EmailService } from './email.service';
+import { AuthService } from './auth.service';
+import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();
 
@@ -97,6 +100,9 @@ export class PaymentService {
       });
 
       console.log(`[Payment Service] ✓ Updated order ${orderId} payment status: PENDING → COMPLETED (manual confirmation)`);
+
+      // 6. Send order confirmation email
+      await this.sendOrderConfirmationEmail(orderId);
 
       return paymentIntent;
     } catch (error) {
@@ -203,6 +209,110 @@ export class PaymentService {
     });
 
     console.log(`[Payment Service] ✓ Updated order ${orderId} payment status: PENDING → COMPLETED (webhook)`);
+
+    // Send order confirmation email
+    await this.sendOrderConfirmationEmail(orderId);
+  }
+
+  /**
+   * Send order confirmation email for a completed order
+   */
+  private static async sendOrderConfirmationEmail(orderId: string): Promise<void> {
+    try {
+      // Fetch complete order details
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+          orderItems: true,
+          location: {
+            select: {
+              name: true,
+              address: true,
+            },
+          },
+        },
+      });
+
+      if (!order) {
+        logger.error(`[Payment Service] Cannot send email: Order ${orderId} not found`);
+        return;
+      }
+
+      // Determine email recipient and customer name
+      const isGuest = !order.userId;
+      let email: string;
+      let customerName: string;
+
+      if (isGuest) {
+        email = order.guestEmail || '';
+        customerName = `${order.guestFirstName} ${order.guestLastName}`;
+      } else {
+        email = order.customerEmail || '';
+        customerName = order.customerFullName || 'Customer';
+      }
+
+      if (!email) {
+        logger.warn(`[Payment Service] Cannot send email: No email address for order ${orderId}`);
+        return;
+      }
+
+      // Format order items for email
+      const items = order.orderItems.map(item => {
+        // Parse selected variations for display
+        let variations: string | undefined;
+        if (item.selectedVariations) {
+          const variationData = item.selectedVariations as any;
+          if (variationData.variations && Array.isArray(variationData.variations)) {
+            variations = variationData.variations
+              .map((v: any) => `${v.groupName}: ${v.optionName}`)
+              .join(', ');
+          }
+        }
+
+        // Parse customizations for special requests
+        let specialRequests: string | undefined;
+        if (item.customizations) {
+          const customData = item.customizations as any;
+          if (customData.specialRequests) {
+            specialRequests = customData.specialRequests;
+          }
+        }
+
+        return {
+          name: item.itemName || 'Unknown Item',
+          quantity: item.quantity,
+          unitPrice: Number(item.priceAtPurchase),
+          subtotal: Number(item.priceAtPurchase) * item.quantity,
+          variations,
+          specialRequests,
+        };
+      });
+
+      // Generate access token for guest orders
+      let accessToken: string | undefined;
+      if (isGuest) {
+        accessToken = AuthService.generateGuestOrderToken(orderId);
+      }
+
+      // Send the email
+      await EmailService.sendOrderConfirmationEmail(email, {
+        customerName,
+        orderNumber: order.orderNumber,
+        orderDate: order.orderDate,
+        items,
+        totalAmount: Number(order.totalAmount),
+        locationName: order.locationName || order.location?.name || 'Unknown Location',
+        locationAddress: order.locationAddress || order.location?.address || undefined,
+        deliveryNotes: order.specialRequests || undefined,
+        isGuest,
+        accessToken,
+      });
+
+      logger.info(`[Payment Service] Order confirmation email sent for order ${order.orderNumber}`);
+    } catch (error) {
+      // Log error but don't throw - email failure shouldn't affect order processing
+      logger.error(`[Payment Service] Failed to send order confirmation email for order ${orderId}:`, error);
+    }
   }
 
   private static async handlePaymentFailure(paymentIntent: Stripe.PaymentIntent): Promise<void> {

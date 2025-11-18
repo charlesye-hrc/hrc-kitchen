@@ -63,7 +63,7 @@ export const useLocation = (options) => {
         finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [API_URL]);
     useEffect(() => {
         fetchLocations();
     }, [fetchLocations]);

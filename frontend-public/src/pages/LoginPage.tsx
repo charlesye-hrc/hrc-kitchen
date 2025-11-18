@@ -125,6 +125,20 @@ const LoginPage = () => {
             autoComplete="current-password"
           />
 
+          <Box sx={{ textAlign: 'right', mt: 1 }}>
+            <Link
+              to="/forgot-password"
+              style={{
+                textDecoration: 'none',
+                color: '#2D5F3F',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+              }}
+            >
+              Forgot Password?
+            </Link>
+          </Box>
+
           <Button
             fullWidth
             type="submit"

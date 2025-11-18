@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { User, UserRole } from '@prisma/client';
 import { ApiError } from '../middleware/errorHandler';
 import prisma from '../lib/prisma';
@@ -169,7 +170,7 @@ export class AuthService {
     });
   }
 
-  static async requestPasswordReset(email: string): Promise<string | null> {
+  static async requestPasswordReset(email: string): Promise<{ resetToken: string; fullName: string } | null> {
     const startTime = Date.now();
     const minDuration = 100; // Minimum response time in ms to prevent timing attacks
 
@@ -177,13 +178,23 @@ export class AuthService {
       where: { email },
     });
 
-    let resetToken: string | null = null;
+    let result: { resetToken: string; fullName: string } | null = null;
 
     if (user) {
-      // Generate reset token
-      resetToken = this.generateResetToken(user.id, user.email);
+      // Generate a secure random token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetTokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
 
-      // TODO: Send email with reset token
+      // Store token in database (this invalidates any previous token)
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          resetToken,
+          resetTokenExpiresAt,
+        },
+      });
+
+      result = { resetToken, fullName: user.fullName };
       console.log(`Password reset token generated for ${email}`);
     }
 
@@ -194,7 +205,25 @@ export class AuthService {
       await new Promise(resolve => setTimeout(resolve, delay));
     }
 
-    return resetToken;
+    return result;
+  }
+
+  static async verifyResetToken(token: string): Promise<{ userId: string; email: string }> {
+    // Find user with this reset token
+    const user = await prisma.user.findFirst({
+      where: {
+        resetToken: token,
+        resetTokenExpiresAt: {
+          gt: new Date(), // Token must not be expired
+        },
+      },
+    });
+
+    if (!user) {
+      throw new ApiError(400, 'Invalid or expired reset token');
+    }
+
+    return { userId: user.id, email: user.email };
   }
 
   static async resetPassword(userId: string, newPassword: string): Promise<void> {
@@ -202,9 +231,14 @@ export class AuthService {
 
     const passwordHash = await bcrypt.hash(newPassword, this.BCRYPT_ROUNDS);
 
+    // Update password and clear the reset token (invalidate it)
     await prisma.user.update({
       where: { id: userId },
-      data: { passwordHash },
+      data: {
+        passwordHash,
+        resetToken: null,
+        resetTokenExpiresAt: null,
+      },
     });
   }
 

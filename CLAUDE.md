@@ -110,7 +110,17 @@ hrc-kitchen/
 - Domain validation via database config (`restricted_role_domain`)
 - `hasAdminAccess` flag in login response
 - Role-based access: STAFF, KITCHEN, ADMIN, FINANCE
+- Email verification required for new registrations
+- Secure password reset with database-stored tokens (single-use, 1-hour expiry)
 - [Backend Auth Service](backend/src/services/auth.service.ts)
+
+### Email Service
+- SendGrid Web API for transactional emails
+- Email types: verification, password reset, welcome, order confirmation
+- HTML templates with consistent branding
+- Token validation on reset page load (better UX)
+- [Email Service](backend/src/services/email.service.ts)
+- [Email Templates](backend/src/templates/emails/)
 
 ### Domain Validation
 - Middleware: [domainValidation.ts](backend/src/middleware/domainValidation.ts)
@@ -209,6 +219,8 @@ hrc-kitchen/
 - `DATABASE_URL` - Neon PostgreSQL connection
 - `JWT_SECRET` - Authentication secret
 - `STRIPE_SECRET_KEY` - Stripe API key
+- `SENDGRID_API_KEY` - SendGrid API key for emails
+- `EMAIL_FROM` - Sender email address
 - `CLOUDINARY_*` - Image upload credentials
 - `PUBLIC_APP_URL` - Public frontend URL
 - `ADMIN_APP_URL` - Admin frontend URL
@@ -270,7 +282,7 @@ hrc-kitchen/
 
 ---
 
-**Last Updated**: 2025-01-17
-**Document Version**: 2.1 (Bug fixes - finance reports & kitchen dashboard)
+**Last Updated**: 2025-11-18
+**Document Version**: 2.2 (Email service integration)
 
 [Maintenance Guidelines](DOCUMENTATION_GUIDELINES.md) | [Archive](docs/05-archive/README.md) | [Recent Bug Fixes](docs/05-archive/2025-01-17-bug-fixes.md)

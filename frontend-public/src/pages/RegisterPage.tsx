@@ -137,7 +137,7 @@ const RegisterPage = () => {
               borderLeftColor: 'success.main',
             }}
           >
-            Registration successful! Redirecting to login...
+            Registration successful! Please check your email to verify your account.
           </Alert>
         )}
 

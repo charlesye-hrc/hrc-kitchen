@@ -19,4 +19,7 @@ router.post('/forgot-password', authLimiter, AuthController.forgotPassword);
 // POST /api/v1/auth/reset-password
 router.post('/reset-password', authLimiter, AuthController.resetPassword);
 
+// POST /api/v1/auth/verify-reset-token
+router.post('/verify-reset-token', authLimiter, AuthController.verifyResetToken);
+
 export default router;
