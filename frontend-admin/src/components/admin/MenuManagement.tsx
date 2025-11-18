@@ -391,9 +391,14 @@ const MenuManagement = () => {
   }
 
   return (
-    <Box sx={{ p: { xs: 2, md: 3 } }}>
+    <Box sx={{
+      p: { xs: 0, md: 3 },
+      width: '100%',
+      maxWidth: '100%',
+      overflowX: 'hidden',
+    }}>
       {error && (
-        <Alert severity="error" onClose={() => setError('')} sx={{ mb: 3 }}>
+        <Alert severity="error" onClose={() => setError('')} sx={{ mb: 3, mx: { xs: 2, md: 0 } }}>
           {error}
         </Alert>
       )}
@@ -406,7 +411,8 @@ const MenuManagement = () => {
         sx={{
           flexDirection: { xs: 'column', sm: 'row' },
           alignItems: { xs: 'stretch', sm: 'center' },
-          gap: { xs: 2, sm: 0 }
+          gap: { xs: 2, sm: 0 },
+          px: { xs: 2, md: 0 },
         }}
       >
         <Typography variant="h6">Menu Items</Typography>
@@ -419,14 +425,19 @@ const MenuManagement = () => {
         </Button>
       </Box>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3 }}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3, px: { xs: 2, md: 0 } }}>
         <TextField
           fullWidth
-          placeholder="Search menu items by name, description, category, or dietary tags..."
+          placeholder={isMobile ? "Search menu items..." : "Search menu items by name, description, category, or dietary tags..."}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           variant="outlined"
           size="small"
+          sx={{
+            '& .MuiInputBase-input': {
+              fontSize: { xs: '0.875rem', sm: '1rem' },
+            }
+          }}
         />
         <ToggleButtonGroup
           value={viewMode}
@@ -461,11 +472,21 @@ const MenuManagement = () => {
         <Tabs
           value={currentWeekday}
           onChange={(_, newValue) => setCurrentWeekday(newValue)}
-          variant="fullWidth"
-          sx={{ mb: 3 }}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+          sx={{
+            mb: 3,
+            px: { xs: 2, md: 0 },
+            '& .MuiTab-root': {
+              fontSize: { xs: '0.7rem', sm: '0.875rem' },
+              minWidth: { xs: 60, sm: 90 },
+              px: { xs: 1, sm: 2 },
+            }
+          }}
         >
           {WEEKDAYS.map((day, index) => (
-            <Tab key={day} label={day} />
+            <Tab key={day} label={isMobile ? day.substring(0, 3) : day} />
           ))}
         </Tabs>
       )}
@@ -474,8 +495,18 @@ const MenuManagement = () => {
         <Tabs
           value={selectedCategory}
           onChange={(_, newValue) => setSelectedCategory(newValue)}
-          variant="fullWidth"
-          sx={{ mb: 3 }}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+          sx={{
+            mb: 3,
+            px: { xs: 2, md: 0 },
+            '& .MuiTab-root': {
+              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              minWidth: { xs: 70, sm: 100 },
+              px: { xs: 1, sm: 2 },
+            }
+          }}
         >
           {CATEGORIES.map((category) => (
             <Tab key={category} label={category} value={category} />
@@ -484,7 +515,7 @@ const MenuManagement = () => {
       )}
 
       {searchQuery && (
-        <Box sx={{ mb: 2 }}>
+        <Box sx={{ mb: 2, px: { xs: 2, md: 0 } }}>
           <Chip
             label={`Showing ${currentItems.length} result${currentItems.length !== 1 ? 's' : ''} for "${searchQuery}"`}
             onDelete={() => setSearchQuery('')}
@@ -493,7 +524,7 @@ const MenuManagement = () => {
         </Box>
       )}
 
-      <Grid container spacing={{ xs: 2, md: 3 }}>
+      <Grid container spacing={{ xs: 2, md: 3 }} sx={{ px: { xs: 2, md: 0 } }}>
         {currentItems.length === 0 ? (
           <Grid item xs={12}>
             <Alert severity="info">

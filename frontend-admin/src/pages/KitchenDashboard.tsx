@@ -397,7 +397,11 @@ const KitchenDashboard = () => {
   }
 
   return (
-    <Box>
+    <Box sx={{
+      width: '100%',
+      maxWidth: '100%',
+      overflowX: 'hidden',
+    }}>
       {/* Header with Print Button */}
       <Box sx={{
         display: 'flex',
@@ -407,7 +411,7 @@ const KitchenDashboard = () => {
         gap: { xs: 2, sm: 0 },
         mb: 3
       }}>
-        <Typography variant="h4">
+        <Typography variant="h4" sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
           Kitchen Dashboard
         </Typography>
         <Button
@@ -436,7 +440,7 @@ const KitchenDashboard = () => {
       </Box>
 
       {/* Date filter and stats */}
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper sx={{ p: { xs: 1.5, sm: 2 }, mb: 3 }}>
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} sm={6} md={2.5}>
             <LocationSelector
@@ -655,14 +659,14 @@ const KitchenDashboard = () => {
 
                                 return (
                                   <>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                    <Typography variant="h6">{item.menuItem?.name}</Typography>
+                                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: { xs: 1, sm: 0 }, mb: 2 }}>
+                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
+                                    <Typography variant="h6" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>{item.menuItem?.name}</Typography>
                                     <Chip
                                       label={item.menuItem?.category}
                                       size="small"
                                       variant="outlined"
-                                      sx={{ fontSize: '0.75rem' }}
+                                      sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
                                     />
                                     <Chip
                                       label={`${fulfilledCount} of ${totalCount} fulfilled`}
@@ -671,16 +675,16 @@ const KitchenDashboard = () => {
                                       variant="outlined"
                                       sx={{
                                         fontWeight: 'bold',
-                                        fontSize: '0.8rem'
+                                        fontSize: { xs: '0.7rem', sm: '0.8rem' }
                                       }}
                                     />
                                   </Box>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, alignSelf: { xs: 'flex-end', sm: 'center' }, width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'space-between', sm: 'flex-end' } }}>
                                     <Box sx={{ textAlign: 'right' }}>
-                                      <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold', display: 'inline' }}>
+                                      <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold', display: 'inline', fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
                                         {item.totalQuantity}
                                       </Typography>
-                                      <Typography variant="body1" color="primary" sx={{ display: 'inline', ml: 0.5 }}>
+                                      <Typography variant="body1" color="primary" sx={{ display: 'inline', ml: 0.5, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                                         in total
                                       </Typography>
                                     </Box>

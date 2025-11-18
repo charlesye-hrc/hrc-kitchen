@@ -246,13 +246,25 @@ const ReportsPage = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" gutterBottom>
+    <Container maxWidth="lg" sx={{
+      py: { xs: 2, sm: 4 },
+      px: { xs: 1, sm: 2 },
+      width: '100%',
+      maxWidth: '100%',
+      overflowX: 'hidden',
+    }}>
+      <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
         Reports & Analytics
       </Typography>
 
       {/* Date Range Filter */}
-      <Paper sx={{ p: 2, mb: 3 }}>
+      <Paper sx={{
+        p: { xs: 1.5, sm: 2 },
+        mb: 3,
+        width: '100%',
+        maxWidth: '100%',
+        overflowX: 'hidden',
+      }}>
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} sm={6} md={2.5}>
             <LocationSelector
@@ -296,12 +308,12 @@ const ReportsPage = () => {
               onClick={handleGenerate}
               disabled={loading}
               startIcon={<RefreshIcon />}
-              sx={{ height: '40px' }}
+              sx={{ height: '40px', fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
             >
-              Generate Report
+              Generate
             </Button>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={2}>
             <Button
               variant="outlined"
               fullWidth
@@ -311,7 +323,7 @@ const ReportsPage = () => {
                 downloadCSV(reportTypes[Math.min(tabValue, 1)]);
               }}
               disabled={loading || (tabValue === 0 && revenueData.length === 0) || (tabValue === 1 && popularItems.length === 0)}
-              sx={{ height: '56px' }}
+              sx={{ height: '40px', fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
             >
               Export CSV
             </Button>
@@ -325,14 +337,37 @@ const ReportsPage = () => {
         </Alert>
       )}
 
-      <Paper>
-        <Tabs value={tabValue} onChange={handleTabChange}>
-          <Tab label="Revenue by User" />
-          <Tab label="Popular Items" />
-          <Tab label="Summary Statistics" />
+      <Paper sx={{
+        width: '100%',
+        maxWidth: '100%',
+        overflowX: 'hidden',
+      }}>
+        <Tabs
+          value={tabValue}
+          onChange={handleTabChange}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+          sx={{
+            '& .MuiTab-root': {
+              fontSize: { xs: '0.7rem', sm: '0.875rem' },
+              minWidth: { xs: 70, sm: 120 },
+              px: { xs: 0.5, sm: 2 },
+              py: { xs: 1, sm: 1.5 },
+            }
+          }}
+        >
+          <Tab label="Revenue" />
+          <Tab label="Popular" />
+          <Tab label="Summary" />
         </Tabs>
 
-        <Box sx={{ p: 3 }}>
+        <Box sx={{
+          p: { xs: 1.5, sm: 2, md: 3 },
+          width: '100%',
+          maxWidth: '100%',
+          overflowX: 'hidden',
+        }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
               <CircularProgress />
@@ -341,25 +376,25 @@ const ReportsPage = () => {
             <>
               {/* Revenue by User Tab */}
               {tabValue === 0 && (
-                <TableContainer>
-                  <Table>
+                <TableContainer sx={{ overflowX: 'auto', width: '100%' }}>
+                  <Table sx={{ minWidth: { xs: 300, sm: 'auto' } }}>
                     <TableHead>
                       <TableRow>
-                        <TableCell>User Name</TableCell>
-                        <TableCell>Email</TableCell>
-                        <TableCell>Department</TableCell>
-                        <TableCell align="right">Total Revenue</TableCell>
-                        <TableCell align="right">Order Count</TableCell>
+                        <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>User Name</TableCell>
+                        <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>Email</TableCell>
+                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>Department</TableCell>
+                        <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>Revenue</TableCell>
+                        <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>Orders</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {revenueData.map((row) => (
                         <TableRow key={row.user.id}>
-                          <TableCell>{row.user.fullName}</TableCell>
-                          <TableCell>{row.user.email}</TableCell>
-                          <TableCell>{row.user.department || 'N/A'}</TableCell>
-                          <TableCell align="right">${row.totalRevenue.toFixed(2)}</TableCell>
-                          <TableCell align="right">{row.orderCount}</TableCell>
+                          <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>{row.user.fullName}</TableCell>
+                          <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>{row.user.email}</TableCell>
+                          <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>{row.user.department || 'N/A'}</TableCell>
+                          <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>${row.totalRevenue.toFixed(2)}</TableCell>
+                          <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>{row.orderCount}</TableCell>
                         </TableRow>
                       ))}
                       {revenueData.length === 0 && (
@@ -376,25 +411,25 @@ const ReportsPage = () => {
 
               {/* Popular Items Tab */}
               {tabValue === 1 && (
-                <TableContainer>
-                  <Table>
+                <TableContainer sx={{ overflowX: 'auto', width: '100%' }}>
+                  <Table sx={{ minWidth: { xs: 300, sm: 'auto' } }}>
                     <TableHead>
                       <TableRow>
-                        <TableCell>Menu Item</TableCell>
-                        <TableCell>Category</TableCell>
-                        <TableCell align="right">Total Quantity</TableCell>
-                        <TableCell align="right">Order Count</TableCell>
-                        <TableCell align="right">Total Revenue</TableCell>
+                        <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>Menu Item</TableCell>
+                        <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>Category</TableCell>
+                        <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>Qty</TableCell>
+                        <TableCell align="right" sx={{ display: { xs: 'none', md: 'table-cell' }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>Orders</TableCell>
+                        <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>Revenue</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {popularItems.map((row) => (
                         <TableRow key={row.menuItem.id}>
-                          <TableCell>{row.menuItem.name}</TableCell>
-                          <TableCell>{row.menuItem.category}</TableCell>
-                          <TableCell align="right">{row.totalQuantity}</TableCell>
-                          <TableCell align="right">{row.orderCount}</TableCell>
-                          <TableCell align="right">${row.totalRevenue.toFixed(2)}</TableCell>
+                          <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>{row.menuItem.name}</TableCell>
+                          <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>{row.menuItem.category}</TableCell>
+                          <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>{row.totalQuantity}</TableCell>
+                          <TableCell align="right" sx={{ display: { xs: 'none', md: 'table-cell' }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>{row.orderCount}</TableCell>
+                          <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>${row.totalRevenue.toFixed(2)}</TableCell>
                         </TableRow>
                       ))}
                       {popularItems.length === 0 && (

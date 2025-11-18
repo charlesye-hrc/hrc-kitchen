@@ -291,9 +291,15 @@ const LocationManagementPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
+    <Container maxWidth="lg" sx={{
+      py: { xs: 2, sm: 4 },
+      px: { xs: 1, sm: 2 },
+      width: '100%',
+      maxWidth: '100%',
+      overflowX: 'hidden',
+    }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 2, sm: 4 }, flexWrap: 'wrap', gap: 2 }}>
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 700, fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
           Location Management
         </Typography>
         <Button
@@ -312,15 +318,15 @@ const LocationManagementPage: React.FC = () => {
         </Alert>
       )}
 
-      <TableContainer component={Paper}>
-        <Table>
+      <TableContainer component={Paper} sx={{ width: '100%', overflowX: 'hidden' }}>
+        <Table sx={{ width: '100%', tableLayout: 'auto' }}>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Address</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
-              <TableCell sx={{ fontWeight: 600 }} align="right">Actions</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, width: 'auto' }}>Name</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, display: { xs: 'none', sm: 'table-cell' }, width: 'auto' }}>Address</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, display: { xs: 'none', md: 'table-cell' }, width: 'auto' }}>Phone</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, width: 'auto' }}>Status</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, width: 'auto' }} align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -335,17 +341,17 @@ const LocationManagementPage: React.FC = () => {
             ) : (
               locations.map((location) => (
                 <TableRow key={location.id} hover>
-                  <TableCell sx={{ fontWeight: 500 }}>{location.name}</TableCell>
-                  <TableCell>{location.address || '-'}</TableCell>
-                  <TableCell>{location.phone || '-'}</TableCell>
-                  <TableCell>
+                  <TableCell sx={{ fontWeight: 500, px: { xs: 1, sm: 2 } }}>{location.name}</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, px: { xs: 1, sm: 2 } }}>{location.address || '-'}</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, px: { xs: 1, sm: 2 } }}>{location.phone || '-'}</TableCell>
+                  <TableCell sx={{ px: { xs: 1, sm: 2 } }}>
                     <Chip
                       label={location.isActive ? 'Active' : 'Inactive'}
                       color={location.isActive ? 'success' : 'default'}
                       size="small"
                     />
                   </TableCell>
-                  <TableCell align="right">
+                  <TableCell align="right" sx={{ px: { xs: 1, sm: 2 } }}>
                     <IconButton
                       size="small"
                       onClick={() => handleOpenDialog(location)}

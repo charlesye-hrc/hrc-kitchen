@@ -25,6 +25,8 @@ import {
   Alert,
   CircularProgress,
   Stack,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -47,6 +49,8 @@ interface User {
 }
 
 const UserManagement = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -168,20 +172,25 @@ const UserManagement = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{
+      p: { xs: 0, md: 3 },
+      width: '100%',
+      maxWidth: '100%',
+      overflowX: 'hidden',
+    }}>
       {error && (
-        <Alert severity="error" onClose={() => setError('')} sx={{ mb: 3 }}>
+        <Alert severity="error" onClose={() => setError('')} sx={{ mb: 3, mx: { xs: 2, md: 0 } }}>
           {error}
         </Alert>
       )}
 
-      <Typography variant="h6" gutterBottom>
+      <Typography variant="h6" gutterBottom sx={{ px: { xs: 2, md: 0 } }}>
         User Management
       </Typography>
 
-      <Stack direction="row" spacing={2} mb={3}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mb={3} sx={{ px: { xs: 2, md: 0 } }}>
         <TextField
-          label="Search by name or email"
+          label={isMobile ? "Search..." : "Search by name or email"}
           variant="outlined"
           size="small"
           value={searchTerm}
@@ -191,77 +200,79 @@ const UserManagement = () => {
           }}
           sx={{ flexGrow: 1 }}
         />
-        <FormControl size="small" sx={{ minWidth: 150 }}>
-          <InputLabel>Role</InputLabel>
-          <Select
-            value={roleFilter}
-            label="Role"
-            onChange={(e) => {
-              setRoleFilter(e.target.value);
-              setPage(0);
-            }}
-          >
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value="STAFF">Staff</MenuItem>
-            <MenuItem value="KITCHEN">Kitchen</MenuItem>
-            <MenuItem value="FINANCE">Finance</MenuItem>
-            <MenuItem value="ADMIN">Admin</MenuItem>
-          </Select>
-        </FormControl>
-        <FormControl size="small" sx={{ minWidth: 150 }}>
-          <InputLabel>Status</InputLabel>
-          <Select
-            value={statusFilter}
-            label="Status"
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(0);
-            }}
-          >
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value="active">Active</MenuItem>
-            <MenuItem value="inactive">Inactive</MenuItem>
-          </Select>
-        </FormControl>
+        <Stack direction="row" spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+          <FormControl size="small" sx={{ minWidth: { xs: 0, sm: 100 }, flex: { xs: 1, sm: 'initial' } }}>
+            <InputLabel>Role</InputLabel>
+            <Select
+              value={roleFilter}
+              label="Role"
+              onChange={(e) => {
+                setRoleFilter(e.target.value);
+                setPage(0);
+              }}
+            >
+              <MenuItem value="">All</MenuItem>
+              <MenuItem value="STAFF">Staff</MenuItem>
+              <MenuItem value="KITCHEN">Kitchen</MenuItem>
+              <MenuItem value="FINANCE">Finance</MenuItem>
+              <MenuItem value="ADMIN">Admin</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: { xs: 0, sm: 100 }, flex: { xs: 1, sm: 'initial' } }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={statusFilter}
+              label="Status"
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(0);
+              }}
+            >
+              <MenuItem value="">All</MenuItem>
+              <MenuItem value="active">Active</MenuItem>
+              <MenuItem value="inactive">Inactive</MenuItem>
+            </Select>
+          </FormControl>
+        </Stack>
       </Stack>
 
-      <TableContainer component={Paper}>
-        <Table>
+      <TableContainer component={Paper} sx={{ width: '100%', overflowX: 'hidden' }}>
+        <Table sx={{ width: '100%', tableLayout: 'auto' }}>
           <TableHead>
             <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>Department</TableCell>
-              <TableCell>Role</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Created</TableCell>
-              <TableCell>Actions</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Name</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, display: { xs: 'none', md: 'table-cell' } }}>Email</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, display: { xs: 'none', lg: 'table-cell' } }}>Department</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Role</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, display: { xs: 'none', sm: 'table-cell' } }}>Status</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, display: { xs: 'none', lg: 'table-cell' } }}>Created</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }} align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {users.map((user) => (
               <TableRow key={user.id}>
-                <TableCell>{user.fullName}</TableCell>
-                <TableCell>{user.email}</TableCell>
-                <TableCell>{user.department || '-'}</TableCell>
-                <TableCell>
+                <TableCell sx={{ px: { xs: 1, sm: 2 }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{user.fullName}</TableCell>
+                <TableCell sx={{ px: { xs: 1, sm: 2 }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, display: { xs: 'none', md: 'table-cell' } }}>{user.email}</TableCell>
+                <TableCell sx={{ px: { xs: 1, sm: 2 }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, display: { xs: 'none', lg: 'table-cell' } }}>{user.department || '-'}</TableCell>
+                <TableCell sx={{ px: { xs: 1, sm: 2 } }}>
                   <Chip
                     label={user.role}
                     size="small"
                     color={getRoleColor(user.role)}
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell sx={{ px: { xs: 1, sm: 2 }, display: { xs: 'none', sm: 'table-cell' } }}>
                   <Chip
                     label={user.isActive ? 'Active' : 'Inactive'}
                     size="small"
                     color={user.isActive ? 'success' : 'default'}
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell sx={{ px: { xs: 1, sm: 2 }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, display: { xs: 'none', lg: 'table-cell' } }}>
                   {new Date(user.createdAt).toLocaleDateString()}
                 </TableCell>
-                <TableCell>
+                <TableCell align="right" sx={{ px: { xs: 1, sm: 2 } }}>
                   <IconButton
                     size="small"
                     onClick={() => handleOpenRoleDialog(user)}
@@ -298,6 +309,15 @@ const UserManagement = () => {
         onRowsPerPageChange={(e) => {
           setRowsPerPage(parseInt(e.target.value, 10));
           setPage(0);
+        }}
+        sx={{
+          '& .MuiTablePagination-toolbar': {
+            flexWrap: 'wrap',
+            justifyContent: { xs: 'center', sm: 'flex-end' },
+          },
+          '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+          },
         }}
       />
 

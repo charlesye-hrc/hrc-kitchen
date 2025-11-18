@@ -154,9 +154,15 @@ const UserLocationAssignmentPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
+    <Container maxWidth="lg" sx={{
+      py: { xs: 2, sm: 4 },
+      px: { xs: 1, sm: 2 },
+      width: '100%',
+      maxWidth: '100%',
+      overflowX: 'hidden',
+    }}>
+      <Box sx={{ mb: { xs: 2, sm: 4 } }}>
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 1, fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
           User Location Assignments
         </Typography>
         <Typography variant="body1" color="text.secondary">
@@ -170,15 +176,15 @@ const UserLocationAssignmentPage: React.FC = () => {
         </Alert>
       )}
 
-      <TableContainer component={Paper}>
-        <Table>
+      <TableContainer component={Paper} sx={{ width: '100%', overflowX: 'hidden' }}>
+        <Table sx={{ width: '100%', tableLayout: 'auto' }}>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Role</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Assigned Locations</TableCell>
-              <TableCell sx={{ fontWeight: 600 }} align="right">Actions</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, width: 'auto' }}>Name</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, display: { xs: 'none', sm: 'table-cell' }, width: 'auto' }}>Email</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, width: 'auto' }}>Role</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, display: { xs: 'none', md: 'table-cell' }, width: 'auto' }}>Locations</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, width: 'auto' }} align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -191,9 +197,9 @@ const UserLocationAssignmentPage: React.FC = () => {
             ) : (
               users.map((user) => (
                 <TableRow key={user.id} hover>
-                  <TableCell sx={{ fontWeight: 500 }}>{user.fullName}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>
+                  <TableCell sx={{ fontWeight: 500, px: { xs: 1, sm: 2 } }}>{user.fullName}</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, px: { xs: 1, sm: 2 } }}>{user.email}</TableCell>
+                  <TableCell sx={{ px: { xs: 1, sm: 2 } }}>
                     <Chip
                       label={user.role}
                       color={user.role === 'ADMIN' ? 'error' : user.role === 'KITCHEN' ? 'primary' : user.role === 'FINANCE' ? 'success' : 'default'}
@@ -201,12 +207,12 @@ const UserLocationAssignmentPage: React.FC = () => {
                       icon={user.role === 'ADMIN' ? <AdminIcon fontSize="small" /> : undefined}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, px: { xs: 1, sm: 2 } }}>
                     <Typography variant="body2" color={user.userLocations.length === 0 && user.role !== 'ADMIN' ? 'error' : 'text.primary'}>
                       {getUserLocationNames(user)}
                     </Typography>
                   </TableCell>
-                  <TableCell align="right">
+                  <TableCell align="right" sx={{ px: { xs: 1, sm: 2 } }}>
                     <Tooltip title={user.role === 'ADMIN' ? 'Admins have access to all locations' : 'Edit location assignments'}>
                       <span>
                         <IconButton

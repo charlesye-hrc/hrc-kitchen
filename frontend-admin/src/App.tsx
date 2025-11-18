@@ -2,10 +2,12 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import AdminLayout from './components/AdminLayout';
 import LoginPage from './pages/LoginPage';
 import KitchenDashboard from './pages/KitchenDashboard';
-import AdminDashboard from './pages/AdminDashboard';
 import ReportsPage from './pages/ReportsPage';
+import MenuManagementPage from './pages/MenuManagementPage';
 import LocationManagementPage from './pages/LocationManagementPage';
+import UserManagementPage from './pages/UserManagementPage';
 import UserLocationAssignmentPage from './pages/UserLocationAssignmentPage';
+import SystemSettingsPage from './pages/SystemSettingsPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
@@ -98,7 +100,7 @@ const AppRoutes = () => {
   const getDefaultRoute = () => {
     if (!isAuthenticated || !user) return '/login';
 
-    if (user.role === 'ADMIN') return '/admin';
+    if (user.role === 'ADMIN') return '/kitchen';
     if (user.role === 'KITCHEN') return '/kitchen';
     if (user.role === 'FINANCE') return '/reports';
 
@@ -113,7 +115,7 @@ const AppRoutes = () => {
       {/* Public Routes */}
       <Route path="/login" element={<LoginPage />} />
 
-      {/* Protected Routes - Kitchen Staff */}
+      {/* Protected Routes - Kitchen Dashboard - KITCHEN and ADMIN */}
       <Route
         path="/kitchen"
         element={
@@ -123,29 +125,29 @@ const AppRoutes = () => {
         }
       />
 
-      {/* Protected Routes - Admin Only */}
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute allowedRoles={['ADMIN']}>
-            <AdminDashboard />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Protected Routes - Finance & Admin */}
+      {/* Protected Routes - Reports - KITCHEN, FINANCE, and ADMIN */}
       <Route
         path="/reports"
         element={
-          <ProtectedRoute allowedRoles={['FINANCE', 'ADMIN']}>
+          <ProtectedRoute allowedRoles={['KITCHEN', 'FINANCE', 'ADMIN']}>
             <ReportsPage />
           </ProtectedRoute>
         }
       />
 
-      {/* Protected Routes - Admin Only - Location Management */}
+      {/* Protected Routes - Admin Only - Menu Management */}
       <Route
-        path="/admin/locations"
+        path="/menu-management"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <MenuManagementPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Protected Routes - Admin Only - Locations */}
+      <Route
+        path="/locations"
         element={
           <ProtectedRoute allowedRoles={['ADMIN']}>
             <LocationManagementPage />
@@ -153,12 +155,32 @@ const AppRoutes = () => {
         }
       />
 
-      {/* Protected Routes - Admin Only - User Location Assignments */}
+      {/* Protected Routes - Admin Only - Users */}
       <Route
-        path="/admin/user-locations"
+        path="/users"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <UserManagementPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Protected Routes - Admin Only - Location Assignments */}
+      <Route
+        path="/location-assignments"
         element={
           <ProtectedRoute allowedRoles={['ADMIN']}>
             <UserLocationAssignmentPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Protected Routes - Admin Only - System Settings */}
+      <Route
+        path="/system-settings"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <SystemSettingsPage />
           </ProtectedRoute>
         }
       />
