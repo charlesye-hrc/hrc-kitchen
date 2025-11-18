@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { PaymentService } from '../services/payment.service';
 import { ApiError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
+import prisma from '../lib/prisma';
 
 export class PaymentController {
   static async createPaymentIntent(
@@ -10,14 +11,46 @@ export class PaymentController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { amount, orderId } = req.body;
-
-      if (!amount || amount <= 0) {
-        throw new ApiError(400, 'Valid amount is required');
-      }
+      const { orderId } = req.body;
 
       if (!req.user) {
         throw new ApiError(401, 'Unauthorized');
+      }
+
+      if (!orderId) {
+        throw new ApiError(400, 'Order ID is required');
+      }
+
+      // Verify order exists and belongs to the user
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: {
+          id: true,
+          userId: true,
+          totalAmount: true,
+          paymentStatus: true,
+        },
+      });
+
+      if (!order) {
+        throw new ApiError(404, 'Order not found');
+      }
+
+      // Verify ownership
+      if (order.userId !== req.user.id) {
+        throw new ApiError(403, 'Not authorized to pay for this order');
+      }
+
+      // Check if already paid
+      if (order.paymentStatus === 'COMPLETED') {
+        throw new ApiError(400, 'Order has already been paid');
+      }
+
+      // Use server-calculated amount from order
+      const amount = order.totalAmount.toNumber();
+
+      if (amount <= 0) {
+        throw new ApiError(400, 'Invalid order amount');
       }
 
       const paymentIntent = await PaymentService.createPaymentIntent({
@@ -47,7 +80,8 @@ export class PaymentController {
         throw new ApiError(400, 'Payment intent ID is required');
       }
 
-      const paymentIntent = await PaymentService.confirmPayment(paymentIntentId);
+      // Verify the payment intent and get order ownership info
+      const paymentIntent = await PaymentService.confirmPayment(paymentIntentId, req.user?.id);
 
       res.json({
         success: true,

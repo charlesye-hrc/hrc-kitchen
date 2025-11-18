@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import { OrderService } from '../services/order.service';
 import { CreateOrderDto } from '../types/order.types';
+import { AuthService } from '../services/auth.service';
 import prisma from '../lib/prisma';
+import { validatePagination } from '../utils/validation';
 
 export class OrderController {
   private orderService: OrderService;
@@ -65,11 +67,17 @@ export class OrderController {
       // Extract query parameters
       const { startDate, endDate, page, limit } = req.query;
 
+      // Validate and constrain pagination parameters
+      const pagination = validatePagination(page as string, limit as string, {
+        maxLimit: 100,
+        defaultLimit: 20,
+      });
+
       const options = {
         startDate: startDate as string | undefined,
         endDate: endDate as string | undefined,
-        page: page ? parseInt(page as string) : undefined,
-        limit: limit ? parseInt(limit as string) : undefined
+        page: pagination.page,
+        limit: pagination.limit
       };
 
       const result = await this.orderService.getUserOrders(userId, options);
@@ -81,7 +89,7 @@ export class OrderController {
           total: result.total,
           page: result.page,
           totalPages: result.totalPages,
-          limit: options.limit || 20
+          limit: pagination.limit
         }
       });
     } catch (error) {
@@ -126,7 +134,11 @@ export class OrderController {
 
       res.status(201).json({
         success: true,
-        data: result
+        data: {
+          order: result.order,
+          clientSecret: result.clientSecret,
+          accessToken: result.accessToken
+        }
       });
     } catch (error) {
       console.error('Error creating guest order:', error);
@@ -139,9 +151,31 @@ export class OrderController {
 
   getGuestOrder = async (req: Request, res: Response): Promise<void> => {
     try {
-      const orderId = req.params.id;
+      const token = req.query.token as string;
 
-      const order = await this.orderService.getGuestOrderById(orderId);
+      // Require token for guest order lookup
+      if (!token) {
+        res.status(400).json({
+          success: false,
+          message: 'Access token is required to retrieve guest order'
+        });
+        return;
+      }
+
+      // Verify token and extract orderId
+      let orderId: string;
+      try {
+        const decoded = AuthService.verifyGuestOrderToken(token);
+        orderId = decoded.orderId;
+      } catch (error: any) {
+        res.status(401).json({
+          success: false,
+          message: error.message || 'Invalid or expired access token'
+        });
+        return;
+      }
+
+      const order = await this.orderService.getGuestOrderByToken(orderId);
 
       if (!order) {
         res.status(404).json({

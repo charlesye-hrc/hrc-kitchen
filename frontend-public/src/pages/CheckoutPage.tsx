@@ -250,7 +250,7 @@ const CheckoutForm: React.FC = () => {
           );
         }
 
-        const { order, clientSecret } = response.data.data;
+        const { order, clientSecret, accessToken } = response.data.data;
 
         // Confirm payment with Stripe
         const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(
@@ -285,7 +285,8 @@ const CheckoutForm: React.FC = () => {
             state: {
               isGuest: !isAuthenticated,
               guestEmail: payerEmail,
-              guestName: payerName || `${guestFirstName} ${guestLastName}`
+              guestName: payerName || `${guestFirstName} ${guestLastName}`,
+              accessToken: accessToken // Pass token for guest order retrieval
             }
           });
         } else {
@@ -385,7 +386,7 @@ const CheckoutForm: React.FC = () => {
         );
       }
 
-      const { order, clientSecret } = response.data.data;
+      const { order, clientSecret, accessToken } = response.data.data;
 
       // Confirm payment with Stripe
       const cardElement = elements.getElement(CardElement);
@@ -424,7 +425,8 @@ const CheckoutForm: React.FC = () => {
           state: {
             isGuest: !isAuthenticated,
             guestEmail: guestEmail || undefined,
-            guestName: `${guestFirstName} ${guestLastName}` || undefined
+            guestName: `${guestFirstName} ${guestLastName}` || undefined,
+            accessToken: accessToken // Pass token for guest order retrieval
           }
         });
       }

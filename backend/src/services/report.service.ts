@@ -1,5 +1,18 @@
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 import prisma from '../lib/prisma';
+import { ApiError } from '../middleware/errorHandler';
+
+/**
+ * Validate that the user-selected locationId is within their allowed locations
+ * Throws ApiError if not authorized
+ */
+function validateLocationAccess(dateRange: ReportDateRange): void {
+  if (dateRange.locationId && dateRange.allowedLocationIds !== null && dateRange.allowedLocationIds !== undefined) {
+    if (!dateRange.allowedLocationIds.includes(dateRange.locationId)) {
+      throw new ApiError(403, 'Not authorized to view reports for this location');
+    }
+  }
+}
 
 export interface ReportDateRange {
   startDate: string; // YYYY-MM-DD
@@ -64,6 +77,9 @@ export class ReportService {
    * Respects role-based location restrictions
    */
   async getRevenueByUser(dateRange: ReportDateRange): Promise<RevenueByUserReport[]> {
+    // Validate location access before processing
+    validateLocationAccess(dateRange);
+
     const startDate = new Date(dateRange.startDate + 'T00:00:00');
     const endDate = new Date(dateRange.endDate + 'T23:59:59');
 
@@ -161,6 +177,9 @@ export class ReportService {
    * Respects role-based location restrictions
    */
   async getPopularItems(dateRange: ReportDateRange): Promise<PopularItemReport[]> {
+    // Validate location access before processing
+    validateLocationAccess(dateRange);
+
     const startDate = new Date(dateRange.startDate + 'T00:00:00');
     const endDate = new Date(dateRange.endDate + 'T23:59:59');
 
@@ -258,6 +277,9 @@ export class ReportService {
    * Respects role-based location restrictions
    */
   async getSummaryReport(dateRange: ReportDateRange): Promise<SummaryReport> {
+    // Validate location access before processing
+    validateLocationAccess(dateRange);
+
     const startDate = new Date(dateRange.startDate + 'T00:00:00');
     const endDate = new Date(dateRange.endDate + 'T23:59:59');
 
@@ -348,6 +370,9 @@ export class ReportService {
     paymentStatus?: PaymentStatus;
     fulfillmentStatus?: OrderStatus;
   }): Promise<any[]> {
+    // Validate location access before processing
+    validateLocationAccess(dateRange);
+
     const startDate = new Date(dateRange.startDate + 'T00:00:00');
     const endDate = new Date(dateRange.endDate + 'T23:59:59');
 

@@ -330,16 +330,40 @@ export class LocationService {
 
   /**
    * Update user's last selected location
+   * Validates that the location exists and user has access to it
    */
-  async updateUserLastLocation(userId: string, locationId: string) {
+  async updateUserLastLocation(userId: string, locationId: string, userRole: string): Promise<{ success: boolean; error?: string }> {
     try {
+      // Verify location exists and is active
+      const location = await prisma.location.findUnique({
+        where: { id: locationId },
+      });
+
+      if (!location || !location.isActive) {
+        return { success: false, error: 'Location not found or inactive' };
+      }
+
+      // For non-ADMIN users, verify they have access to this location
+      if (userRole !== 'ADMIN') {
+        const userLocation = await prisma.userLocation.findFirst({
+          where: {
+            userId,
+            locationId,
+          },
+        });
+
+        if (!userLocation) {
+          return { success: false, error: 'Not authorized to access this location' };
+        }
+      }
+
       await prisma.user.update({
         where: { id: userId },
         data: { lastSelectedLocationId: locationId },
       });
-      return true;
+      return { success: true };
     } catch (error) {
-      return false;
+      return { success: false, error: 'Failed to update location' };
     }
   }
 

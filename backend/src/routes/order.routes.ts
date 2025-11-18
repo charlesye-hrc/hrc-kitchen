@@ -7,7 +7,7 @@ const orderController = new OrderController();
 
 // Guest order endpoints (no authentication required)
 router.post('/guest', orderController.createGuestOrder);
-router.get('/guest/:id', orderController.getGuestOrder);
+router.get('/guest', orderController.getGuestOrder);
 
 // Authenticated order routes
 router.use(authenticate);

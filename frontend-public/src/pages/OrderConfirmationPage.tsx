@@ -81,6 +81,7 @@ const OrderConfirmationPage: React.FC = () => {
   const isGuest = location.state?.isGuest || false;
   const guestEmail = location.state?.guestEmail;
   const guestName = location.state?.guestName;
+  const accessToken = location.state?.accessToken;
 
   // Account creation dialog
   const [showAccountDialog, setShowAccountDialog] = useState(false);
@@ -103,11 +104,14 @@ const OrderConfirmationPage: React.FC = () => {
               },
             }
           );
-        } else {
-          // Guest order
+        } else if (accessToken) {
+          // Guest order with access token
           response = await axios.get(
-            `${import.meta.env.VITE_API_URL}/orders/guest/${orderId}`
+            `${import.meta.env.VITE_API_URL}/orders/guest?token=${encodeURIComponent(accessToken)}`
           );
+        } else {
+          // No token available
+          throw new Error('Access token is required to view guest order');
         }
 
         setOrder(response.data.data);
@@ -127,7 +131,7 @@ const OrderConfirmationPage: React.FC = () => {
     if (orderId) {
       fetchOrder();
     }
-  }, [orderId, token, isAuthenticated, isGuest, guestEmail]);
+  }, [orderId, token, isAuthenticated, isGuest, guestEmail, accessToken]);
 
   const handleCreateAccount = async () => {
     if (!password || !confirmPassword) {

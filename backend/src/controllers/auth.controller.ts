@@ -11,7 +11,7 @@ export class AuthController {
         throw new ApiError(400, 'Email, password, and full name are required');
       }
 
-      const user = await AuthService.register({
+      const { user, verificationToken } = await AuthService.register({
         email,
         password,
         fullName,
@@ -20,6 +20,8 @@ export class AuthController {
         phone,
       });
 
+      // TODO: Send verification email with token
+      // For now, return token in response (remove in production)
       res.status(201).json({
         message: 'Registration successful. Please check your email to verify your account.',
         user: {
@@ -27,6 +29,8 @@ export class AuthController {
           email: user.email,
           fullName: user.fullName,
         },
+        // Remove verificationToken from response in production - send via email instead
+        verificationToken,
       });
     } catch (error) {
       next(error);
@@ -57,9 +61,8 @@ export class AuthController {
         throw new ApiError(400, 'Verification token is required');
       }
 
-      // TODO: Validate token and extract userId
-      // For now, using a placeholder
-      const userId = 'placeholder';
+      // Validate token and extract userId
+      const { userId } = AuthService.verifyToken(token, 'email_verification');
 
       await AuthService.verifyEmail(userId);
 
@@ -93,8 +96,8 @@ export class AuthController {
         throw new ApiError(400, 'Token and new password are required');
       }
 
-      // TODO: Validate token and extract userId
-      const userId = 'placeholder';
+      // Validate token and extract userId
+      const { userId } = AuthService.verifyToken(token, 'password_reset');
 
       await AuthService.resetPassword(userId, newPassword);
 

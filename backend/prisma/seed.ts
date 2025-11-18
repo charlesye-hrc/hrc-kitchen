@@ -10,7 +10,7 @@ async function main() {
   const adminPassword = await bcrypt.hash('Admin123!', 10);
   const admin = await prisma.user.upsert({
     where: { email: 'admin@huonregionalcare.org.au' },
-    update: {},
+    update: { emailVerified: true },
     create: {
       email: 'admin@huonregionalcare.org.au',
       passwordHash: adminPassword,
@@ -27,7 +27,7 @@ async function main() {
   const kitchenPassword = await bcrypt.hash('Kitchen123!', 10);
   const kitchen = await prisma.user.upsert({
     where: { email: 'kitchen@huonregionalcare.org.au' },
-    update: {},
+    update: { emailVerified: true },
     create: {
       email: 'kitchen@huonregionalcare.org.au',
       passwordHash: kitchenPassword,
@@ -44,7 +44,7 @@ async function main() {
   const financePassword = await bcrypt.hash('Finance123!', 10);
   const finance = await prisma.user.upsert({
     where: { email: 'finance@huonregionalcare.org.au' },
-    update: {},
+    update: { emailVerified: true },
     create: {
       email: 'finance@huonregionalcare.org.au',
       passwordHash: financePassword,
@@ -61,7 +61,7 @@ async function main() {
   const staffPassword = await bcrypt.hash('Staff123!', 10);
   const staff = await prisma.user.upsert({
     where: { email: 'staff@hrc-kitchen.com' },
-    update: {},
+    update: { emailVerified: true },
     create: {
       email: 'staff@hrc-kitchen.com',
       passwordHash: staffPassword,

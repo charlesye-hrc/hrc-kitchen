@@ -1,5 +1,6 @@
 import { OrderStatus } from '@prisma/client';
 import prisma from '../lib/prisma';
+import { escapeHtml } from '../utils/validation';
 
 export interface KitchenOrderFilters {
   date?: string; // ISO date string
@@ -498,23 +499,23 @@ export class KitchenService {
   ${summary.map(item => `
     <div class="menu-item">
       <div class="item-header">
-        <div class="item-name">${item.menuItem.name}</div>
+        <div class="item-name">${escapeHtml(item.menuItem.name)}</div>
         <div class="item-quantity">QTY: ${item.totalQuantity}</div>
       </div>
 
       <div class="order-list">
         ${item.orders.map(order => `
           <div class="order">
-            <div class="customer-name">${order.customerName}</div>
-            <div class="order-number">${order.orderNumber}</div>
+            <div class="customer-name">${escapeHtml(order.customerName)}</div>
+            <div class="order-number">${escapeHtml(order.orderNumber)}</div>
             <div class="details">
               ${order.selectedVariations ? `
                 <span class="variations"><strong>Variations:</strong> ${order.selectedVariations.variations?.map((v: any) =>
-                  `${v.groupName}: ${v.optionName}`
+                  `${escapeHtml(v.groupName)}: ${escapeHtml(v.optionName)}`
                 ).join(', ') || 'None'}</span>
               ` : ''}
               ${order.customizations ? `
-                <span class="customizations"><strong>Customizations:</strong> ${JSON.stringify(order.customizations)}</span>
+                <span class="customizations"><strong>Customizations:</strong> ${escapeHtml(JSON.stringify(order.customizations))}</span>
               ` : ''}
             </div>
             <div class="quantity">× ${order.quantity}</div>

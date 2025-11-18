@@ -1,6 +1,8 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import financeService from '../services/finance.service';
+import { validateDateRange } from '../utils/validation';
+import { ApiError } from '../middleware/errorHandler';
 
 export class FinanceController {
   /**
@@ -11,17 +13,16 @@ export class FinanceController {
     try {
       const { startDate, endDate, locationId } = req.query;
 
-      if (!startDate || !endDate) {
-        return res.status(400).json({
-          success: false,
-          message: 'Start date and end date are required',
-        });
-      }
+      const { start, end } = validateDateRange(
+        startDate as string,
+        endDate as string,
+        { required: true }
+      );
 
       const report = await financeService.getDailyRevenueReport(
         {
-          startDate: new Date(startDate as string),
-          endDate: new Date(endDate as string),
+          startDate: start!,
+          endDate: end!,
         },
         locationId as string | undefined
       );
@@ -31,6 +32,12 @@ export class FinanceController {
         data: report,
       });
     } catch (error) {
+      if (error instanceof ApiError) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+        });
+      }
       console.error('Error generating daily revenue report:', error);
       res.status(500).json({
         success: false,
@@ -47,17 +54,16 @@ export class FinanceController {
     try {
       const { startDate, endDate, locationId } = req.query;
 
-      if (!startDate || !endDate) {
-        return res.status(400).json({
-          success: false,
-          message: 'Start date and end date are required',
-        });
-      }
+      const { start, end } = validateDateRange(
+        startDate as string,
+        endDate as string,
+        { required: true }
+      );
 
       const report = await financeService.getOrderDetailsReport(
         {
-          startDate: new Date(startDate as string),
-          endDate: new Date(endDate as string),
+          startDate: start!,
+          endDate: end!,
         },
         locationId as string | undefined
       );
@@ -67,6 +73,12 @@ export class FinanceController {
         data: report,
       });
     } catch (error) {
+      if (error instanceof ApiError) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+        });
+      }
       console.error('Error generating order details report:', error);
       res.status(500).json({
         success: false,
@@ -83,17 +95,16 @@ export class FinanceController {
     try {
       const { startDate, endDate, locationId } = req.query;
 
-      if (!startDate || !endDate) {
-        return res.status(400).json({
-          success: false,
-          message: 'Start date and end date are required',
-        });
-      }
+      const { start, end } = validateDateRange(
+        startDate as string,
+        endDate as string,
+        { required: true }
+      );
 
       const report = await financeService.getMenuItemSalesReport(
         {
-          startDate: new Date(startDate as string),
-          endDate: new Date(endDate as string),
+          startDate: start!,
+          endDate: end!,
         },
         locationId as string | undefined
       );
@@ -103,6 +114,12 @@ export class FinanceController {
         data: report,
       });
     } catch (error) {
+      if (error instanceof ApiError) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+        });
+      }
       console.error('Error generating menu item sales report:', error);
       res.status(500).json({
         success: false,
@@ -119,17 +136,16 @@ export class FinanceController {
     try {
       const { startDate, endDate, locationId } = req.query;
 
-      if (!startDate || !endDate) {
-        return res.status(400).json({
-          success: false,
-          message: 'Start date and end date are required',
-        });
-      }
+      const { start, end } = validateDateRange(
+        startDate as string,
+        endDate as string,
+        { required: true }
+      );
 
       const stats = await financeService.getSummaryStatistics(
         {
-          startDate: new Date(startDate as string),
-          endDate: new Date(endDate as string),
+          startDate: start!,
+          endDate: end!,
         },
         locationId as string | undefined
       );
@@ -139,6 +155,12 @@ export class FinanceController {
         data: stats,
       });
     } catch (error) {
+      if (error instanceof ApiError) {
+        return res.status(error.statusCode).json({
+          success: false,
+          message: error.message,
+        });
+      }
       console.error('Error generating summary statistics:', error);
       res.status(500).json({
         success: false,

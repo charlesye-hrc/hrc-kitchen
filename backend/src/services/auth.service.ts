@@ -37,10 +37,18 @@ export interface AuthResponse {
 
 export class AuthService {
   private static readonly BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '10');
-  private static readonly JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret';
+  private static readonly JWT_SECRET = (() => {
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET environment variable is required');
+    }
+    return process.env.JWT_SECRET;
+  })();
   private static readonly JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+  private static readonly VERIFICATION_TOKEN_EXPIRES = '24h';
+  private static readonly RESET_TOKEN_EXPIRES = '1h';
+  private static readonly GUEST_ORDER_TOKEN_EXPIRES = '30d';
 
-  static async register(data: RegisterDTO): Promise<User> {
+  static async register(data: RegisterDTO): Promise<{ user: User; verificationToken: string }> {
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email: data.email },
@@ -71,9 +79,10 @@ export class AuthService {
       },
     });
 
-    // TODO: Send verification email
+    // Generate verification token
+    const verificationToken = this.generateVerificationToken(user.id, user.email);
 
-    return user;
+    return { user, verificationToken };
   }
 
   static async login(data: LoginDTO): Promise<AuthResponse> {
@@ -101,6 +110,11 @@ export class AuthService {
     // Check if user is active
     if (!user.isActive) {
       throw new ApiError(403, 'Account is deactivated');
+    }
+
+    // Check if email is verified
+    if (!user.emailVerified) {
+      throw new ApiError(403, 'Please verify your email before logging in');
     }
 
     // Verify password
@@ -155,18 +169,32 @@ export class AuthService {
     });
   }
 
-  static async requestPasswordReset(email: string): Promise<void> {
+  static async requestPasswordReset(email: string): Promise<string | null> {
+    const startTime = Date.now();
+    const minDuration = 100; // Minimum response time in ms to prevent timing attacks
+
     const user = await prisma.user.findUnique({
       where: { email },
     });
 
-    if (!user) {
-      // Don't reveal if email exists
-      return;
+    let resetToken: string | null = null;
+
+    if (user) {
+      // Generate reset token
+      resetToken = this.generateResetToken(user.id, user.email);
+
+      // TODO: Send email with reset token
+      console.log(`Password reset token generated for ${email}`);
     }
 
-    // TODO: Generate reset token and send email
-    console.log(`Password reset requested for ${email}`);
+    // Ensure consistent response time to prevent email enumeration via timing
+    const elapsed = Date.now() - startTime;
+    const delay = Math.max(0, minDuration - elapsed);
+    if (delay > 0) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+
+    return resetToken;
   }
 
   static async resetPassword(userId: string, newPassword: string): Promise<void> {
@@ -188,6 +216,77 @@ export class AuthService {
     return jwt.sign(payload, this.JWT_SECRET, {
       expiresIn: this.JWT_EXPIRES_IN,
     });
+  }
+
+  static generateVerificationToken(userId: string, email: string): string {
+    return jwt.sign(
+      { userId, email, type: 'email_verification' },
+      this.JWT_SECRET,
+      { expiresIn: this.VERIFICATION_TOKEN_EXPIRES }
+    );
+  }
+
+  static generateResetToken(userId: string, email: string): string {
+    return jwt.sign(
+      { userId, email, type: 'password_reset' },
+      this.JWT_SECRET,
+      { expiresIn: this.RESET_TOKEN_EXPIRES }
+    );
+  }
+
+  static verifyToken(token: string, expectedType: 'email_verification' | 'password_reset'): { userId: string; email: string } {
+    try {
+      const decoded = jwt.verify(token, this.JWT_SECRET) as {
+        userId: string;
+        email: string;
+        type: string;
+      };
+
+      if (decoded.type !== expectedType) {
+        throw new ApiError(400, 'Invalid token type');
+      }
+
+      return { userId: decoded.userId, email: decoded.email };
+    } catch (error) {
+      if (error instanceof jwt.TokenExpiredError) {
+        throw new ApiError(400, 'Token has expired');
+      }
+      if (error instanceof jwt.JsonWebTokenError) {
+        throw new ApiError(400, 'Invalid token');
+      }
+      throw error;
+    }
+  }
+
+  static generateGuestOrderToken(orderId: string): string {
+    return jwt.sign(
+      { orderId, type: 'guest_order_access' },
+      this.JWT_SECRET,
+      { expiresIn: this.GUEST_ORDER_TOKEN_EXPIRES }
+    );
+  }
+
+  static verifyGuestOrderToken(token: string): { orderId: string } {
+    try {
+      const decoded = jwt.verify(token, this.JWT_SECRET) as {
+        orderId: string;
+        type: string;
+      };
+
+      if (decoded.type !== 'guest_order_access') {
+        throw new ApiError(400, 'Invalid token type');
+      }
+
+      return { orderId: decoded.orderId };
+    } catch (error) {
+      if (error instanceof jwt.TokenExpiredError) {
+        throw new ApiError(400, 'Order access link has expired');
+      }
+      if (error instanceof jwt.JsonWebTokenError) {
+        throw new ApiError(400, 'Invalid order access link');
+      }
+      throw error;
+    }
   }
 
   private static validatePassword(password: string): void {

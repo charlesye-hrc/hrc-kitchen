@@ -46,7 +46,7 @@ const LoginPage = () => {
           if (storedUser) {
             const userData = JSON.parse(storedUser);
             if (userData.role === 'ADMIN') {
-              navigate('/admin');
+              navigate('/kitchen');
             } else if (userData.role === 'KITCHEN') {
               navigate('/kitchen');
             } else if (userData.role === 'FINANCE') {

@@ -1,11 +1,67 @@
 import { Router, Request, Response } from 'express';
 import { KitchenService } from '../services/kitchen.service';
-import { authenticate, authorize } from '../middleware/auth';
+import { authenticate, authorize, AuthRequest } from '../middleware/auth';
 import { validateAdminDomain } from '../middleware/domainValidation';
 import { OrderStatus } from '@prisma/client';
+import prisma from '../lib/prisma';
 
 const router = Router();
 const kitchenService = new KitchenService();
+
+// Helper function to get user's accessible location IDs
+async function getUserLocationIds(userId: string, userRole: string): Promise<string[] | null> {
+  // ADMIN has access to all locations
+  if (userRole === 'ADMIN') {
+    return null; // null means all locations
+  }
+
+  const userLocations = await prisma.userLocation.findMany({
+    where: { userId },
+    select: { locationId: true },
+  });
+
+  return userLocations.map((ul) => ul.locationId);
+}
+
+// Helper function to verify order belongs to user's locations
+async function verifyOrderLocationAccess(orderId: string, allowedLocationIds: string[] | null): Promise<boolean> {
+  if (allowedLocationIds === null) {
+    return true; // ADMIN has access to all
+  }
+
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { locationId: true },
+  });
+
+  if (!order) {
+    return false;
+  }
+
+  return allowedLocationIds.includes(order.locationId);
+}
+
+// Helper function to verify order item belongs to user's locations
+async function verifyOrderItemLocationAccess(orderItemId: string, allowedLocationIds: string[] | null): Promise<boolean> {
+  if (allowedLocationIds === null) {
+    return true; // ADMIN has access to all
+  }
+
+  const orderItem = await prisma.orderItem.findUnique({
+    where: { id: orderItemId },
+    select: {
+      order: {
+        select: { locationId: true },
+      },
+    },
+  });
+
+  if (!orderItem) {
+    return false;
+  }
+
+  return allowedLocationIds.includes(orderItem.order.locationId);
+}
 
 // All routes require authentication, KITCHEN/ADMIN role, and domain validation
 router.use(authenticate);
@@ -71,7 +127,7 @@ router.get('/summary', async (req: Request, res: Response) => {
  * PATCH /api/v1/kitchen/orders/:id/status
  * Update order fulfillment status (kitchen staff only) - marks all items
  */
-router.patch('/orders/:id/status', async (req: Request, res: Response) => {
+router.patch('/orders/:id/status', async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -88,6 +144,17 @@ router.patch('/orders/:id/status', async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+      });
+    }
+
+    // Verify user has access to this order's location
+    const userLocationIds = await getUserLocationIds(req.user!.id, req.user!.role);
+    const hasAccess = await verifyOrderLocationAccess(id, userLocationIds);
+
+    if (!hasAccess) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update orders at this location'
       });
     }
 
@@ -112,7 +179,7 @@ router.patch('/orders/:id/status', async (req: Request, res: Response) => {
  * PATCH /api/v1/kitchen/order-items/:id/status
  * Update individual order item fulfillment status (kitchen staff only)
  */
-router.patch('/order-items/:id/status', async (req: Request, res: Response) => {
+router.patch('/order-items/:id/status', async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -129,6 +196,17 @@ router.patch('/order-items/:id/status', async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+      });
+    }
+
+    // Verify user has access to this order item's location
+    const userLocationIds = await getUserLocationIds(req.user!.id, req.user!.role);
+    const hasAccess = await verifyOrderItemLocationAccess(id, userLocationIds);
+
+    if (!hasAccess) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update order items at this location'
       });
     }
 

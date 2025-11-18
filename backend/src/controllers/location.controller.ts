@@ -106,6 +106,7 @@ export class LocationController {
   async updateUserLastLocation(req: AuthRequest, res: Response) {
     try {
       const userId = req.user!.id;
+      const userRole = req.user!.role;
       const { locationId } = req.body;
 
       if (!locationId) {
@@ -115,12 +116,13 @@ export class LocationController {
         });
       }
 
-      const success = await locationService.updateUserLastLocation(userId, locationId);
+      const result = await locationService.updateUserLastLocation(userId, locationId, userRole);
 
-      if (!success) {
-        return res.status(400).json({
+      if (!result.success) {
+        const statusCode = result.error?.includes('Not authorized') ? 403 : 400;
+        return res.status(statusCode).json({
           success: false,
-          message: 'Failed to update last selected location',
+          message: result.error || 'Failed to update last selected location',
         });
       }
 

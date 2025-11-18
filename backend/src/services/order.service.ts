@@ -2,6 +2,7 @@ import { CreateOrderDto, OrderWithDetails } from '../types/order.types';
 import { PaymentService } from './payment.service';
 import { ConfigService } from './config.service';
 import { SelectedVariation } from '../types/variation.types';
+import { AuthService } from './auth.service';
 import prisma from '../lib/prisma';
 
 export class OrderService {
@@ -37,13 +38,21 @@ export class OrderService {
   async createGuestOrder(
     orderData: CreateOrderDto,
     guestInfo: { email: string; firstName: string; lastName: string }
-  ): Promise<{ order: any; clientSecret: string }> {
-    return this.createOrderInternal(orderData, {
+  ): Promise<{ order: any; clientSecret: string; accessToken: string }> {
+    const result = await this.createOrderInternal(orderData, {
       guestEmail: guestInfo.email,
       guestFirstName: guestInfo.firstName,
       guestLastName: guestInfo.lastName,
       customerEmail: guestInfo.email
     });
+
+    // Generate access token for guest to view their order
+    const accessToken = AuthService.generateGuestOrderToken(result.order.id);
+
+    return {
+      ...result,
+      accessToken
+    };
   }
 
   private async createOrderInternal(
@@ -329,7 +338,45 @@ export class OrderService {
     return order;
   }
 
-  async getGuestOrderById(orderId: string): Promise<any | null> {
+  async getGuestOrderById(orderId: string, email: string): Promise<any | null> {
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        userId: null, // Guest orders only
+        guestEmail: email.toLowerCase() // Verify ownership via email
+      },
+      include: {
+        location: {
+          select: {
+            id: true,
+            name: true,
+            address: true
+          }
+        },
+        orderItems: {
+          include: {
+            menuItem: {
+              select: {
+                name: true,
+                description: true,
+                imageUrl: true,
+                price: true,
+                variationGroups: {
+                  include: {
+                    options: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    return order;
+  }
+
+  async getGuestOrderByToken(orderId: string): Promise<any | null> {
     const order = await prisma.order.findFirst({
       where: {
         id: orderId,

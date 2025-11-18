@@ -42,7 +42,7 @@ export class PaymentService {
     }
   }
 
-  static async confirmPayment(paymentIntentId: string): Promise<Stripe.PaymentIntent> {
+  static async confirmPayment(paymentIntentId: string, userId?: string): Promise<Stripe.PaymentIntent> {
     try {
       // 1. Verify payment with Stripe (source of truth)
       const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
@@ -58,14 +58,28 @@ export class PaymentService {
         return paymentIntent;
       }
 
-      // 3. Check if already processed (idempotency)
+      // 3. Check if already processed (idempotency) and verify ownership
       const existingOrder = await prisma.order.findUnique({
         where: { id: orderId },
-        select: { paymentStatus: true, paymentId: true },
+        select: { paymentStatus: true, paymentId: true, userId: true, guestEmail: true },
       });
 
       if (!existingOrder) {
         throw new ApiError(404, `Order ${orderId} not found`);
+      }
+
+      // 4. Verify ownership - either user owns the order or it's a guest order matching the email
+      if (existingOrder.userId) {
+        // Registered user order - verify user ID matches
+        if (userId && existingOrder.userId !== userId) {
+          throw new ApiError(403, 'Not authorized to confirm payment for this order');
+        }
+      } else if (existingOrder.guestEmail) {
+        // Guest order - verify email matches the payment intent metadata
+        const intentEmail = paymentIntent.metadata.customerEmail;
+        if (intentEmail && existingOrder.guestEmail.toLowerCase() !== intentEmail.toLowerCase()) {
+          throw new ApiError(403, 'Not authorized to confirm payment for this order');
+        }
       }
 
       if (existingOrder.paymentStatus === 'COMPLETED') {
@@ -73,7 +87,7 @@ export class PaymentService {
         return paymentIntent;
       }
 
-      // 4. Update payment status
+      // 5. Update payment status
       await prisma.order.update({
         where: { id: orderId },
         data: {

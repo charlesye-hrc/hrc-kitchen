@@ -77,6 +77,11 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   next();
 });
+
+// Stripe webhook needs raw body for signature verification
+// Must be before express.json() middleware
+app.use('/api/v1/payment/webhook', express.raw({ type: 'application/json' }));
+
 // Increase payload size limit for image uploads (default is 100kb)
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
