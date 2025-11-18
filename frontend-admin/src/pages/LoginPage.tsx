@@ -159,6 +159,20 @@ const LoginPage = () => {
             autoComplete="current-password"
           />
 
+          <Box sx={{ textAlign: 'right', mt: 1 }}>
+            <a
+              href={`${import.meta.env.VITE_PUBLIC_APP_URL || 'http://localhost:5173'}/forgot-password`}
+              style={{
+                textDecoration: 'none',
+                color: '#2D5F3F',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+              }}
+            >
+              Forgot Password?
+            </a>
+          </Box>
+
           <Button
             fullWidth
             type="submit"
