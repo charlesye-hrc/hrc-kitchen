@@ -24,6 +24,9 @@ model User {
   // Password reset token fields
   resetToken             String?        @map("reset_token")
   resetTokenExpiresAt    DateTime?      @map("reset_token_expires_at")
+  // OTP authentication fields
+  otpCode                String?        @map("otp_code")
+  otpExpiresAt           DateTime?      @map("otp_expires_at")
   orders                 Order[]
   configUpdates          SystemConfig[] @relation("ConfigUpdatedBy")
   userLocations          UserLocation[]

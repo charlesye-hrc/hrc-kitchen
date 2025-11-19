@@ -45,6 +45,8 @@ export class AuthService {
     return process.env.JWT_SECRET;
   })();
   private static readonly JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
+  private static readonly OTP_JWT_EXPIRES_IN = '30d'; // Longer session for OTP-based auth
+  private static readonly OTP_CODE_EXPIRES_MINUTES = 10; // OTP valid for 10 minutes
   private static readonly VERIFICATION_TOKEN_EXPIRES = '24h';
   private static readonly RESET_TOKEN_EXPIRES = '1h';
   private static readonly GUEST_ORDER_TOKEN_EXPIRES = '30d';
@@ -240,6 +242,141 @@ export class AuthService {
         resetTokenExpiresAt: null,
       },
     });
+  }
+
+  // OTP Authentication Methods
+
+  static async requestOtp(email: string): Promise<{ fullName: string; isNewUser: boolean } | null> {
+    const startTime = Date.now();
+    const minDuration = 100; // Minimum response time to prevent timing attacks
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    let result: { fullName: string; isNewUser: boolean } | null = null;
+
+    if (user) {
+      // Check if user is active
+      if (!user.isActive) {
+        // Still return null to prevent enumeration, but don't send OTP
+        console.log(`OTP request for deactivated account: ${email}`);
+      } else {
+        // Generate 6-digit OTP
+        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpiresAt = new Date(Date.now() + this.OTP_CODE_EXPIRES_MINUTES * 60 * 1000);
+
+        // Store OTP in database (invalidates any previous OTP)
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            otpCode,
+            otpExpiresAt,
+          },
+        });
+
+        result = { fullName: user.fullName, isNewUser: !user.emailVerified };
+        console.log(`OTP generated for ${email}`);
+      }
+    }
+
+    // Ensure consistent response time to prevent email enumeration
+    const elapsed = Date.now() - startTime;
+    const delay = Math.max(0, minDuration - elapsed);
+    if (delay > 0) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+
+    return result;
+  }
+
+  static async verifyOtp(email: string, otpCode: string): Promise<AuthResponse> {
+    // Find user with this email and valid OTP
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        userLocations: {
+          include: {
+            location: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new ApiError(401, 'Invalid email or code');
+    }
+
+    // Check if user is active
+    if (!user.isActive) {
+      throw new ApiError(403, 'Account is deactivated');
+    }
+
+    // Check if OTP exists and matches
+    if (!user.otpCode || user.otpCode !== otpCode) {
+      throw new ApiError(401, 'Invalid email or code');
+    }
+
+    // Check if OTP is expired
+    if (!user.otpExpiresAt || user.otpExpiresAt < new Date()) {
+      throw new ApiError(401, 'Code has expired. Please request a new one.');
+    }
+
+    // Clear OTP after successful verification (single use)
+    // Also mark email as verified if not already
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        otpCode: null,
+        otpExpiresAt: null,
+        emailVerified: true, // OTP verifies email ownership
+      },
+    });
+
+    // Generate JWT token with extended expiry for OTP auth
+    const token = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
+      this.JWT_SECRET,
+      { expiresIn: this.OTP_JWT_EXPIRES_IN }
+    );
+
+    // Check if user has admin domain access
+    const hasAdminAccess = await hasAdminDomainAccess(user.email);
+
+    // Get accessible locations
+    let accessibleLocations;
+    if (user.role === UserRole.ADMIN) {
+      const allLocations = await prisma.location.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      });
+      accessibleLocations = allLocations;
+    } else {
+      accessibleLocations = user.userLocations.map((ul) => ul.location);
+    }
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+        lastSelectedLocationId: user.lastSelectedLocationId,
+      },
+      token,
+      hasAdminAccess,
+      accessibleLocations,
+    };
   }
 
   private static generateToken(payload: {

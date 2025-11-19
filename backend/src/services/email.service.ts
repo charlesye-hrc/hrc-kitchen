@@ -4,6 +4,7 @@ import { logger } from '../utils/logger';
 import {
   VerificationEmailData,
   PasswordResetEmailData,
+  OtpEmailData,
   WelcomeEmailData,
   OrderConfirmationEmailData,
   OrderItemEmailData,
@@ -11,6 +12,7 @@ import {
 import {
   generateVerificationEmail,
   generatePasswordResetEmail,
+  generateOtpEmail,
   generateWelcomeEmail,
   generateOrderConfirmationEmail,
 } from '../templates/emails';
@@ -108,6 +110,28 @@ export class EmailService {
     await this.sendEmail(email, data.subject, html);
 
     logger.info(`[Email Service] Password reset email sent to ${email}`);
+  }
+
+  /**
+   * Send OTP verification code email
+   */
+  static async sendOtpEmail(
+    email: string,
+    fullName: string,
+    otpCode: string
+  ): Promise<void> {
+    const data: OtpEmailData = {
+      to: email,
+      subject: 'Your Login Code - HRC Kitchen',
+      fullName,
+      otpCode,
+      expiresIn: '10 minutes',
+    };
+
+    const html = generateOtpEmail(data);
+    await this.sendEmail(email, data.subject, html);
+
+    logger.info(`[Email Service] OTP email sent to ${email}`);
   }
 
   /**

@@ -24,6 +24,12 @@ export interface PasswordResetEmailData extends BaseEmailData {
   expiresIn: string;
 }
 
+export interface OtpEmailData extends BaseEmailData {
+  fullName: string;
+  otpCode: string;
+  expiresIn: string;
+}
+
 export interface WelcomeEmailData extends BaseEmailData {
   fullName: string;
   loginUrl: string;
@@ -54,5 +60,6 @@ export interface OrderConfirmationEmailData extends BaseEmailData {
 export type EmailType =
   | 'verification'
   | 'password-reset'
+  | 'otp'
   | 'welcome'
   | 'order-confirmation';

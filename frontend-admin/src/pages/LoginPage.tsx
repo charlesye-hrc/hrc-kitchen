@@ -1,22 +1,34 @@
 import { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { Box, Paper, TextField, Button, Typography, Alert } from '@mui/material';
+import { Box, Paper, TextField, Button, Typography, Alert, Tabs, Tab } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 
 const LoginPage = () => {
+  const [tabValue, setTabValue] = useState(0); // 0 = OTP, 1 = Password
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { login, user } = useAuth();
+  const { login, requestOtp, verifyOtp } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   // Get the redirect path from location state
   const from = (location.state as any)?.from;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+    setError('');
+    setSuccess('');
+    setOtpSent(false);
+    setOtpCode('');
+  };
+
+  const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -29,7 +41,6 @@ const LoginPage = () => {
       const hasAdminAccess = storedHasAdminAccess === 'true';
 
       if (!hasAdminAccess) {
-        // Show access denied error on login page
         setError('Access Denied: This application is restricted to authorized domain users only. Your email domain does not have access to management features. Please contact your administrator.');
         setLoading(false);
         return;
@@ -37,11 +48,9 @@ const LoginPage = () => {
 
       // Wait a bit for context to update with user info
       setTimeout(() => {
-        // Redirect based on where they came from or their role
         if (from && from !== '/login') {
           navigate(from);
         } else {
-          // Default redirect based on role
           const storedUser = localStorage.getItem('user');
           if (storedUser) {
             const userData = JSON.parse(storedUser);
@@ -61,6 +70,86 @@ const LoginPage = () => {
       }, 100);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRequestOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
+    try {
+      await requestOtp(email);
+      setOtpSent(true);
+      setSuccess('A verification code has been sent to your email.');
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Failed to send code. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      await verifyOtp(email, otpCode);
+
+      // Check if user has admin access to this application
+      const storedHasAdminAccess = localStorage.getItem('hasAdminAccess');
+      const hasAdminAccess = storedHasAdminAccess === 'true';
+
+      if (!hasAdminAccess) {
+        setError('Access Denied: This application is restricted to authorized domain users only. Your email domain does not have access to management features. Please contact your administrator.');
+        setLoading(false);
+        return;
+      }
+
+      // Wait a bit for context to update with user info
+      setTimeout(() => {
+        if (from && from !== '/login') {
+          navigate(from);
+        } else {
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            const userData = JSON.parse(storedUser);
+            if (userData.role === 'ADMIN') {
+              navigate('/kitchen');
+            } else if (userData.role === 'KITCHEN') {
+              navigate('/kitchen');
+            } else if (userData.role === 'FINANCE') {
+              navigate('/reports');
+            } else {
+              navigate('/kitchen');
+            }
+          } else {
+            navigate('/');
+          }
+        }
+      }, 100);
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Invalid code. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
+    try {
+      await requestOtp(email);
+      setSuccess('A new verification code has been sent to your email.');
+      setOtpCode('');
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Failed to resend code. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -88,7 +177,7 @@ const LoginPage = () => {
           }
         }}
       >
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
+        <Box sx={{ textAlign: 'center', mb: 3 }}>
           <Box
             sx={{
               width: 56,
@@ -123,6 +212,22 @@ const LoginPage = () => {
           </Typography>
         </Box>
 
+        <Tabs
+          value={tabValue}
+          onChange={handleTabChange}
+          variant="fullWidth"
+          sx={{
+            mb: 3,
+            '& .MuiTab-root': {
+              fontWeight: 600,
+              textTransform: 'none',
+            },
+          }}
+        >
+          <Tab label="Email Code" />
+          <Tab label="Password" />
+        </Tabs>
+
         {error && (
           <Alert
             severity="error"
@@ -136,69 +241,172 @@ const LoginPage = () => {
           </Alert>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <TextField
-            fullWidth
-            label="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            margin="normal"
-            required
-            autoComplete="email"
-          />
-
-          <TextField
-            fullWidth
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            margin="normal"
-            required
-            autoComplete="current-password"
-          />
-
-          <Box sx={{ textAlign: 'right', mt: 1 }}>
-            <a
-              href={`${import.meta.env.VITE_PUBLIC_APP_URL || 'http://localhost:5173'}/forgot-password`}
-              style={{
-                textDecoration: 'none',
-                color: '#2D5F3F',
-                fontSize: '0.875rem',
-                fontWeight: 500,
-              }}
-            >
-              Forgot Password?
-            </a>
-          </Box>
-
-          <Button
-            fullWidth
-            type="submit"
-            variant="contained"
-            sx={{ mt: 3, mb: 2, py: 1.5, fontSize: '1rem' }}
-            disabled={loading}
+        {success && (
+          <Alert
+            severity="success"
+            sx={{
+              mb: 3,
+              borderLeft: '4px solid',
+              borderLeftColor: 'success.main',
+            }}
           >
-            {loading ? 'Logging in...' : 'Sign In'}
-          </Button>
+            {success}
+          </Alert>
+        )}
 
-          <Box sx={{ textAlign: 'center', mt: 3, pt: 3, borderTop: '1px solid', borderColor: 'divider' }}>
-            <Typography variant="body2" color="text.secondary">
-              Don't have an account?{' '}
-              <Link
-                to="/register"
+        {/* OTP Login Tab */}
+        {tabValue === 0 && (
+          <>
+            {!otpSent ? (
+              <form onSubmit={handleRequestOtp}>
+                <TextField
+                  fullWidth
+                  label="Email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  margin="normal"
+                  required
+                  autoComplete="email"
+                  helperText="We'll send you a verification code"
+                />
+
+                <Button
+                  fullWidth
+                  type="submit"
+                  variant="contained"
+                  sx={{ mt: 3, mb: 2, py: 1.5, fontSize: '1rem' }}
+                  disabled={loading}
+                >
+                  {loading ? 'Sending...' : 'Send Code'}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyOtp}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Enter the 6-digit code sent to <strong>{email}</strong>
+                </Typography>
+
+                <TextField
+                  fullWidth
+                  label="Verification Code"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  margin="normal"
+                  required
+                  autoComplete="one-time-code"
+                  inputProps={{
+                    maxLength: 6,
+                    inputMode: 'numeric',
+                    pattern: '[0-9]*',
+                    style: { letterSpacing: '0.5em', fontWeight: 'bold', fontSize: '1.25rem' },
+                  }}
+                  placeholder="000000"
+                />
+
+                <Button
+                  fullWidth
+                  type="submit"
+                  variant="contained"
+                  sx={{ mt: 3, mb: 2, py: 1.5, fontSize: '1rem' }}
+                  disabled={loading || otpCode.length !== 6}
+                >
+                  {loading ? 'Verifying...' : 'Verify Code'}
+                </Button>
+
+                <Box sx={{ textAlign: 'center' }}>
+                  <Button
+                    variant="text"
+                    onClick={handleResendOtp}
+                    disabled={loading}
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Resend Code
+                  </Button>
+                  <Button
+                    variant="text"
+                    onClick={() => {
+                      setOtpSent(false);
+                      setOtpCode('');
+                      setError('');
+                      setSuccess('');
+                    }}
+                    sx={{ textTransform: 'none' }}
+                  >
+                    Change Email
+                  </Button>
+                </Box>
+              </form>
+            )}
+          </>
+        )}
+
+        {/* Password Login Tab */}
+        {tabValue === 1 && (
+          <form onSubmit={handlePasswordLogin}>
+            <TextField
+              fullWidth
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              margin="normal"
+              required
+              autoComplete="email"
+            />
+
+            <TextField
+              fullWidth
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              margin="normal"
+              required
+              autoComplete="current-password"
+            />
+
+            <Box sx={{ textAlign: 'right', mt: 1 }}>
+              <a
+                href={`${import.meta.env.VITE_PUBLIC_APP_URL || 'http://localhost:5173'}/forgot-password`}
                 style={{
                   textDecoration: 'none',
                   color: '#2D5F3F',
-                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
                 }}
               >
-                Create Account
-              </Link>
-            </Typography>
-          </Box>
-        </form>
+                Forgot Password?
+              </a>
+            </Box>
+
+            <Button
+              fullWidth
+              type="submit"
+              variant="contained"
+              sx={{ mt: 3, mb: 2, py: 1.5, fontSize: '1rem' }}
+              disabled={loading}
+            >
+              {loading ? 'Logging in...' : 'Sign In'}
+            </Button>
+          </form>
+        )}
+
+        <Box sx={{ textAlign: 'center', mt: 3, pt: 3, borderTop: '1px solid', borderColor: 'divider' }}>
+          <Typography variant="body2" color="text.secondary">
+            Don't have an account?{' '}
+            <Link
+              to="/register"
+              style={{
+                textDecoration: 'none',
+                color: '#2D5F3F',
+                fontWeight: 600,
+              }}
+            >
+              Create Account
+            </Link>
+          </Typography>
+        </Box>
       </Paper>
     </Box>
   );

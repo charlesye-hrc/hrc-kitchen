@@ -248,10 +248,22 @@ const MenuPage: React.FC = () => {
     (cat) => groupedItems[cat]?.length > 0
   );
 
-  if (loading) {
+  // Show loading spinner while locations or menu is loading
+  if (locationsLoading || (loading && selectedLocation)) {
     return (
       <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <CircularProgress />
+      </Container>
+    );
+  }
+
+  // Handle case where no location is available
+  if (!locationsLoading && !selectedLocation) {
+    return (
+      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
+        <Alert severity="warning">
+          No locations available. Please contact support.
+        </Alert>
       </Container>
     );
   }

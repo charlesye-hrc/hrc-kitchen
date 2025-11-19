@@ -274,12 +274,13 @@ export class LocationService {
    * - Other roles: assigned locations only
    */
   async getUserAccessibleLocations(userId: string, userRole: UserRole) {
-    if (userRole === UserRole.ADMIN) {
-      // Admins have access to all active locations
+    if (userRole === UserRole.ADMIN || userRole === UserRole.STAFF) {
+      // Admins and Staff have access to all active locations
+      // Staff can order from any location
       return this.getAllLocations();
     }
 
-    // Get user's assigned locations
+    // KITCHEN and FINANCE roles: only assigned locations
     const userLocations = await prisma.userLocation.findMany({
       where: { userId },
       include: {

@@ -13,6 +13,8 @@ interface AuthContextType {
   token: string | null;
   hasAdminAccess: boolean;
   login: (email: string, password: string) => Promise<void>;
+  requestOtp: (email: string) => Promise<void>;
+  verifyOtp: (email: string, code: string) => Promise<void>;
   logout: () => void;
   register: (data: RegisterData) => Promise<void>;
   isAuthenticated: boolean;
@@ -78,6 +80,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const requestOtp = async (email: string) => {
+    try {
+      await axios.post(`${API_URL}/auth/request-otp`, { email });
+    } catch (error) {
+      console.error('OTP request failed:', error);
+      throw error;
+    }
+  };
+
+  const verifyOtp = async (email: string, code: string) => {
+    try {
+      const response = await axios.post(`${API_URL}/auth/verify-otp`, {
+        email,
+        code,
+      });
+
+      const { user: userData, token: authToken, hasAdminAccess: adminAccess } = response.data;
+
+      setUser(userData);
+      setToken(authToken);
+      setHasAdminAccess(adminAccess || false);
+
+      localStorage.setItem('token', authToken);
+      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('hasAdminAccess', String(adminAccess || false));
+
+      axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+    } catch (error) {
+      console.error('OTP verification failed:', error);
+      throw error;
+    }
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -102,6 +137,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     token,
     hasAdminAccess,
     login,
+    requestOtp,
+    verifyOtp,
     logout,
     register,
     isAuthenticated: !!user,
