@@ -487,4 +487,126 @@ export class AuthService {
       throw new ApiError(400, 'Password must contain at least one special character');
     }
   }
+
+  // Auth0 Integration Methods
+
+  /**
+   * Get user data by email for Auth0 Action
+   * Returns user info to populate custom claims in Auth0 tokens
+   */
+  static async getUserByEmail(email: string): Promise<{
+    id: string;
+    email: string;
+    fullName: string;
+    role: string;
+    hasAdminAccess: boolean;
+  } | null> {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        isActive: true,
+      },
+    });
+
+    if (!user || !user.isActive) {
+      return null;
+    }
+
+    // Check if user has admin domain access
+    const hasAdminAccess = await hasAdminDomainAccess(user.email);
+
+    return {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+      hasAdminAccess,
+    };
+  }
+
+  /**
+   * Sync Auth0 user with PostgreSQL database
+   * Called by frontend after Auth0 authentication to get user's role and permissions
+   * Also returns a backend JWT for API calls
+   */
+  static async syncAuth0User(email: string, auth0Id: string, name: string): Promise<{
+    id: string;
+    email: string;
+    fullName: string;
+    role: string;
+    hasAdminAccess: boolean;
+    token: string;
+  } | null> {
+    // First, try to find existing user by email
+    let user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        isActive: true,
+      },
+    });
+
+    if (user && !user.isActive) {
+      return null;
+    }
+
+    // If user exists, return their data with a JWT
+    if (user) {
+      const hasAdminAccess = await hasAdminDomainAccess(user.email);
+      const token = jwt.sign(
+        { id: user.id, email: user.email, role: user.role },
+        this.JWT_SECRET,
+        { expiresIn: this.JWT_EXPIRES_IN }
+      );
+      return {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+        hasAdminAccess,
+        token,
+      };
+    }
+
+    // User doesn't exist - they signed up via Auth0
+    // Create a new user with STAFF role
+    const newUser = await prisma.user.create({
+      data: {
+        email,
+        passwordHash: '', // Auth0 manages passwords
+        fullName: name || email.split('@')[0],
+        role: UserRole.STAFF,
+        emailVerified: true, // Auth0 verifies email
+        isActive: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+      },
+    });
+
+    const hasAdminAccess = await hasAdminDomainAccess(newUser.email);
+    const token = jwt.sign(
+      { id: newUser.id, email: newUser.email, role: newUser.role },
+      this.JWT_SECRET,
+      { expiresIn: this.JWT_EXPIRES_IN }
+    );
+    return {
+      id: newUser.id,
+      email: newUser.email,
+      fullName: newUser.fullName,
+      role: newUser.role,
+      hasAdminAccess,
+      token,
+    };
+  }
 }

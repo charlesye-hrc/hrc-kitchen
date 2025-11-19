@@ -1,7 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { Box, Paper, TextField, Button, Typography, Alert, Tabs, Tab } from '@mui/material';
+import { Box, Paper, TextField, Button, Typography, Alert, Tabs, Tab, CircularProgress } from '@mui/material';
+import { useAuth0 } from '@auth0/auth0-react';
 import { useAuth } from '../contexts/AuthContext';
+
+// Check if Auth0 is configured
+const isAuth0Configured = !!(
+  import.meta.env.VITE_AUTH0_DOMAIN && import.meta.env.VITE_AUTH0_CLIENT_ID
+);
 
 const LoginPage = () => {
   const [tabValue, setTabValue] = useState(0); // 0 = OTP, 1 = Password
@@ -13,12 +19,71 @@ const LoginPage = () => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { login, requestOtp, verifyOtp } = useAuth();
+  const { login, requestOtp, verifyOtp, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Get Auth0 hook only if configured
+  const auth0 = isAuth0Configured ? useAuth0() : null;
+
   // Get the redirect path from location state (e.g., from checkout page)
   const from = (location.state as any)?.from || '/menu';
+
+  // If Auth0 is configured and user is already authenticated, redirect
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(from);
+    }
+  }, [isAuthenticated, navigate, from]);
+
+  // If Auth0 is configured, redirect to Auth0 login
+  // But only if we're not currently processing a callback (check for code/state in URL)
+  useEffect(() => {
+    if (isAuth0Configured && auth0) {
+      // Check if we're returning from Auth0 (callback has code or state params)
+      const searchParams = new URLSearchParams(window.location.search);
+      const hasAuthParams = searchParams.has('code') || searchParams.has('state') || searchParams.has('error');
+
+      // Don't redirect if:
+      // 1. Auth0 is still loading (processing callback)
+      // 2. User is already authenticated
+      // 3. We're in the middle of a callback (URL has auth params)
+      if (!auth0.isLoading && !auth0.isAuthenticated && !hasAuthParams) {
+        auth0.loginWithRedirect({
+          appState: { returnTo: from },
+        });
+      }
+    }
+  }, [auth0, from]);
+
+  // Show loading while Auth0 processes
+  if (isAuth0Configured) {
+    // If Auth0 SDK is loading or user is authenticated, show loading
+    if (auth0?.isLoading || auth0?.isAuthenticated) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+          <Box sx={{ textAlign: 'center' }}>
+            <CircularProgress size={48} sx={{ mb: 2 }} />
+            <Typography variant="body1" color="text.secondary">
+              {auth0?.isAuthenticated ? 'Loading your account...' : 'Processing login...'}
+            </Typography>
+          </Box>
+        </Box>
+      );
+    }
+
+    // Show redirecting state
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress size={48} sx={{ mb: 2 }} />
+          <Typography variant="body1" color="text.secondary">
+            Redirecting to login...
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);

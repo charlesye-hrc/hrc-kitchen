@@ -4,6 +4,9 @@ import { EmailService } from '../services/email.service';
 import { ApiError } from '../middleware/errorHandler';
 import prisma from '../lib/prisma';
 
+// API key for Auth0 Action (should be set in environment)
+const AUTH0_ACTION_API_KEY = process.env.AUTH0_ACTION_API_KEY;
+
 export class AuthController {
   static async register(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -186,6 +189,85 @@ export class AuthController {
 
       res.json(result);
     } catch (error) {
+      next(error);
+    }
+  }
+
+  // Auth0 Integration Endpoints
+
+  /**
+   * Get user by email for Auth0 Action
+   * This endpoint is called by Auth0 Action to fetch user data for custom claims
+   * Protected by API key
+   */
+  static async getUserByEmail(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      // Validate API key
+      const apiKey = req.headers['x-api-key'] as string;
+
+      if (!AUTH0_ACTION_API_KEY) {
+        console.error('AUTH0_ACTION_API_KEY not configured');
+        throw new ApiError(500, 'Server configuration error');
+      }
+
+      if (!apiKey || apiKey !== AUTH0_ACTION_API_KEY) {
+        throw new ApiError(401, 'Invalid API key');
+      }
+
+      const { email } = req.query;
+
+      if (!email || typeof email !== 'string') {
+        throw new ApiError(400, 'Email parameter is required');
+      }
+
+      const userData = await AuthService.getUserByEmail(email);
+
+      if (!userData) {
+        // Return null for users not in database (they'll get default STAFF role)
+        res.json(null);
+        return;
+      }
+
+      res.json(userData);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Sync Auth0 user with PostgreSQL database
+   * Called by frontend after Auth0 authentication
+   * Protected by authenticateAuth0 middleware - uses validated email from token
+   */
+  static async syncAuth0User(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      // Get email from validated Auth0 token (set by authenticateAuth0 middleware)
+      const userFromToken = (req as any).user;
+
+      console.log('syncAuth0User - userFromToken:', userFromToken);
+
+      if (!userFromToken || !userFromToken.email) {
+        throw new ApiError(401, 'Invalid token - no email found');
+      }
+
+      // Use the validated email from the token, not from request body
+      const email = userFromToken.email;
+      const auth0Id = userFromToken.auth0Id || '';
+      const { name } = req.body; // Name can come from body as it's not security-sensitive
+
+      console.log('syncAuth0User - calling AuthService.syncAuth0User with email:', email);
+
+      const userData = await AuthService.syncAuth0User(email, auth0Id, name || '');
+
+      console.log('syncAuth0User - userData returned:', userData);
+
+      if (!userData) {
+        throw new ApiError(403, 'Account is deactivated');
+      }
+
+      res.json(userData);
+    } catch (error) {
+      console.error('syncAuth0User - error:', error);
       next(error);
     }
   }
