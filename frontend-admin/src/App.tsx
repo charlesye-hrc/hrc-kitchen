@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth0 } from '@auth0/auth0-react';
 import AdminLayout from './components/AdminLayout';
 import LoginPage from './pages/LoginPage';
 import KitchenDashboard from './pages/KitchenDashboard';
@@ -14,9 +15,44 @@ import { useAuth } from './contexts/AuthContext';
 import { LocationProvider } from '@hrc-kitchen/common';
 import { ReactNode, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { CircularProgress, Box, Alert, Container } from '@mui/material';
+import { CircularProgress, Box, Alert, Container, Typography } from '@mui/material';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+
+// Check if Auth0 is configured
+const isAuth0Configured = !!(
+  import.meta.env.VITE_AUTH0_DOMAIN && import.meta.env.VITE_AUTH0_CLIENT_ID
+);
+
+// Component to handle Auth0 loading state at root level
+const Auth0LoadingGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Only use Auth0 hook if configured
+  if (!isAuth0Configured) {
+    return <>{children}</>;
+  }
+
+  const { isLoading, error } = useAuth0();
+
+  if (error) {
+    console.error('Auth0 error:', error);
+  }
+
+  // Show loading while Auth0 processes the callback
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress size={48} sx={{ mb: 2 }} />
+          <Typography variant="body1" color="text.secondary">
+            Loading...
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
+
+  return <>{children}</>;
+};
 
 /**
  * Internal Management App
@@ -193,13 +229,15 @@ const AppRoutes = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <LocationProvider apiUrl={API_URL}>
-        <AdminLayout>
-          <AppRoutes />
-        </AdminLayout>
-      </LocationProvider>
-    </AuthProvider>
+    <Auth0LoadingGuard>
+      <AuthProvider>
+        <LocationProvider apiUrl={API_URL}>
+          <AdminLayout>
+            <AppRoutes />
+          </AdminLayout>
+        </LocationProvider>
+      </AuthProvider>
+    </Auth0LoadingGuard>
   );
 }
 
