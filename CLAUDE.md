@@ -54,13 +54,15 @@ Admin App (port 5174) ───┘
 
 ## Test Accounts
 
+**All logins require MFA**: Enter password → Check email for OTP code → Enter OTP
+
 **Management App** (domain-restricted: `@huonregionalcare.org.au`):
-- `admin@huonregionalcare.org.au` / `Admin123!`
-- `kitchen@huonregionalcare.org.au` / `Kitchen123!`
-- `finance@huonregionalcare.org.au` / `Finance123!`
+- `admin@huonregionalcare.org.au` / `Admin123!` + OTP
+- `kitchen@huonregionalcare.org.au` / `Kitchen123!` + OTP
+- `finance@huonregionalcare.org.au` / `Finance123!` + OTP
 
 **Public Ordering App** (any email):
-- `staff@hrc-kitchen.com` / `Staff123!`
+- `staff@hrc-kitchen.com` / `Staff123!` + OTP
 - All domain users can also use the public app
 
 ---
@@ -106,7 +108,11 @@ hrc-kitchen/
 ## Key Implementation Notes
 
 ### Authentication & Authorization
-- JWT-based authentication (shared across both apps)
+- **Mandatory MFA**: All users require Password + OTP (email-based) for login
+- Two-step authentication flow:
+  1. Password verification → OTP sent to email
+  2. OTP verification (6-digit code, 10-minute expiry) → JWT token issued
+- JWT tokens valid for 7 days (automatic re-authentication required weekly)
 - Domain validation via database config (`restricted_role_domain`)
 - `hasAdminAccess` flag in login response
 - Role-based access: STAFF, KITCHEN, ADMIN, FINANCE
@@ -116,8 +122,9 @@ hrc-kitchen/
 
 ### Email Service
 - SendGrid Web API for transactional emails
-- Email types: verification, password reset, welcome, order confirmation
+- Email types: verification, password reset, welcome, order confirmation, **OTP codes**
 - HTML templates with consistent branding
+- OTP emails sent automatically after password verification
 - Token validation on reset page load (better UX)
 - [Email Service](backend/src/services/email.service.ts)
 - [Email Templates](backend/src/templates/emails/)
@@ -282,7 +289,7 @@ hrc-kitchen/
 
 ---
 
-**Last Updated**: 2025-11-18
-**Document Version**: 2.2 (Email service integration)
+**Last Updated**: 2025-11-20
+**Document Version**: 2.3 (Mandatory MFA implementation)
 
-[Maintenance Guidelines](DOCUMENTATION_GUIDELINES.md) | [Archive](docs/05-archive/README.md) | [Recent Bug Fixes](docs/05-archive/2025-01-17-bug-fixes.md)
+[Maintenance Guidelines](DOCUMENTATION_GUIDELINES.md) | [Archive](docs/05-archive/README.md) | [MFA Implementation](docs/05-archive/2025-11-20-mfa-implementation.md)

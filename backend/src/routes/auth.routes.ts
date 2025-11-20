@@ -22,11 +22,7 @@ router.post('/reset-password', authLimiter, AuthController.resetPassword);
 // POST /api/v1/auth/verify-reset-token
 router.post('/verify-reset-token', authLimiter, AuthController.verifyResetToken);
 
-// OTP Authentication Routes
-// POST /api/v1/auth/request-otp
-router.post('/request-otp', authLimiter, AuthController.requestOtp);
-
-// POST /api/v1/auth/verify-otp
+// POST /api/v1/auth/verify-otp (Step 2 of login - verify OTP after password)
 router.post('/verify-otp', authLimiter, AuthController.verifyOtp);
 
 export default router;

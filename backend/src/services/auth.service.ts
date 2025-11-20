@@ -20,6 +20,11 @@ export interface LoginDTO {
   password: string;
 }
 
+export interface LoginStepOneResponse {
+  requiresOtp: true;
+  message: string;
+}
+
 export interface AuthResponse {
   user: {
     id: string;
@@ -44,8 +49,7 @@ export class AuthService {
     }
     return process.env.JWT_SECRET;
   })();
-  private static readonly JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
-  private static readonly OTP_JWT_EXPIRES_IN = '30d'; // Longer session for OTP-based auth
+  private static readonly JWT_EXPIRES_IN = '7d'; // 7 days for all authenticated users
   private static readonly OTP_CODE_EXPIRES_MINUTES = 10; // OTP valid for 10 minutes
   private static readonly VERIFICATION_TOKEN_EXPIRES = '24h';
   private static readonly RESET_TOKEN_EXPIRES = '1h';
@@ -88,22 +92,10 @@ export class AuthService {
     return { user, verificationToken };
   }
 
-  static async login(data: LoginDTO): Promise<AuthResponse> {
+  static async login(data: LoginDTO): Promise<LoginStepOneResponse> {
     // Find user
     const user = await prisma.user.findUnique({
       where: { email: data.email },
-      include: {
-        userLocations: {
-          include: {
-            location: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
-      },
     });
 
     if (!user) {
@@ -127,41 +119,26 @@ export class AuthService {
       throw new ApiError(401, 'Invalid credentials');
     }
 
-    // Generate JWT token
-    const token = this.generateToken({
-      id: user.id,
-      email: user.email,
-      role: user.role,
+    // Password is valid - now generate and send OTP
+    // Generate 6-digit OTP
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiresAt = new Date(Date.now() + this.OTP_CODE_EXPIRES_MINUTES * 60 * 1000);
+
+    // Store OTP in database (invalidates any previous OTP)
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        otpCode,
+        otpExpiresAt,
+      },
     });
 
-    // Check if user has admin domain access
-    const hasAdminAccess = await hasAdminDomainAccess(user.email);
+    console.log(`Login step 1 successful for ${data.email} - OTP generated`);
 
-    // Get accessible locations
-    // ADMIN role has access to all locations
-    let accessibleLocations;
-    if (user.role === UserRole.ADMIN) {
-      const allLocations = await prisma.location.findMany({
-        where: { isActive: true },
-        select: { id: true, name: true },
-        orderBy: { name: 'asc' },
-      });
-      accessibleLocations = allLocations;
-    } else {
-      accessibleLocations = user.userLocations.map((ul) => ul.location);
-    }
-
+    // Return response indicating OTP is required
     return {
-      user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName,
-        role: user.role,
-        lastSelectedLocationId: user.lastSelectedLocationId,
-      },
-      token,
-      hasAdminAccess, // Indicates if email domain allows management app access
-      accessibleLocations,
+      requiresOtp: true,
+      message: 'Password verified. Please enter the verification code sent to your email.',
     };
   }
 
@@ -246,48 +223,20 @@ export class AuthService {
 
   // OTP Authentication Methods
 
-  static async requestOtp(email: string): Promise<{ fullName: string; isNewUser: boolean } | null> {
-    const startTime = Date.now();
-    const minDuration = 100; // Minimum response time to prevent timing attacks
-
+  static async getOtpCode(email: string): Promise<string | null> {
+    // Helper method to retrieve OTP code for email sending
+    // Used after login step 1 to get the OTP for email
     const user = await prisma.user.findUnique({
       where: { email },
+      select: { otpCode: true, otpExpiresAt: true },
     });
 
-    let result: { fullName: string; isNewUser: boolean } | null = null;
-
-    if (user) {
-      // Check if user is active
-      if (!user.isActive) {
-        // Still return null to prevent enumeration, but don't send OTP
-        console.log(`OTP request for deactivated account: ${email}`);
-      } else {
-        // Generate 6-digit OTP
-        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpExpiresAt = new Date(Date.now() + this.OTP_CODE_EXPIRES_MINUTES * 60 * 1000);
-
-        // Store OTP in database (invalidates any previous OTP)
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            otpCode,
-            otpExpiresAt,
-          },
-        });
-
-        result = { fullName: user.fullName, isNewUser: !user.emailVerified };
-        console.log(`OTP generated for ${email}`);
-      }
+    // Only return OTP if it exists and hasn't expired
+    if (user?.otpCode && user.otpExpiresAt && user.otpExpiresAt > new Date()) {
+      return user.otpCode;
     }
 
-    // Ensure consistent response time to prevent email enumeration
-    const elapsed = Date.now() - startTime;
-    const delay = Math.max(0, minDuration - elapsed);
-    if (delay > 0) {
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-
-    return result;
+    return null;
   }
 
   static async verifyOtp(email: string, otpCode: string): Promise<AuthResponse> {
@@ -338,16 +287,12 @@ export class AuthService {
       },
     });
 
-    // Generate JWT token with extended expiry for OTP auth
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-      },
-      this.JWT_SECRET,
-      { expiresIn: this.OTP_JWT_EXPIRES_IN }
-    );
+    // Generate JWT token (7 days)
+    const token = this.generateToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
 
     // Check if user has admin domain access
     const hasAdminAccess = await hasAdminDomainAccess(user.email);

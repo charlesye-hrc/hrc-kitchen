@@ -48,6 +48,18 @@ export class AuthController {
 
       const result = await AuthService.login({ email, password });
 
+      // Get user info and OTP code to send email
+      const user = await prisma.user.findUnique({
+        where: { email },
+        select: { fullName: true },
+      });
+
+      const otpCode = await AuthService.getOtpCode(email);
+
+      if (user && otpCode) {
+        await EmailService.sendOtpEmail(email, user.fullName, otpCode);
+      }
+
       res.json(result);
     } catch (error) {
       next(error);
@@ -142,37 +154,7 @@ export class AuthController {
     }
   }
 
-  // OTP Authentication Endpoints
-
-  static async requestOtp(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { email } = req.body;
-
-      if (!email) {
-        throw new ApiError(400, 'Email is required');
-      }
-
-      const result = await AuthService.requestOtp(email);
-
-      // Send OTP email if user exists
-      if (result) {
-        // Get the OTP from database to send in email
-        const user = await prisma.user.findUnique({
-          where: { email },
-          select: { otpCode: true, fullName: true },
-        });
-
-        if (user && user.otpCode) {
-          await EmailService.sendOtpEmail(email, user.fullName, user.otpCode);
-        }
-      }
-
-      // Always return same message to prevent email enumeration
-      res.json({ message: 'If an account exists, a verification code has been sent' });
-    } catch (error) {
-      next(error);
-    }
-  }
+  // OTP Verification (Step 2 of login)
 
   static async verifyOtp(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {

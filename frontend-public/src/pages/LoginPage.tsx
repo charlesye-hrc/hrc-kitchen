@@ -1,60 +1,39 @@
 import { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { Box, Paper, TextField, Button, Typography, Alert, Tabs, Tab } from '@mui/material';
+import { Box, Paper, TextField, Button, Typography, Alert } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 
 const LoginPage = () => {
-  const [tabValue, setTabValue] = useState(0); // 0 = OTP, 1 = Password
+  const [step, setStep] = useState<'password' | 'otp'>('password');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { login, requestOtp, verifyOtp } = useAuth();
+  const { loginWithPassword, verifyOtp } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   // Get the redirect path from location state (e.g., from checkout page)
   const from = (location.state as any)?.from || '/menu';
 
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue);
-    setError('');
-    setSuccess('');
-    setOtpSent(false);
-    setOtpCode('');
-  };
-
-  const handlePasswordLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      await login(email, password);
-      navigate(from);
-    } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Login failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRequestOtp = async (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
     setLoading(true);
 
     try {
-      await requestOtp(email);
-      setOtpSent(true);
-      setSuccess('A verification code has been sent to your email.');
+      const result = await loginWithPassword(email, password);
+
+      if (result.requiresOtp) {
+        setStep('otp');
+        setSuccess('Password verified! A verification code has been sent to your email.');
+      }
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Failed to send code. Please try again.');
+      setError(err.response?.data?.error?.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -81,7 +60,8 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      await requestOtp(email);
+      // Re-submit password to get new OTP
+      await loginWithPassword(email, password);
       setSuccess('A new verification code has been sent to your email.');
       setOtpCode('');
     } catch (err: any) {
@@ -89,6 +69,13 @@ const LoginPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleBackToPassword = () => {
+    setStep('password');
+    setOtpCode('');
+    setError('');
+    setSuccess('');
   };
 
   return (
@@ -141,28 +128,12 @@ const LoginPage = () => {
               mb: 0.5,
             }}
           >
-            Welcome Back
+            {step === 'password' ? 'Welcome Back' : 'Verify Your Identity'}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
-            Sign in to your account
+            {step === 'password' ? 'Sign in to your account' : 'Enter the code sent to your email'}
           </Typography>
         </Box>
-
-        <Tabs
-          value={tabValue}
-          onChange={handleTabChange}
-          variant="fullWidth"
-          sx={{
-            mb: 3,
-            '& .MuiTab-root': {
-              fontWeight: 600,
-              textTransform: 'none',
-            },
-          }}
-        >
-          <Tab label="Email Code" />
-          <Tab label="Password" />
-        </Tabs>
 
         {error && (
           <Alert
@@ -190,96 +161,9 @@ const LoginPage = () => {
           </Alert>
         )}
 
-        {/* OTP Login Tab */}
-        {tabValue === 0 && (
-          <>
-            {!otpSent ? (
-              <form onSubmit={handleRequestOtp}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  margin="normal"
-                  required
-                  autoComplete="email"
-                  helperText="We'll send you a verification code"
-                />
-
-                <Button
-                  fullWidth
-                  type="submit"
-                  variant="contained"
-                  sx={{ mt: 3, mb: 2, py: 1.5, fontSize: '1rem' }}
-                  disabled={loading}
-                >
-                  {loading ? 'Sending...' : 'Send Code'}
-                </Button>
-              </form>
-            ) : (
-              <form onSubmit={handleVerifyOtp}>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  Enter the 6-digit code sent to <strong>{email}</strong>
-                </Typography>
-
-                <TextField
-                  fullWidth
-                  label="Verification Code"
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  margin="normal"
-                  required
-                  autoComplete="one-time-code"
-                  inputProps={{
-                    maxLength: 6,
-                    inputMode: 'numeric',
-                    pattern: '[0-9]*',
-                    style: { letterSpacing: '0.5em', fontWeight: 'bold', fontSize: '1.25rem' },
-                  }}
-                  placeholder="000000"
-                />
-
-                <Button
-                  fullWidth
-                  type="submit"
-                  variant="contained"
-                  sx={{ mt: 3, mb: 2, py: 1.5, fontSize: '1rem' }}
-                  disabled={loading || otpCode.length !== 6}
-                >
-                  {loading ? 'Verifying...' : 'Verify Code'}
-                </Button>
-
-                <Box sx={{ textAlign: 'center' }}>
-                  <Button
-                    variant="text"
-                    onClick={handleResendOtp}
-                    disabled={loading}
-                    sx={{ textTransform: 'none' }}
-                  >
-                    Resend Code
-                  </Button>
-                  <Button
-                    variant="text"
-                    onClick={() => {
-                      setOtpSent(false);
-                      setOtpCode('');
-                      setError('');
-                      setSuccess('');
-                    }}
-                    sx={{ textTransform: 'none' }}
-                  >
-                    Change Email
-                  </Button>
-                </Box>
-              </form>
-            )}
-          </>
-        )}
-
-        {/* Password Login Tab */}
-        {tabValue === 1 && (
-          <form onSubmit={handlePasswordLogin}>
+        {/* Step 1: Password */}
+        {step === 'password' && (
+          <form onSubmit={handlePasswordSubmit}>
             <TextField
               fullWidth
               label="Email"
@@ -323,8 +207,64 @@ const LoginPage = () => {
               sx={{ mt: 3, mb: 2, py: 1.5, fontSize: '1rem' }}
               disabled={loading}
             >
-              {loading ? 'Logging in...' : 'Sign In'}
+              {loading ? 'Verifying...' : 'Continue'}
             </Button>
+          </form>
+        )}
+
+        {/* Step 2: OTP Verification */}
+        {step === 'otp' && (
+          <form onSubmit={handleVerifyOtp}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Enter the 6-digit code sent to <strong>{email}</strong>
+            </Typography>
+
+            <TextField
+              fullWidth
+              label="Verification Code"
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              margin="normal"
+              required
+              autoComplete="one-time-code"
+              autoFocus
+              inputProps={{
+                maxLength: 6,
+                inputMode: 'numeric',
+                pattern: '[0-9]*',
+                style: { letterSpacing: '0.5em', fontWeight: 'bold', fontSize: '1.25rem' },
+              }}
+              placeholder="000000"
+            />
+
+            <Button
+              fullWidth
+              type="submit"
+              variant="contained"
+              sx={{ mt: 3, mb: 2, py: 1.5, fontSize: '1rem' }}
+              disabled={loading || otpCode.length !== 6}
+            >
+              {loading ? 'Verifying...' : 'Verify & Sign In'}
+            </Button>
+
+            <Box sx={{ textAlign: 'center' }}>
+              <Button
+                variant="text"
+                onClick={handleResendOtp}
+                disabled={loading}
+                sx={{ textTransform: 'none' }}
+              >
+                Resend Code
+              </Button>
+              <Button
+                variant="text"
+                onClick={handleBackToPassword}
+                disabled={loading}
+                sx={{ textTransform: 'none' }}
+              >
+                Back to Login
+              </Button>
+            </Box>
           </form>
         )}
 

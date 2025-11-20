@@ -22,6 +22,7 @@ This folder contains historical documentation that has been superseded by newer 
 | SESSION_SUMMARY_VARIATIONS_UX.md | 2025-11-12 | Session complete | Variations UX improvements session summary |
 | SESSION_MULTI_LOCATION_ENHANCEMENTS.md | 2025-11-16 | Session complete | Multi-location validation, checkout improvements, weekend menus |
 | 2025-01-17-bug-fixes.md | 2025-01-17 | Bug fixes documented | Finance reports revenue discrepancies, kitchen dashboard duplicate keys, deleted items grouping, reports page 403 error |
+| 2025-11-20-mfa-implementation.md | 2025-11-20 | Feature complete | Mandatory MFA with password + OTP, 7-day JWT tokens, two-step authentication flow |
 
 ---
 
@@ -51,4 +52,4 @@ For current, active documentation, see:
 
 ---
 
-**Last Updated:** 2025-01-17
+**Last Updated:** 2025-11-20
