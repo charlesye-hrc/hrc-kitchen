@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Box, Paper, Typography, Alert, Button, CircularProgress } from '@mui/material';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -12,14 +12,22 @@ const VerifyEmailPage = () => {
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
+  const hasVerified = useRef(false);
 
   useEffect(() => {
     const verifyEmail = async () => {
+      // Prevent duplicate verification calls (React Strict Mode runs effects twice)
+      if (hasVerified.current) {
+        return;
+      }
+
       if (!token) {
         setStatus('error');
         setMessage('Invalid verification link. No token provided.');
         return;
       }
+
+      hasVerified.current = true;
 
       try {
         await api.post('/auth/verify-email', { token });
