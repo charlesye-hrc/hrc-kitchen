@@ -86,6 +86,19 @@ export class AuthService {
       },
     });
 
+    // Link any existing guest orders to this new user account
+    await prisma.order.updateMany({
+      where: {
+        guestEmail: data.email,
+        userId: null, // Only link orders that aren't already linked to a user
+      },
+      data: {
+        userId: user.id,
+      },
+    });
+
+    console.log(`Linked guest orders for ${data.email} to new user account ${user.id}`);
+
     // Generate verification token
     const verificationToken = this.generateVerificationToken(user.id, user.email);
 
