@@ -944,7 +944,7 @@ const KitchenDashboard = () => {
                                 }}>
                                   <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                                     <Typography variant="body1">
-                                      <strong>{item.quantity}x</strong> {item.menuItem?.name || item.itemName || 'Deleted Item'}
+                                      <strong>{item.quantity}x</strong> {item.menuItem?.name || 'Deleted Item'}
                                     </Typography>
                                     {item.selectedVariations && item.selectedVariations.variations && item.selectedVariations.variations.length > 0 && (
                                       <>

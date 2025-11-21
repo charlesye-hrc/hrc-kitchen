@@ -67,7 +67,7 @@ interface Order {
 
 const OrderConfirmationPage: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
-  const { token, isAuthenticated, login } = useAuth();
+  const { token, isAuthenticated, loginWithPassword, verifyOtp } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -164,12 +164,10 @@ const OrderConfirmationPage: React.FC = () => {
         fullName: guestName || `${firstName} ${lastName}`.trim(),
       });
 
-      // Auto-login
-      await login(guestEmail!, password);
-
       setShowAccountDialog(false);
-      // Show success message
-      alert('Account created successfully! You are now logged in.');
+      // Show success message - user needs to verify email before logging in
+      alert('Account created successfully! Please check your email to verify your account, then you can log in.');
+      navigate('/login');
     } catch (err: any) {
       console.error('Account creation failed:', err);
       setAccountError(err.response?.data?.message || 'Failed to create account');

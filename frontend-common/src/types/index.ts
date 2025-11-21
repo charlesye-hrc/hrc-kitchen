@@ -52,7 +52,6 @@ export interface MenuItem {
   imageUrl: string | null;
   weekdays: Weekday[]; // Changed from single weekday to array
   dietaryTags: string[];
-  isActive: boolean;
   customizations: MenuItemCustomization[];
   variationGroups?: VariationGroup[];
   createdAt?: string;

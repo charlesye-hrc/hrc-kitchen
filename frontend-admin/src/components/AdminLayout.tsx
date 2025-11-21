@@ -112,7 +112,7 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
   // Filter navigation items based on user role
   const visibleNavItems = navItems.filter(
-    (item) => user && item.roles.includes(user.role)
+    (item) => user && user.role !== 'STAFF' && item.roles.includes(user.role)
   );
 
   return (

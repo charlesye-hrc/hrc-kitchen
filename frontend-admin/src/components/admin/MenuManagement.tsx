@@ -128,7 +128,6 @@ const MenuManagement = () => {
         weekdays: item.weekdays,
         imageUrl: item.imageUrl || '',
         dietaryTags: item.dietaryTags,
-        isActive: item.isActive,
       });
 
       // Fetch assigned locations for this menu item
@@ -154,7 +153,6 @@ const MenuManagement = () => {
         weekdays: viewMode === 'weekday' ? [WEEKDAYS[currentWeekday]] : [],
         imageUrl: '',
         dietaryTags: [],
-        isActive: true,
       });
       setSelectedLocationIds([]);
     }
@@ -578,9 +576,6 @@ const MenuManagement = () => {
                     {viewMode !== 'weekday' && item.weekdays.map((day) => (
                       <Chip key={day} label={day} size="small" color="secondary" />
                     ))}
-                    {!item.isActive && (
-                      <Chip label="Inactive" size="small" color="error" />
-                    )}
                   </Box>
                   {item.dietaryTags.length > 0 && (
                     <Box display="flex" flexWrap="wrap" gap={0.5}>
@@ -775,18 +770,6 @@ const MenuManagement = () => {
                 </Box>
               )}
             </Box>
-
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={formData.isActive}
-                  onChange={(e) =>
-                    setFormData({ ...formData, isActive: e.target.checked })
-                  }
-                />
-              }
-              label="Active"
-            />
           </Stack>
           )}
 
