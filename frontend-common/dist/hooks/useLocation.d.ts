@@ -9,6 +9,8 @@ export interface UseLocationReturn {
 }
 export interface UseLocationOptions {
     apiUrl?: string;
+    forceAllLocations?: boolean;
+    tokenKey?: string;
 }
 /**
  * Hook to manage locations

@@ -39,8 +39,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     // Load user from localStorage on mount
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
+    // Use app-specific keys to avoid conflicts with admin app
+    const storedToken = localStorage.getItem('public_token');
+    const storedUser = localStorage.getItem('public_user');
 
     if (storedToken && storedUser) {
       setToken(storedToken);
@@ -79,8 +80,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(userData);
       setToken(authToken);
 
-      localStorage.setItem('token', authToken);
-      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('public_token', authToken);
+      localStorage.setItem('public_user', JSON.stringify(userData));
 
       axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
     } catch (error) {
@@ -92,8 +93,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem('public_token');
+    localStorage.removeItem('public_user');
     delete axios.defaults.headers.common['Authorization'];
   };
 

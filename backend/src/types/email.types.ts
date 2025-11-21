@@ -35,6 +35,14 @@ export interface WelcomeEmailData extends BaseEmailData {
   loginUrl: string;
 }
 
+export interface InvitationEmailData extends BaseEmailData {
+  fullName: string;
+  inviterName: string;
+  role: string;
+  invitationUrl: string;
+  expiresIn: string;
+}
+
 export interface OrderItemEmailData {
   name: string;
   quantity: number;
@@ -62,4 +70,5 @@ export type EmailType =
   | 'password-reset'
   | 'otp'
   | 'welcome'
+  | 'invitation'
   | 'order-confirmation';

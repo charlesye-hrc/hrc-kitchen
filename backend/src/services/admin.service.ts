@@ -152,7 +152,17 @@ export class AdminService {
     const skip = (page - 1) * limit;
 
     // Build where clause
-    const where: any = {};
+    const where: any = {
+      // Exclude users with pending invitations (have invitationToken and no password)
+      AND: [
+        {
+          OR: [
+            { invitationToken: null },
+            { passwordHash: { not: null } }
+          ]
+        }
+      ]
+    };
 
     if (filters.role) {
       where.role = filters.role;
@@ -249,6 +259,21 @@ export class AdminService {
       return user;
     } catch (error) {
       return null;
+    }
+  }
+
+  /**
+   * Delete a user
+   * Performs hard delete from database
+   */
+  async deleteUser(userId: string) {
+    try {
+      await prisma.user.delete({
+        where: { id: userId },
+      });
+      return true;
+    } catch (error) {
+      return false;
     }
   }
 

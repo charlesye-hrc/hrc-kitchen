@@ -137,11 +137,21 @@ hrc-kitchen/
 
 ### Multi-Location Support
 - Each location has separate menu item assignments
-- Users (except ADMIN) are assigned specific locations
+- **Location Assignment by Role**:
+  - **ADMIN**: Access to all active locations (no assignments needed)
+  - **KITCHEN/FINANCE**: Assigned to specific locations via Admin UI
+  - **STAFF**: No location assignments (public ordering only, sees all locations)
+- **Public Ordering App**: All users see all locations (location assignments ignored)
+- **Internal Management Apps**: Respect user location assignments
+  - Kitchen Dashboard & Reports: Show only assigned locations (ADMIN sees all)
+- **Separate Authentication State**:
+  - Public app uses `public_token` in localStorage
+  - Admin app uses `admin_token` in localStorage
+  - Prevents cross-app token conflicts when using both simultaneously
 - Cart validates items against selected location
 - Orders include `locationId` and validate item availability
-- Location selector in menu and checkout pages
 - [Location Service](backend/src/services/location.service.ts)
+- [Location Hook](frontend-common/src/hooks/useLocation.ts)
 
 ### Weekend Menu Support
 - Menu items can be assigned to any day (Monday-Sunday)
@@ -266,6 +276,17 @@ hrc-kitchen/
 
 ## Important Notes
 
+### Database Migrations
+**CRITICAL: Developer must run database migrations manually**
+- **DO NOT** attempt to run `prisma migrate dev` or `prisma db push`
+- Claude runs in non-interactive mode (Prisma blocks this)
+- Cannot see actual database state or make informed decisions about data loss
+- When schema changes are needed:
+  1. ✅ Update `schema.prisma`
+  2. ✅ Write code that uses new schema
+  3. 🛑 Tell developer: "Please run the migration yourself"
+  4. ✅ Provide exact command: `cd backend && npx prisma migrate dev --name [name]`
+
 ### Process Management
 **DO NOT** automatically kill or restart backend/frontend processes.
 - Developer manages `npm run dev` manually
@@ -289,7 +310,7 @@ hrc-kitchen/
 
 ---
 
-**Last Updated**: 2025-11-20
-**Document Version**: 2.3 (Mandatory MFA implementation)
+**Last Updated**: 2025-11-21
+**Document Version**: 2.4 (Location assignment fixes & separate app authentication)
 
 [Maintenance Guidelines](DOCUMENTATION_GUIDELINES.md) | [Archive](docs/05-archive/README.md) | [MFA Implementation](docs/05-archive/2025-11-20-mfa-implementation.md)

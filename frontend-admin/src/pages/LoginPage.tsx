@@ -48,7 +48,7 @@ const LoginPage = () => {
       await verifyOtp(email, otpCode);
 
       // Check if user has admin access to this application
-      const storedHasAdminAccess = localStorage.getItem('hasAdminAccess');
+      const storedHasAdminAccess = localStorage.getItem('admin_hasAdminAccess');
       const hasAdminAccess = storedHasAdminAccess === 'true';
 
       if (!hasAdminAccess) {
@@ -62,7 +62,7 @@ const LoginPage = () => {
         if (from && from !== '/login') {
           navigate(from);
         } else {
-          const storedUser = localStorage.getItem('user');
+          const storedUser = localStorage.getItem('admin_user');
           if (storedUser) {
             const userData = JSON.parse(storedUser);
             if (userData.role === 'ADMIN') {

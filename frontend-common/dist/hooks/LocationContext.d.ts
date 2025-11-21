@@ -3,6 +3,8 @@ import { UseLocationReturn } from './useLocation';
 interface LocationProviderProps {
     children: ReactNode;
     apiUrl?: string;
+    forceAllLocations?: boolean;
+    tokenKey?: string;
 }
 export declare const LocationProvider: React.FC<LocationProviderProps>;
 export declare const useLocationContext: () => UseLocationReturn;

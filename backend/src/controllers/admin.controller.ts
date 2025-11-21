@@ -335,6 +335,44 @@ export class AdminController {
   }
 
   /**
+   * DELETE /api/v1/admin/users/:id
+   * Delete a user
+   */
+  async deleteUser(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+
+      // Prevent self-deletion
+      if (id === req.user?.id) {
+        return res.status(403).json({
+          success: false,
+          message: 'Cannot delete yourself',
+        });
+      }
+
+      const success = await adminService.deleteUser(id);
+
+      if (!success) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found or failed to delete',
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'User deleted successfully',
+      });
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete user',
+      });
+    }
+  }
+
+  /**
    * GET /api/v1/admin/config
    * Get all system configuration
    */

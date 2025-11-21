@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
+import AcceptInvitationPage from './pages/AcceptInvitationPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import MenuPage from './pages/MenuPage';
@@ -22,11 +23,12 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
  * - Public access: Menu browsing
  * - Guest checkout: No account required
  * - Authenticated: Order history
+ * - All users can order from all locations (location assignments don't apply here)
  */
 function App() {
   return (
     <AuthProvider>
-      <LocationProvider apiUrl={API_URL}>
+      <LocationProvider apiUrl={API_URL} forceAllLocations={true} tokenKey="public_token">
         <CartProvider>
           <Layout>
             <Routes>
@@ -40,6 +42,7 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />
+              <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
 

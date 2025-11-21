@@ -7,6 +7,7 @@ import adminRoutes from './admin.routes';
 import financeRoutes from './finance.routes';
 import paymentRoutes from './payment.routes';
 import locationRoutes from './location.routes';
+import invitationRoutes from './invitation.routes';
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use('/admin', adminRoutes);
 router.use('/finance', financeRoutes);
 router.use('/payment', paymentRoutes);
 router.use('/locations', locationRoutes);
+router.use('/invitations', invitationRoutes);
 
 export default router;

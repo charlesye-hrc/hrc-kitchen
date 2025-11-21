@@ -41,9 +41,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     // Load user from localStorage on mount
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    const storedHasAdminAccess = localStorage.getItem('hasAdminAccess');
+    // Use app-specific keys to avoid conflicts with public app
+    const storedToken = localStorage.getItem('admin_token');
+    const storedUser = localStorage.getItem('admin_user');
+    const storedHasAdminAccess = localStorage.getItem('admin_hasAdminAccess');
 
     if (storedToken && storedUser) {
       setToken(storedToken);
@@ -84,9 +85,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setToken(authToken);
       setHasAdminAccess(adminAccess || false);
 
-      localStorage.setItem('token', authToken);
-      localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('hasAdminAccess', String(adminAccess || false));
+      localStorage.setItem('admin_token', authToken);
+      localStorage.setItem('admin_user', JSON.stringify(userData));
+      localStorage.setItem('admin_hasAdminAccess', String(adminAccess || false));
 
       axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
     } catch (error) {
@@ -99,9 +100,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setToken(null);
     setHasAdminAccess(false);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('hasAdminAccess');
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_user');
+    localStorage.removeItem('admin_hasAdminAccess');
     delete axios.defaults.headers.common['Authorization'];
   };
 

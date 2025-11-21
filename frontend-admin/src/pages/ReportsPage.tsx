@@ -95,19 +95,18 @@ const ReportsPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Fetch active locations for report filtering
-  // Inactive locations are only included when "All Locations" is selected
+  // Fetch user-accessible locations for report filtering
+  // Only ADMIN users can see all locations; others see only assigned locations
   useEffect(() => {
     const fetchLocations = async () => {
       try {
         setLocationsLoading(true);
         const response = await axios.get(
-          `${import.meta.env.VITE_API_URL}/locations`,
+          `${import.meta.env.VITE_API_URL}/locations/user/accessible`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (response.data.success) {
-          // Only show active locations in the dropdown
-          // Users must select "All Locations" to include inactive ones in reports
+          // Show only user-accessible active locations
           const activeLocations = response.data.data.filter((loc: Location) => loc.isActive);
           setLocations(activeLocations);
         }

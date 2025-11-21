@@ -6,6 +6,7 @@ import {
   PasswordResetEmailData,
   OtpEmailData,
   WelcomeEmailData,
+  InvitationEmailData,
   OrderConfirmationEmailData,
   OrderItemEmailData,
 } from '../types/email.types';
@@ -14,6 +15,7 @@ import {
   generatePasswordResetEmail,
   generateOtpEmail,
   generateWelcomeEmail,
+  generateInvitationEmail,
   generateOrderConfirmationEmail,
 } from '../templates/emails';
 
@@ -152,6 +154,35 @@ export class EmailService {
     await this.sendEmail(email, data.subject, html);
 
     logger.info(`[Email Service] Welcome email sent to ${email}`);
+  }
+
+  /**
+   * Send user invitation email
+   */
+  static async sendInvitationEmail(
+    email: string,
+    fullName: string,
+    inviterName: string,
+    role: string,
+    invitationToken: string
+  ): Promise<void> {
+    const publicAppUrl = process.env.PUBLIC_APP_URL || 'http://localhost:5173';
+    const invitationUrl = `${publicAppUrl}/accept-invitation?token=${invitationToken}`;
+
+    const data: InvitationEmailData = {
+      to: email,
+      subject: 'You\'ve been invited to HRC Kitchen',
+      fullName,
+      inviterName,
+      role,
+      invitationUrl,
+      expiresIn: '24 hours',
+    };
+
+    const html = generateInvitationEmail(data);
+    await this.sendEmail(email, data.subject, html);
+
+    logger.info(`[Email Service] Invitation email sent to ${email}`);
   }
 
   /**

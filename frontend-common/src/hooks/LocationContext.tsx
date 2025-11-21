@@ -6,10 +6,12 @@ const LocationContext = createContext<UseLocationReturn | undefined>(undefined);
 interface LocationProviderProps {
   children: ReactNode;
   apiUrl?: string;
+  forceAllLocations?: boolean; // If true, always fetch all active locations (for public ordering)
+  tokenKey?: string; // localStorage key for auth token
 }
 
-export const LocationProvider: React.FC<LocationProviderProps> = ({ children, apiUrl }) => {
-  const locationState = useLocation({ apiUrl });
+export const LocationProvider: React.FC<LocationProviderProps> = ({ children, apiUrl, forceAllLocations, tokenKey }) => {
+  const locationState = useLocation({ apiUrl, forceAllLocations, tokenKey });
 
   return (
     <LocationContext.Provider value={locationState}>

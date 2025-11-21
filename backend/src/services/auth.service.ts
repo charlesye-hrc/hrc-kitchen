@@ -102,6 +102,11 @@ export class AuthService {
       throw new ApiError(401, 'Invalid credentials');
     }
 
+    // Check if user has been invited but hasn't completed setup
+    if (!user.passwordHash) {
+      throw new ApiError(403, 'Please complete your account setup by clicking the invitation link sent to your email');
+    }
+
     // Check if user is active
     if (!user.isActive) {
       throw new ApiError(403, 'Account is deactivated');

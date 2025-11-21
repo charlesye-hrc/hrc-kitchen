@@ -150,6 +150,13 @@ router.patch('/users/:id/role', adminController.updateUserRole);
 router.patch('/users/:id/status', adminController.updateUserStatus);
 
 /**
+ * @route   DELETE /api/v1/admin/users/:id
+ * @desc    Delete a user
+ * @access  Admin only
+ */
+router.delete('/users/:id', adminController.deleteUser);
+
+/**
  * System Configuration Routes
  */
 

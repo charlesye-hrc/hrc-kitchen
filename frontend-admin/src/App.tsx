@@ -194,7 +194,7 @@ const AppRoutes = () => {
 function App() {
   return (
     <AuthProvider>
-      <LocationProvider apiUrl={API_URL}>
+      <LocationProvider apiUrl={API_URL} tokenKey="admin_token">
         <AdminLayout>
           <AppRoutes />
         </AdminLayout>

@@ -10,7 +10,7 @@ datasource db {
 model User {
   id                     String         @id @default(uuid())
   email                  String         @unique
-  passwordHash           String         @map("password_hash")
+  passwordHash           String?        @map("password_hash")
   fullName               String         @map("full_name")
   department             String?
   location               String?
@@ -27,11 +27,19 @@ model User {
   // OTP authentication fields
   otpCode                String?        @map("otp_code")
   otpExpiresAt           DateTime?      @map("otp_expires_at")
+  // User invitation fields
+  invitedBy              String?        @map("invited_by")
+  invitationToken        String?        @unique @map("invitation_token")
+  invitationExpiresAt    DateTime?      @map("invitation_expires_at")
+  invitedAt              DateTime?      @map("invited_at")
   orders                 Order[]
   configUpdates          SystemConfig[] @relation("ConfigUpdatedBy")
   userLocations          UserLocation[]
   lastSelectedLocation   Location?      @relation("UserLastLocation", fields: [lastSelectedLocationId], references: [id], onDelete: SetNull)
+  inviter                User?          @relation("UserInvitations", fields: [invitedBy], references: [id], onDelete: SetNull)
+  invitedUsers           User[]         @relation("UserInvitations")
 
+  @@index([invitedBy])
   @@map("users")
 }
 
