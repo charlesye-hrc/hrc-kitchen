@@ -1,36 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Container,
-  Typography,
-  Grid,
-  Card,
-  CardContent,
-  CardMedia,
-  CardActions,
-  Button,
-  Chip,
-  Box,
-  Alert,
-  CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  FormGroup,
-  FormControlLabel,
-  Checkbox,
-  IconButton,
-  Badge,
-  useTheme,
-  useMediaQuery,
-} from '@mui/material';
-import { Add as AddIcon, ShoppingCart as CartIcon } from '@mui/icons-material';
 import { menuApi, MenuItem, VariationSelection } from '../services/api';
 import { useCart } from '../contexts/CartContext';
 import CartDrawer from '../components/CartDrawer';
 import VariationSelector from '../components/VariationSelector';
 import { useLocationContext, LocationSelector } from '@hrc-kitchen/common';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ShoppingCart, Plus, AlertCircle, Clock, Minus } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const MenuPage: React.FC = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -47,8 +32,6 @@ const MenuPage: React.FC = () => {
 
   const { items: cartItems, addItem, getCartItemCount, cartLocationId, setCartLocation, validateCartForLocation, removeItem } = useCart();
   const { locations, selectedLocation, selectLocation, isLoading: locationsLoading } = useLocationContext();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   useEffect(() => {
     if (selectedLocation) {
@@ -88,6 +71,7 @@ const MenuPage: React.FC = () => {
             });
           });
           setCartLocation(selectedLocation.id);
+          toast.success('Cart updated for new location');
         } else {
           // User cancelled, revert to cart location
           if (cartLocation) {
@@ -103,6 +87,7 @@ const MenuPage: React.FC = () => {
 
         if (confirmLocationChange) {
           setCartLocation(selectedLocation.id);
+          toast.success(`Cart location updated to ${selectedLocation.name}`);
         } else {
           // User wants to keep cart at original location, revert
           if (cartLocation) {
@@ -174,7 +159,7 @@ const MenuPage: React.FC = () => {
         );
 
         if (missingRequired) {
-          alert('Please select all required options');
+          toast.error('Please select all required options');
           return;
         }
       }
@@ -187,10 +172,11 @@ const MenuPage: React.FC = () => {
       const result = await addItem(selectedItem, quantity, selectedCustomizations, specialRequests, selectedVariations);
 
       if (!result.success) {
-        alert(result.message || 'Unable to add item to cart');
+        toast.error(result.message || 'Unable to add item to cart');
         return;
       }
 
+      toast.success(`${selectedItem.name} added to cart!`);
       setSelectedItem(null);
       setQuantity(1);
       setSelectedCustomizations([]);
@@ -230,17 +216,6 @@ const MenuPage: React.FC = () => {
     );
   };
 
-  const getCategoryColor = (category: string) => {
-    const colors: { [key: string]: 'primary' | 'secondary' | 'success' | 'warning' | 'info' } = {
-      MAIN: 'primary',
-      SIDE: 'secondary',
-      DRINK: 'info',
-      DESSERT: 'warning',
-      OTHER: 'success',
-    };
-    return colors[category] || 'default';
-  };
-
   // Group items by category
   const groupedItems = menuItems.reduce((acc, item) => {
     if (!acc[item.category]) {
@@ -254,303 +229,245 @@ const MenuPage: React.FC = () => {
     (cat) => groupedItems[cat]?.length > 0
   );
 
-  // Show loading spinner while locations or menu is loading
+  const getCategoryEmoji = (category: string) => {
+    const emojis: { [key: string]: string } = {
+      MAIN: '🍽️',
+      SIDE: '🥗',
+      DRINK: '🥤',
+      DESSERT: '🍰',
+      OTHER: '✨',
+    };
+    return emojis[category] || '📦';
+  };
+
+  // Show loading skeleton
   if (locationsLoading || (loading && selectedLocation)) {
     return (
-      <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <CircularProgress />
-      </Container>
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <div className="flex-1">
+            <Skeleton className="h-10 w-64 mb-2" />
+            <Skeleton className="h-5 w-32" />
+          </div>
+          <Skeleton className="h-10 w-full sm:w-64" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i} className="overflow-hidden">
+              <Skeleton className="h-48 w-full" />
+              <CardHeader>
+                <Skeleton className="h-6 w-3/4 mb-2" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
+              </CardHeader>
+              <CardFooter>
+                <Skeleton className="h-10 w-full" />
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      </div>
     );
   }
 
   // Handle case where no location is available
   if (!locationsLoading && !selectedLocation) {
     return (
-      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
-        <Alert severity="warning">
-          No locations available. Please contact support.
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <Alert variant="warning">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            No locations available. Please contact support.
+          </AlertDescription>
         </Alert>
-      </Container>
+      </div>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
-      <Box sx={{
-        display: 'flex',
-        flexDirection: { xs: 'column', sm: 'row' },
-        justifyContent: 'space-between',
-        alignItems: { xs: 'stretch', sm: 'center' },
-        mb: 4,
-        gap: { xs: 2, sm: 2 },
-        pb: 2
-      }}>
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, gap: { xs: 1.5, sm: 3 } }}>
-          <Box>
-            <Typography
-              variant="h4"
-              component="h1"
-              gutterBottom
-              sx={{
-                fontSize: { xs: '1.875rem', md: '2.25rem' },
-                fontWeight: 700,
-                mb: 0.5,
-                background: 'linear-gradient(135deg, #2D5F3F 0%, #4A8862 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-            >
-              Today's Menu
-            </Typography>
-            {weekday && (
-              <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 500 }}>
-                {weekday}
-              </Typography>
-            )}
-          </Box>
-          <Box sx={{ minWidth: { xs: '100%', sm: 250 }, mt: { xs: 0, sm: 1 } }}>
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div className="flex-1">
+          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-green-700 to-green-600 bg-clip-text text-transparent">
+            Today's Menu
+          </h1>
+          {weekday && (
+            <p className="text-lg text-muted-foreground font-medium">
+              {weekday}
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex-1 sm:flex-initial sm:min-w-[250px]">
             <LocationSelector
               locations={locations}
               selectedLocationId={selectedLocation?.id || null}
               onLocationChange={selectLocation}
               isLoading={locationsLoading}
               size="small"
-              fullWidth={isMobile}
+              fullWidth={true}
             />
-          </Box>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'flex-end', sm: 'center' }, mt: { xs: -1, sm: 0 } }}>
-          <IconButton
-            color="primary"
-            size="large"
+          </div>
+
+          {/* Cart Button */}
+          <Button
+            size="lg"
             onClick={() => setCartOpen(true)}
-            sx={{
-              bgcolor: 'primary.main',
-              color: 'white',
-              '&:hover': {
-                bgcolor: 'primary.dark',
-                transform: 'scale(1.05)',
-              },
-              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            }}
+            className="relative gap-2 shadow-lg hover:shadow-xl transition-shadow"
           >
-            <Badge
-              badgeContent={getCartItemCount()}
-              color="error"
-              sx={{
-                '& .MuiBadge-badge': {
-                  fontWeight: 600,
-                }
-              }}
-            >
-              <CartIcon />
-            </Badge>
-          </IconButton>
-        </Box>
-      </Box>
+            <ShoppingCart className="h-5 w-5" />
+            {getCartItemCount() > 0 && (
+              <span className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center animate-in zoom-in">
+                {getCartItemCount()}
+              </span>
+            )}
+            <span className="hidden sm:inline">Cart</span>
+          </Button>
+        </div>
+      </div>
 
+      {/* Error Alert */}
       {error && (
-        <Alert
-          severity="warning"
-          sx={{
-            mb: 3,
-            borderLeft: '4px solid',
-            borderLeftColor: 'warning.main',
-            '& .MuiAlert-icon': {
-              fontSize: '1.5rem',
-            }
-          }}
-        >
-          {error}
+        <Alert variant="warning" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
+      {/* Ordering Window Alert */}
       {orderingWindow && !orderingWindow.active && (
-        <Alert
-          severity="error"
-          sx={{
-            mb: 3,
-            borderLeft: '4px solid',
-            borderLeftColor: 'error.main',
-            '& .MuiAlert-icon': {
-              fontSize: '1.5rem',
-            }
-          }}
-        >
-          {orderingWindow.message || 'Ordering is currently closed'}
-          {orderingWindow.window.start && orderingWindow.window.end && (
-            <Typography variant="body2" sx={{ mt: 1, fontWeight: 500 }}>
-              Ordering window: {orderingWindow.window.start} - {orderingWindow.window.end}
-            </Typography>
-          )}
+        <Alert variant="destructive" className="mb-6">
+          <Clock className="h-4 w-4" />
+          <AlertDescription>
+            <p className="font-semibold mb-1">
+              {orderingWindow.message || 'Ordering is currently closed'}
+            </p>
+            {orderingWindow.window.start && orderingWindow.window.end && (
+              <p className="text-sm">
+                Ordering window: {orderingWindow.window.start} - {orderingWindow.window.end}
+              </p>
+            )}
+          </AlertDescription>
         </Alert>
       )}
 
+      {/* Empty Menu */}
       {menuItems.length === 0 ? (
-        <Alert
-          severity="info"
-          sx={{
-            borderLeft: '4px solid',
-            borderLeftColor: 'info.main',
-            textAlign: 'center',
-            py: 3,
-          }}
-        >
-          No menu items available for today.
+        <Alert variant="info" className="text-center py-12">
+          <AlertDescription className="text-lg">
+            No menu items available for today.
+          </AlertDescription>
         </Alert>
       ) : (
-        categories.map((category) => (
-          <Box key={category} sx={{ mb: 5 }}>
-            <Typography
-              variant="h5"
-              gutterBottom
-              sx={{
-                mb: 3,
-                fontSize: { xs: '1.5rem', md: '1.625rem' },
-                fontWeight: 600,
-                color: 'text.primary',
-                position: 'relative',
-                pb: 1,
-                '&:after': {
-                  content: '""',
-                  position: 'absolute',
-                  bottom: 0,
-                  left: 0,
-                  width: 60,
-                  height: 3,
-                  background: 'linear-gradient(90deg, #2D5F3F 0%, #4A8862 100%)',
-                  borderRadius: 2,
-                }
-              }}
-            >
-              {category}
-            </Typography>
-            <Grid container spacing={{ xs: 2, md: 3 }}>
-              {groupedItems[category].map((item) => (
-                <Grid item xs={12} sm={6} md={4} key={item.id}>
+        /* Menu Categories */
+        <div className="space-y-12">
+          {categories.map((category) => (
+            <div key={category} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center gap-3 mb-6">
+                <span className="text-3xl">{getCategoryEmoji(category)}</span>
+                <h2 className="text-2xl font-bold text-foreground">
+                  {category}
+                </h2>
+                <div className="flex-1 h-px bg-gradient-to-r from-green-200 to-transparent" />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {groupedItems[category].map((item) => (
                   <Card
-                    sx={{
-                      height: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      position: 'relative',
-                      overflow: 'hidden',
-                      '&:hover': {
-                        '& .menu-item-image': {
-                          transform: 'scale(1.05)',
-                        }
-                      }
-                    }}
+                    key={item.id}
+                    className="group overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
                   >
+                    {/* Image */}
                     {item.imageUrl && (
-                      <Box sx={{ overflow: 'hidden', position: 'relative', height: 200 }}>
-                        <CardMedia
-                          component="img"
-                          height="200"
-                          image={item.imageUrl}
+                      <div className="relative h-48 overflow-hidden bg-muted">
+                        <img
+                          src={item.imageUrl}
                           alt={item.name}
-                          className="menu-item-image"
-                          sx={{
-                            transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                            objectFit: 'cover',
-                          }}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                         />
-                        <Box
-                          sx={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.1) 100%)',
-                          }}
-                        />
-                      </Box>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                      </div>
                     )}
-                    <CardContent sx={{ flexGrow: 1, p: 2.5 }}>
-                      <Typography variant="h6" component="h3" gutterBottom sx={{ fontWeight: 600, mb: 1 }}>
-                        {item.name}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" paragraph sx={{ mb: 2, lineHeight: 1.6 }}>
+
+                    <CardHeader className="pb-3">
+                      <CardTitle className="line-clamp-1">{item.name}</CardTitle>
+                      <CardDescription className="line-clamp-2 min-h-[40px]">
                         {item.description}
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mb: 2 }}>
-                        {item.dietaryTags.map((tag) => (
-                          <Chip
-                            key={tag}
-                            label={tag}
-                            size="small"
-                            variant="outlined"
-                            sx={{
-                              borderColor: 'primary.light',
-                              color: 'primary.main',
-                              fontWeight: 500,
-                              fontSize: '0.75rem',
-                            }}
-                          />
-                        ))}
-                      </Box>
-                      <Typography
-                        variant="h6"
-                        color="primary"
-                        sx={{
-                          fontWeight: 700,
-                          fontSize: '1.25rem',
-                        }}
-                      >
+                      </CardDescription>
+                    </CardHeader>
+
+                    <CardContent className="pb-3">
+                      {/* Dietary Tags */}
+                      {item.dietaryTags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-3">
+                          {item.dietaryTags.map((tag) => (
+                            <Badge
+                              key={tag}
+                              variant="outline"
+                              className="text-xs"
+                            >
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Price */}
+                      <p className="text-2xl font-bold text-primary">
                         ${Number(item.price).toFixed(2)}
-                      </Typography>
+                      </p>
                     </CardContent>
-                    <CardActions sx={{ p: 2.5, pt: 0 }}>
+
+                    <CardFooter>
                       <Button
-                        fullWidth
-                        variant="contained"
-                        startIcon={<AddIcon />}
+                        className="w-full gap-2"
                         onClick={() => handleAddToCart(item)}
-                        sx={{
-                          py: 1.25,
-                          fontSize: '0.9375rem',
-                        }}
                       >
+                        <Plus className="h-4 w-4" />
                         Add to Cart
                       </Button>
-                    </CardActions>
+                    </CardFooter>
                   </Card>
-                </Grid>
-              ))}
-            </Grid>
-          </Box>
-        ))
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Add to Cart Dialog */}
-      <Dialog
-        open={!!selectedItem}
-        onClose={() => setSelectedItem(null)}
-        maxWidth="sm"
-        fullWidth
-        fullScreen={isMobile}
-        PaperProps={{
-          sx: {
-            borderRadius: { xs: 0, sm: 3 },
-          }
-        }}
-      >
-        <DialogTitle sx={{ pb: 1, fontSize: '1.375rem', fontWeight: 600 }}>
-          {selectedItem?.name}
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2 }}>
-            <TextField
-              label="Quantity"
-              type="number"
-              fullWidth
-              value={quantity}
-              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-              InputProps={{ inputProps: { min: 1 } }}
-              sx={{ mb: 3 }}
-            />
+      <Dialog open={!!selectedItem} onOpenChange={() => setSelectedItem(null)}>
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">{selectedItem?.name}</DialogTitle>
+            <DialogDescription>{selectedItem?.description}</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-2">
+            {/* Quantity */}
+            <div className="space-y-2 pb-2">
+              <Label htmlFor="quantity" className="text-sm font-semibold text-gray-900">Quantity</Label>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  disabled={quantity <= 1}
+                  className="h-10 w-10 rounded-md border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <div className="flex-1 max-w-[80px] bg-white rounded-md border border-gray-300 px-3 py-2 text-center font-medium text-base text-gray-900">
+                  {quantity}
+                </div>
+                <button
+                  onClick={() => setQuantity(quantity + 1)}
+                  className="h-10 w-10 rounded-md border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
 
             {/* Variation Groups */}
             {selectedItem && selectedItem.variationGroups && selectedItem.variationGroups.length > 0 && (
@@ -561,68 +478,67 @@ const MenuPage: React.FC = () => {
               />
             )}
 
+            {/* Legacy Customizations */}
             {selectedItem && selectedItem.customizations.length > 0 && (
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Customizations (Legacy)
-                </Typography>
-                <FormGroup>
+              <div className="space-y-2">
+                <Label>Customizations (Legacy)</Label>
+                <div className="space-y-2">
                   {selectedItem.customizations.map((custom) => (
-                    <FormControlLabel
+                    <label
                       key={custom.id}
-                      control={
-                        <Checkbox
-                          checked={selectedCustomizations.includes(custom.customizationName)}
-                          onChange={() => handleCustomizationChange(custom.customizationName)}
-                        />
-                      }
-                      label={custom.customizationName}
-                    />
+                      className="flex items-center space-x-2 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedCustomizations.includes(custom.customizationName)}
+                        onChange={() => handleCustomizationChange(custom.customizationName)}
+                        className="rounded border-gray-300"
+                      />
+                      <span className="text-sm">{custom.customizationName}</span>
+                    </label>
                   ))}
-                </FormGroup>
-              </Box>
+                </div>
+              </div>
             )}
 
-            <TextField
-              label="Special Requests"
-              fullWidth
-              multiline
-              rows={3}
-              value={specialRequests}
-              onChange={(e) => setSpecialRequests(e.target.value)}
-              placeholder="Any special requests for this item?"
-              sx={{ mb: 2 }}
-            />
+            {/* Special Requests */}
+            <div className="space-y-2">
+              <Label htmlFor="special-requests" className="text-sm font-semibold text-gray-900">Special Requests</Label>
+              <Textarea
+                id="special-requests"
+                placeholder="Any special requests for this item?"
+                value={specialRequests}
+                onChange={(e) => setSpecialRequests(e.target.value)}
+                rows={3}
+                className="resize-none text-sm"
+              />
+            </div>
+          </div>
 
-            {/* Price Display */}
-            <Box
-              sx={{
-                mt: 2,
-                p: 2.5,
-                background: 'linear-gradient(135deg, #2D5F3F 0%, #4A8862 100%)',
-                color: 'white',
-                borderRadius: 2,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                boxShadow: '0px 4px 12px rgba(45, 95, 63, 0.2)',
-              }}
+          {/* Price Display */}
+          <div className="flex justify-between items-center py-4 border-t border-gray-200">
+            <span className="text-base font-semibold text-gray-700">Total</span>
+            <span className="text-2xl font-bold text-gray-900">
+              ${calculateDialogPrice().toFixed(2)}
+            </span>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2 pt-0">
+            <Button
+              variant="outline"
+              onClick={() => setSelectedItem(null)}
+              className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-gray-900"
             >
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>Total:</Typography>
-              <Typography variant="h5" fontWeight="bold">
-                ${calculateDialogPrice().toFixed(2)}
-              </Typography>
-            </Box>
-          </Box>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmAddToCart}
+              className="flex-1 gap-2"
+            >
+              Add to Cart
+            </Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-          <Button onClick={() => setSelectedItem(null)} variant="outlined" sx={{ minWidth: 100 }}>
-            Cancel
-          </Button>
-          <Button variant="contained" onClick={handleConfirmAddToCart} sx={{ minWidth: 140 }}>
-            Add to Cart
-          </Button>
-        </DialogActions>
       </Dialog>
 
       {/* Cart Drawer */}
@@ -631,7 +547,7 @@ const MenuPage: React.FC = () => {
         onClose={() => setCartOpen(false)}
         orderingWindow={orderingWindow}
       />
-    </Container>
+    </div>
   );
 };
 

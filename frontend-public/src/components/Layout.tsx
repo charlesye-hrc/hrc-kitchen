@@ -1,25 +1,19 @@
-import React, { useState } from 'react';
-import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Button,
-  Box,
-  IconButton,
-  Drawer,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemText,
-  Divider,
-  useTheme,
-  useMediaQuery
-} from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
-import CloseIcon from '@mui/icons-material/Close';
-import LogoutIcon from '@mui/icons-material/Logout';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { Button } from './ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from './ui/sheet';
+import { Avatar, AvatarFallback } from './ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
+import { Menu, X, LogOut, User, ShoppingBag, UtensilsCrossed } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -28,253 +22,289 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  // Handle scroll effect for glassmorphism header
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleLogout = () => {
     logout();
     navigate('/');
-    setDrawerOpen(false);
+    setMobileMenuOpen(false);
   };
 
   const handleNavClick = () => {
-    setDrawerOpen(false);
+    setMobileMenuOpen(false);
   };
 
-  const mobileMenu = (
-    <Drawer
-      anchor="right"
-      open={drawerOpen}
-      onClose={() => setDrawerOpen(false)}
-      sx={{
-        '& .MuiDrawer-paper': {
-          width: 250,
-        },
-      }}
-    >
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 1 }}>
-        <IconButton onClick={() => setDrawerOpen(false)}>
-          <CloseIcon />
-        </IconButton>
-      </Box>
-      <Divider />
-      <List>
-        {isAuthenticated ? (
-          <>
-            <ListItem>
-              <ListItemText
-                primary={user?.fullName}
-                secondary={user?.role}
-                primaryTypographyProps={{ fontWeight: 'bold' }}
-              />
-            </ListItem>
-            <Divider />
-            <ListItemButton component={Link} to="/menu" onClick={handleNavClick}>
-              <ListItemText primary="Menu" />
-            </ListItemButton>
-            <ListItemButton component={Link} to="/orders" onClick={handleNavClick}>
-              <ListItemText primary="Orders" />
-            </ListItemButton>
-            <Divider />
-            <ListItemButton onClick={handleLogout}>
-              <ListItemText primary="Logout" />
-            </ListItemButton>
-          </>
-        ) : (
-          <>
-            <ListItemButton component={Link} to="/login" onClick={handleNavClick}>
-              <ListItemText primary="Login" />
-            </ListItemButton>
-            <ListItemButton component={Link} to="/register" onClick={handleNavClick}>
-              <ListItemText primary="Register" />
-            </ListItemButton>
-          </>
-        )}
-      </List>
-    </Drawer>
-  );
+  const getUserInitials = (name?: string) => {
+    if (!name) return 'U';
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <AppBar
-        position="static"
-        elevation={0}
-        sx={{
-          bgcolor: 'primary.main',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-        }}
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-background via-muted/20 to-background">
+      {/* Modern Glass Header */}
+      <header
+        className={cn(
+          "sticky top-0 z-40 w-full border-b transition-all duration-300",
+          scrolled
+            ? "bg-background/80 backdrop-blur-lg shadow-sm"
+            : "bg-background/50 backdrop-blur-sm"
+        )}
       >
-        <Toolbar sx={{ py: 0.5 }}>
-          <Box
-            component={Link}
-            to="/"
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1.5,
-              textDecoration: 'none',
-              color: 'inherit',
-              flexGrow: 1,
-              transition: 'opacity 0.2s',
-              '&:hover': {
-                opacity: 0.9,
-              }
-            }}
-          >
-            <Box
-              sx={{
-                width: 40,
-                height: 40,
-                borderRadius: 1.5,
-                bgcolor: 'rgba(255, 255, 255, 0.15)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.25rem',
-              }}
+        <div className="container mx-auto px-4">
+          <div className="flex h-16 items-center justify-between">
+            {/* Logo */}
+            <Link
+              to="/"
+              className="flex items-center gap-3 transition-opacity hover:opacity-90"
             >
-              🍽️
-            </Box>
-            <Box>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontSize: { xs: '1.0625rem', sm: '1.25rem' },
-                  fontWeight: 700,
-                  lineHeight: 1.2,
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                HRC Kitchen
-              </Typography>
-              <Typography
-                variant="caption"
-                sx={{
-                  fontSize: '0.7rem',
-                  opacity: 0.85,
-                  display: { xs: 'none', sm: 'block' },
-                  lineHeight: 1,
-                }}
-              >
-                Huon Regional Care
-              </Typography>
-            </Box>
-          </Box>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 text-white shadow-lg text-xl">
+                🍽️
+              </div>
+              <div className="hidden sm:block">
+                <h1 className="text-lg font-bold leading-none tracking-tight">
+                  HRC Kitchen
+                </h1>
+                <p className="text-xs text-muted-foreground">
+                  Huon Regional Care
+                </p>
+              </div>
+              <div className="sm:hidden">
+                <h1 className="text-base font-bold">HRC Kitchen</h1>
+              </div>
+            </Link>
 
-          {isMobile ? (
-            <>
-              <IconButton
-                color="inherit"
-                edge="end"
-                onClick={() => setDrawerOpen(true)}
-              >
-                <MenuIcon />
-              </IconButton>
-              {mobileMenu}
-            </>
-          ) : (
-            <>
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center gap-2">
               {isAuthenticated ? (
                 <>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      mr: 2,
-                      display: { xs: 'none', md: 'block' },
-                      maxWidth: '200px',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}
+                  <Button
+                    variant="ghost"
+                    asChild
+                    className="gap-2"
                   >
-                    {user?.fullName} ({user?.role})
-                  </Typography>
-                  <Button color="inherit" component={Link} to="/menu">
-                    Menu
-                  </Button>
-                  <Button color="inherit" component={Link} to="/orders">
-                    Orders
+                    <Link to="/menu">
+                      <UtensilsCrossed className="h-4 w-4" />
+                      Menu
+                    </Link>
                   </Button>
                   <Button
-                    color="inherit"
-                    onClick={handleLogout}
-                    startIcon={<LogoutIcon />}
-                    sx={{
-                      '&:hover': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                      },
-                    }}
+                    variant="ghost"
+                    asChild
+                    className="gap-2"
                   >
-                    Logout
+                    <Link to="/orders">
+                      <ShoppingBag className="h-4 w-4" />
+                      Orders
+                    </Link>
                   </Button>
+
+                  {/* User Dropdown */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="gap-2 pl-2"
+                      >
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+                            {getUserInitials(user?.fullName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="max-w-[150px] truncate">
+                          {user?.fullName}
+                        </span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuLabel>
+                        <div className="flex flex-col space-y-1">
+                          <p className="text-sm font-medium leading-none">
+                            {user?.fullName}
+                          </p>
+                          <p className="text-xs leading-none text-muted-foreground">
+                            {user?.email}
+                          </p>
+                        </div>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link to="/orders" className="cursor-pointer">
+                          <ShoppingBag className="mr-2 h-4 w-4" />
+                          My Orders
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={handleLogout}
+                        className="cursor-pointer text-destructive focus:text-destructive"
+                      >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Logout
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </>
               ) : (
                 <>
-                  <Button color="inherit" component={Link} to="/login">
-                    Login
+                  <Button variant="ghost" asChild>
+                    <Link to="/login">Login</Link>
                   </Button>
-                  <Button color="inherit" component={Link} to="/register">
-                    Register
+                  <Button asChild>
+                    <Link to="/register">Register</Link>
                   </Button>
                 </>
               )}
-            </>
-          )}
-        </Toolbar>
-      </AppBar>
+            </nav>
 
-      <Box component="main" sx={{ flexGrow: 1 }}>
-        {children}
-      </Box>
-
-      <Box
-        component="footer"
-        sx={{
-          py: 4,
-          px: 3,
-          mt: 'auto',
-          background: 'linear-gradient(180deg, #F8F9FA 0%, #EAECEF 100%)',
-          borderTop: '1px solid',
-          borderColor: 'divider',
-        }}
-      >
-        <Box sx={{ maxWidth: 1200, margin: '0 auto', textAlign: 'center' }}>
-          <Box sx={{ mb: 2 }}>
-            <Box
-              sx={{
-                width: 48,
-                height: 48,
-                borderRadius: 2,
-                bgcolor: 'primary.main',
-                color: 'white',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto',
-                mb: 1.5,
-                fontSize: '1.5rem',
-              }}
+            {/* Mobile Menu Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setMobileMenuOpen(true)}
             >
-              🍽️
-            </Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', mb: 0.5 }}>
-              HRC Kitchen
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
-              Fresh, Delicious Meals for Huon Regional Care
-            </Typography>
-          </Box>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ mt: 3, pt: 3, borderTop: '1px solid', borderColor: 'divider' }}
-          >
-            © 2025 HRC Kitchen - Huon Regional Care. All rights reserved.
-          </Typography>
-        </Box>
-      </Box>
-    </Box>
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Open menu</span>
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile Sheet Menu */}
+      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <SheetContent side="right" className="w-[280px] sm:w-[350px]">
+          <SheetHeader>
+            <SheetTitle>Menu</SheetTitle>
+          </SheetHeader>
+          <div className="mt-6 flex flex-col gap-4">
+            {isAuthenticated ? (
+              <>
+                {/* User Info */}
+                <div className="flex items-center gap-3 rounded-lg border p-3 bg-muted/50">
+                  <Avatar className="h-12 w-12">
+                    <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                      {getUserInitials(user?.fullName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {user?.fullName}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {user?.email}
+                    </p>
+                    <p className="text-xs text-muted-foreground capitalize mt-0.5">
+                      {user?.role?.toLowerCase()}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Navigation Links */}
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant="ghost"
+                    asChild
+                    className="justify-start gap-2"
+                    onClick={handleNavClick}
+                  >
+                    <Link to="/menu">
+                      <UtensilsCrossed className="h-4 w-4" />
+                      Menu
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    asChild
+                    className="justify-start gap-2"
+                    onClick={handleNavClick}
+                  >
+                    <Link to="/orders">
+                      <ShoppingBag className="h-4 w-4" />
+                      My Orders
+                    </Link>
+                  </Button>
+                </div>
+
+                {/* Logout */}
+                <div className="mt-4 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start gap-2 text-destructive hover:text-destructive"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  asChild
+                  className="justify-start"
+                  onClick={handleNavClick}
+                >
+                  <Link to="/login">Login</Link>
+                </Button>
+                <Button
+                  asChild
+                  className="justify-start"
+                  onClick={handleNavClick}
+                >
+                  <Link to="/register">Register</Link>
+                </Button>
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Main Content */}
+      <main className="flex-1">
+        {children}
+      </main>
+
+      {/* Modern Footer */}
+      <footer className="border-t bg-gradient-to-b from-background to-muted/30">
+        <div className="container mx-auto px-4 py-12">
+          <div className="flex flex-col items-center text-center">
+            {/* Logo */}
+            <div className="mb-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/80 text-white shadow-lg text-2xl mx-auto mb-3">
+                🍽️
+              </div>
+              <h3 className="text-lg font-bold">HRC Kitchen</h3>
+              <p className="text-sm text-muted-foreground font-medium">
+                Fresh, Delicious Meals for Huon Regional Care
+              </p>
+            </div>
+
+            {/* Copyright */}
+            <div className="mt-6 pt-6 border-t w-full max-w-md">
+              <p className="text-xs text-muted-foreground">
+                © 2025 HRC Kitchen - Huon Regional Care. All rights reserved.
+              </p>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 };
 

@@ -15,6 +15,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { LocationProvider } from '@hrc-kitchen/common';
 import { ReactNode } from 'react';
+import { Toaster } from './components/ui/sonner';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
@@ -82,6 +83,7 @@ function App() {
           <LayoutWrapper>
             <AppRoutes />
           </LayoutWrapper>
+          <Toaster position="top-right" />
         </CartProvider>
       </LocationProvider>
     </AuthProvider>
