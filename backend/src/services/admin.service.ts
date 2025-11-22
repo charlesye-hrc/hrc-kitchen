@@ -25,6 +25,8 @@ interface UpdateMenuItemData {
   weekdays?: Weekday[];
   imageUrl?: string;
   dietaryTags?: string[];
+  trackInventory?: boolean;
+  isActive?: boolean;
 }
 
 interface UserFilters {
@@ -61,6 +63,18 @@ export class AdminService {
    */
   async updateMenuItem(itemId: string, data: UpdateMenuItemData) {
     try {
+      // Check if we're enabling inventory tracking
+      const shouldInitializeInventory = data.trackInventory === true;
+      let wasTrackingDisabled = false;
+
+      if (shouldInitializeInventory) {
+        const currentItem = await prisma.menuItem.findUnique({
+          where: { id: itemId },
+          select: { trackInventory: true },
+        });
+        wasTrackingDisabled = !currentItem?.trackInventory;
+      }
+
       const item = await prisma.menuItem.update({
         where: { id: itemId },
         data: {
@@ -71,12 +85,19 @@ export class AdminService {
           ...(data.weekdays !== undefined && { weekdays: data.weekdays }),
           ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
           ...(data.dietaryTags !== undefined && { dietaryTags: data.dietaryTags }),
+          ...(data.trackInventory !== undefined && { trackInventory: data.trackInventory }),
           ...(data.isActive !== undefined && { isActive: data.isActive }),
         },
         include: {
           customizations: true,
         },
       });
+
+      // Initialize inventory if we just enabled tracking
+      if (shouldInitializeInventory && wasTrackingDisabled) {
+        const { inventoryService } = await import('./inventory.service');
+        await inventoryService.initializeInventoryForMenuItem(itemId);
+      }
 
       return item;
     } catch (error) {

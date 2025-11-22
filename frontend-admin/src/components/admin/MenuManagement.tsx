@@ -54,6 +54,7 @@ interface MenuItem {
   weekdays: string[];
   imageUrl: string | null;
   dietaryTags: string[];
+  trackInventory: boolean;
   customizations: Array<{
     id: string;
     name: string;
@@ -95,6 +96,7 @@ const MenuManagement = () => {
     weekdays: [] as string[],
     imageUrl: '',
     dietaryTags: [] as string[],
+    trackInventory: false,
   });
 
   useEffect(() => {
@@ -128,6 +130,7 @@ const MenuManagement = () => {
         weekdays: item.weekdays,
         imageUrl: item.imageUrl || '',
         dietaryTags: item.dietaryTags,
+        trackInventory: item.trackInventory || false,
       });
 
       // Fetch assigned locations for this menu item
@@ -153,6 +156,7 @@ const MenuManagement = () => {
         weekdays: viewMode === 'weekday' ? [WEEKDAYS[currentWeekday]] : [],
         imageUrl: '',
         dietaryTags: [],
+        trackInventory: false,
       });
       setSelectedLocationIds([]);
     }
@@ -724,6 +728,25 @@ const MenuManagement = () => {
                   />
                 ))}
               </FormGroup>
+            </Box>
+
+            <Box>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={formData.trackInventory}
+                    onChange={(e) => setFormData({ ...formData, trackInventory: e.target.checked })}
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography variant="body1">Track Inventory</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Enable to monitor stock levels and prevent ordering when out of stock
+                    </Typography>
+                  </Box>
+                }
+              />
             </Box>
 
             <Box>

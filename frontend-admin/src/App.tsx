@@ -8,6 +8,7 @@ import LocationManagementPage from './pages/LocationManagementPage';
 import UserManagementPage from './pages/UserManagementPage';
 import UserLocationAssignmentPage from './pages/UserLocationAssignmentPage';
 import SystemSettingsPage from './pages/SystemSettingsPage';
+import InventoryDashboardPage from './pages/InventoryDashboardPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
@@ -185,19 +186,41 @@ const AppRoutes = () => {
         }
       />
 
+      {/* Protected Routes - Inventory Dashboard - KITCHEN and ADMIN */}
+      <Route
+        path="/inventory"
+        element={
+          <ProtectedRoute allowedRoles={['KITCHEN', 'ADMIN']}>
+            <InventoryDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+
       {/* 404 - Catch-all route */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 };
 
+const LayoutWrapper = ({ children }: { children: ReactNode }) => {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  // Don't show layout on login page
+  if (location.pathname === '/login' || !isAuthenticated) {
+    return <>{children}</>;
+  }
+
+  return <AdminLayout>{children}</AdminLayout>;
+};
+
 function App() {
   return (
     <AuthProvider>
       <LocationProvider apiUrl={API_URL} tokenKey="admin_token">
-        <AdminLayout>
+        <LayoutWrapper>
           <AppRoutes />
-        </AdminLayout>
+        </LayoutWrapper>
       </LocationProvider>
     </AuthProvider>
   );

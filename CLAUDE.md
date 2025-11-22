@@ -13,7 +13,7 @@
 
 ## Current State
 
-**Phase**: Phase 6 Complete - Application Separation
+**Phase**: Phase 7 Complete - Inventory Management
 **Architecture**: Dual-application system (Public Ordering + Internal Management)
 **Status**: Production-ready
 
@@ -26,6 +26,7 @@
 - Real-time kitchen dashboard
 - Comprehensive admin panel
 - Finance reporting
+- **Inventory tracking and management (NEW)**
 
 [Complete status and implementation details → PRD](docs/01-planning/PRD.md)
 
@@ -176,6 +177,19 @@ hrc-kitchen/
 - Guest orders include `receipt_email`
 - [Payment Service](backend/src/services/payment.service.ts)
 
+### Inventory Management
+- **Opt-in tracking**: Menu items can enable inventory tracking via toggle in Menu Management
+- **Location-based**: Separate stock levels for each menu item at each location
+- **Bulk editing**: Inline editing with visual indicators (yellow background for edited fields)
+- **Automatic initialization**: Inventory records created automatically when tracking is enabled
+- **Order integration**: Stock automatically reduced when orders are placed
+- **Stock status**: Out of stock (red), Low stock (orange), In stock (green)
+- **Audit trail**: Full history of inventory changes with timestamps and reasons
+- **Access control**: KITCHEN staff see assigned locations, ADMIN sees all
+- **Synchronized location selection**: Kitchen Dashboard and Inventory Dashboard share location preference
+- [Inventory Service](backend/src/services/inventory.service.ts)
+- [Inventory Dashboard](frontend-admin/src/components/inventory/InventoryDashboard.tsx)
+
 ### Frontend Apps
 
 **Public App** (frontend-public):
@@ -185,11 +199,12 @@ hrc-kitchen/
 - Simplified navigation
 
 **Admin App** (frontend-admin):
-- Routes: Kitchen Dashboard, Admin Panel, Finance Reports
+- Routes: Kitchen Dashboard, Admin Panel, Finance Reports, Inventory Management
 - Domain validation at login
 - Role-based navigation
 - ProtectedRoute component with domain + role checks
 - Auto-redirect based on user role
+- Synchronized location selection across dashboards (localStorage: `selectedLocationId`)
 
 ---
 
@@ -202,8 +217,10 @@ hrc-kitchen/
 - `users` - Authentication and roles
 - `locations` - Multiple service locations
 - `user_locations` - User-location assignments
-- `menu_items` - Daily menu with weekdays (Mon-Sun), categories, variations
+- `menu_items` - Daily menu with weekdays (Mon-Sun), categories, variations, inventory tracking flag
 - `menu_item_locations` - Menu item availability by location
+- `inventories` - Stock levels per menu item per location
+- `inventory_history` - Audit trail of inventory changes
 - `orders` - Order tracking (supports guest orders, includes locationId)
 - `order_items` - Line items with variations
 - `payments` - Stripe payment records
@@ -310,7 +327,7 @@ hrc-kitchen/
 
 ---
 
-**Last Updated**: 2025-11-21
-**Document Version**: 2.4 (Location assignment fixes & separate app authentication)
+**Last Updated**: 2025-11-22
+**Document Version**: 2.5 (Inventory Management Implementation)
 
 [Maintenance Guidelines](DOCUMENTATION_GUIDELINES.md) | [Archive](docs/05-archive/README.md) | [MFA Implementation](docs/05-archive/2025-11-20-mfa-implementation.md)

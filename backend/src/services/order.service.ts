@@ -3,6 +3,7 @@ import { PaymentService } from './payment.service';
 import { ConfigService } from './config.service';
 import { SelectedVariation } from '../types/variation.types';
 import { AuthService } from './auth.service';
+import { inventoryService } from './inventory.service';
 import prisma from '../lib/prisma';
 
 export class OrderService {
@@ -130,6 +131,29 @@ export class OrderService {
           .filter(Boolean)
           .join(', ');
         throw new Error(`The following items are not available at the selected location: ${unavailableNames}`);
+      }
+    }
+
+    // Validate inventory availability for items with tracking enabled
+    if (orderData.locationId) {
+      const inventoryChecks = await inventoryService.checkBulkAvailability(
+        orderData.items.map(item => ({
+          menuItemId: item.menuItemId,
+          locationId: orderData.locationId!,
+          quantity: item.quantity
+        }))
+      );
+
+      const unavailableInventoryItems = inventoryChecks.filter(check => !check.available);
+
+      if (unavailableInventoryItems.length > 0) {
+        const unavailableDetails = unavailableInventoryItems
+          .map(check => {
+            const menuItem = menuItems.find(mi => mi.id === check.menuItemId);
+            return `${menuItem?.name} (Available: ${check.currentStock}, Requested: ${check.requested})`;
+          })
+          .join(', ');
+        throw new Error(`Insufficient inventory for the following items: ${unavailableDetails}`);
       }
     }
 
@@ -271,6 +295,25 @@ export class OrderService {
           }
         }
       });
+
+          // Deduct inventory for items with tracking enabled
+          if (orderData.locationId) {
+            for (const item of orderData.items) {
+              try {
+                await inventoryService.deductInventory(
+                  item.menuItemId,
+                  orderData.locationId,
+                  item.quantity,
+                  order.id,
+                  tx
+                );
+              } catch (error: any) {
+                // If deduction fails, the transaction will rollback
+                console.error(`[Order Service] Failed to deduct inventory for item ${item.menuItemId}:`, error.message);
+                throw error;
+              }
+            }
+          }
 
           return { order, clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id };
         });

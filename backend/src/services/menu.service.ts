@@ -61,12 +61,38 @@ export class MenuService {
                 },
                 orderBy: { displayOrder: 'asc' },
               },
+              inventories: {
+                where: {
+                  locationId,
+                },
+                select: {
+                  stockQuantity: true,
+                  isAvailable: true,
+                  lowStockThreshold: true,
+                },
+              },
             },
           },
         },
       });
 
-      items = menuItemLocations.map(mil => mil.menuItem);
+      // Filter out items with insufficient inventory (only for items with tracking enabled)
+      items = menuItemLocations
+        .map(mil => mil.menuItem)
+        .filter(item => {
+          // If item doesn't track inventory, always include it
+          if (!item.trackInventory) {
+            return true;
+          }
+
+          // If item tracks inventory, check if it has stock
+          const inventory = item.inventories[0]; // Should be only one for this location
+          if (!inventory) {
+            return false; // No inventory record = not available
+          }
+
+          return inventory.isAvailable && inventory.stockQuantity > 0;
+        });
     } else {
       // Get all menu items (no location filter)
       items = await prisma.menuItem.findMany({
@@ -157,6 +183,64 @@ export class MenuService {
     });
 
     return item;
+  }
+
+  /**
+   * Get all menu items with optional filters
+   * Admin endpoint for management purposes
+   */
+  async getAllMenuItems(filters?: {
+    weekday?: Weekday;
+    category?: string;
+    trackInventory?: boolean;
+    locationId?: string;
+  }) {
+    const where: any = {};
+
+    // Filter by weekday
+    if (filters?.weekday) {
+      where.weekdays = { has: filters.weekday };
+    }
+
+    // Filter by category
+    if (filters?.category) {
+      where.category = filters.category;
+    }
+
+    // Filter by inventory tracking
+    if (filters?.trackInventory !== undefined) {
+      where.trackInventory = filters.trackInventory;
+    }
+
+    // Filter by location
+    if (filters?.locationId) {
+      where.menuItemLocations = {
+        some: {
+          locationId: filters.locationId,
+        },
+      };
+    }
+
+    const items = await prisma.menuItem.findMany({
+      where,
+      include: {
+        customizations: true,
+        variationGroups: {
+          include: {
+            options: {
+              orderBy: { displayOrder: 'asc' },
+            },
+          },
+          orderBy: { displayOrder: 'asc' },
+        },
+      },
+      orderBy: [
+        { category: 'asc' },
+        { name: 'asc' },
+      ],
+    });
+
+    return items;
   }
 }
 

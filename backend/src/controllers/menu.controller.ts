@@ -93,6 +93,48 @@ export class MenuController {
       });
     }
   }
+
+  /**
+   * GET /api/v1/menu/items
+   * Get all menu items with optional filters
+   * Query params: weekday, category, trackInventory, locationId
+   */
+  async getAllMenuItems(req: Request, res: Response) {
+    try {
+      const { weekday, category, trackInventory, locationId } = req.query;
+
+      const filters: any = {};
+
+      if (weekday) {
+        filters.weekday = weekday as string;
+      }
+
+      if (category) {
+        filters.category = category as string;
+      }
+
+      if (trackInventory !== undefined) {
+        filters.trackInventory = trackInventory === 'true';
+      }
+
+      if (locationId) {
+        filters.locationId = locationId as string;
+      }
+
+      const items = await menuService.getAllMenuItems(filters);
+
+      res.json({
+        success: true,
+        data: items,
+      });
+    } catch (error) {
+      console.error('Error fetching all menu items:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch menu items',
+      });
+    }
+  }
 }
 
 export default new MenuController();

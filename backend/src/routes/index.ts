@@ -8,6 +8,7 @@ import financeRoutes from './finance.routes';
 import paymentRoutes from './payment.routes';
 import locationRoutes from './location.routes';
 import invitationRoutes from './invitation.routes';
+import inventoryRoutes from './inventory.routes';
 
 const router = Router();
 
@@ -30,5 +31,6 @@ router.use('/finance', financeRoutes);
 router.use('/payment', paymentRoutes);
 router.use('/locations', locationRoutes);
 router.use('/invitations', invitationRoutes);
+router.use('/inventory', inventoryRoutes);
 
 export default router;

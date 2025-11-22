@@ -164,7 +164,7 @@ const MenuPage: React.FC = () => {
     }
   };
 
-  const handleConfirmAddToCart = () => {
+  const handleConfirmAddToCart = async () => {
     if (selectedItem) {
       // Validate required variation groups
       if (selectedItem.variationGroups) {
@@ -184,7 +184,13 @@ const MenuPage: React.FC = () => {
         setCartLocation(selectedLocation.id);
       }
 
-      addItem(selectedItem, quantity, selectedCustomizations, specialRequests, selectedVariations);
+      const result = await addItem(selectedItem, quantity, selectedCustomizations, specialRequests, selectedVariations);
+
+      if (!result.success) {
+        alert(result.message || 'Unable to add item to cart');
+        return;
+      }
+
       setSelectedItem(null);
       setQuantity(1);
       setSelectedCustomizations([]);

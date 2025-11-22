@@ -19,7 +19,7 @@ interface CartContextType {
     customizations: string[],
     specialRequests?: string,
     selectedVariations?: VariationSelection[]
-  ) => void;
+  ) => Promise<{ success: boolean; message?: string }>;
   removeItem: (menuItemId: string) => void;
   updateQuantity: (menuItemId: string, quantity: number) => void;
   updateCustomizations: (menuItemId: string, customizations: string[]) => void;
@@ -131,13 +131,54 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     return basePrice;
   };
 
-  const addItem = (
+  const addItem = async (
     menuItem: MenuItem,
     quantity: number,
     customizations: string[],
     specialRequests?: string,
     selectedVariations?: VariationSelection[]
-  ) => {
+  ): Promise<{ success: boolean; message?: string }> => {
+    // Check inventory availability if cart has a location
+    if (cartLocationId) {
+      try {
+        // Calculate total quantity including existing cart items
+        const existingItem = items.find((item) => isSameCartItem(item, menuItem.id, selectedVariations));
+        const totalQuantity = (existingItem?.quantity || 0) + quantity;
+
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/inventory/check-availability`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            items: [{
+              menuItemId: menuItem.id,
+              locationId: cartLocationId,
+              quantity: totalQuantity,
+            }],
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const availability = data.results[0];
+
+          if (!availability.available) {
+            return {
+              success: false,
+              message: availability.currentStock === -1
+                ? 'This item is currently unavailable'
+                : `Only ${availability.currentStock} available in stock`,
+            };
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check inventory:', error);
+        // Continue anyway - don't block on inventory check failure
+      }
+    }
+
+    // Add item to cart
     setItems((prevItems) => {
       // Check if item with same menu item ID and variations already exists in cart
       const existingItemIndex = prevItems.findIndex(
@@ -166,6 +207,8 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         }];
       }
     });
+
+    return { success: true };
   };
 
   const removeItem = (cartItemId: string) => {

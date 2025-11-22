@@ -30,6 +30,7 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import PeopleIcon from '@mui/icons-material/People';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import SettingsIcon from '@mui/icons-material/Settings';
+import InventoryIcon from '@mui/icons-material/Inventory';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -77,6 +78,12 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       label: 'Reports',
       icon: <AssessmentIcon />,
       roles: ['KITCHEN', 'FINANCE', 'ADMIN'],
+    },
+    {
+      path: '/inventory',
+      label: 'Inventory',
+      icon: <InventoryIcon />,
+      roles: ['KITCHEN', 'ADMIN'],
     },
     {
       path: '/menu-management',

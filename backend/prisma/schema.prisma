@@ -8,36 +8,37 @@ datasource db {
 }
 
 model User {
-  id                     String         @id @default(uuid())
-  email                  String         @unique
-  passwordHash           String?        @map("password_hash")
-  fullName               String         @map("full_name")
+  id                     String             @id @default(uuid())
+  email                  String             @unique
+  passwordHash           String?            @map("password_hash")
+  fullName               String             @map("full_name")
   department             String?
   location               String?
   phone                  String?
-  role                   UserRole       @default(STAFF)
-  emailVerified          Boolean        @default(false) @map("email_verified")
-  isActive               Boolean        @default(true) @map("is_active")
-  createdAt              DateTime       @default(now()) @map("created_at")
-  updatedAt              DateTime       @updatedAt @map("updated_at")
-  lastSelectedLocationId String?        @map("last_selected_location_id")
+  role                   UserRole           @default(STAFF)
+  emailVerified          Boolean            @default(false) @map("email_verified")
+  isActive               Boolean            @default(true) @map("is_active")
+  createdAt              DateTime           @default(now()) @map("created_at")
+  updatedAt              DateTime           @updatedAt @map("updated_at")
+  lastSelectedLocationId String?            @map("last_selected_location_id")
   // Password reset token fields
-  resetToken             String?        @map("reset_token")
-  resetTokenExpiresAt    DateTime?      @map("reset_token_expires_at")
+  resetToken             String?            @map("reset_token")
+  resetTokenExpiresAt    DateTime?          @map("reset_token_expires_at")
   // OTP authentication fields
-  otpCode                String?        @map("otp_code")
-  otpExpiresAt           DateTime?      @map("otp_expires_at")
+  otpCode                String?            @map("otp_code")
+  otpExpiresAt           DateTime?          @map("otp_expires_at")
   // User invitation fields
-  invitedBy              String?        @map("invited_by")
-  invitationToken        String?        @unique @map("invitation_token")
-  invitationExpiresAt    DateTime?      @map("invitation_expires_at")
-  invitedAt              DateTime?      @map("invited_at")
+  invitedBy              String?            @map("invited_by")
+  invitationToken        String?            @unique @map("invitation_token")
+  invitationExpiresAt    DateTime?          @map("invitation_expires_at")
+  invitedAt              DateTime?          @map("invited_at")
   orders                 Order[]
-  configUpdates          SystemConfig[] @relation("ConfigUpdatedBy")
+  configUpdates          SystemConfig[]     @relation("ConfigUpdatedBy")
   userLocations          UserLocation[]
-  lastSelectedLocation   Location?      @relation("UserLastLocation", fields: [lastSelectedLocationId], references: [id], onDelete: SetNull)
-  inviter                User?          @relation("UserInvitations", fields: [invitedBy], references: [id], onDelete: SetNull)
-  invitedUsers           User[]         @relation("UserInvitations")
+  inventoryHistory       InventoryHistory[]
+  lastSelectedLocation   Location?          @relation("UserLastLocation", fields: [lastSelectedLocationId], references: [id], onDelete: SetNull)
+  inviter                User?              @relation("UserInvitations", fields: [invitedBy], references: [id], onDelete: SetNull)
+  invitedUsers           User[]             @relation("UserInvitations")
 
   @@index([invitedBy])
   @@map("users")
@@ -54,10 +55,12 @@ model MenuItem {
   createdAt         DateTime                @default(now()) @map("created_at")
   updatedAt         DateTime                @updatedAt @map("updated_at")
   weekdays          Weekday[]               @default([])
+  trackInventory    Boolean                 @default(false) @map("track_inventory")
   customizations    MenuItemCustomization[]
   menuItemLocations MenuItemLocation[]
   orderItems        OrderItem[]
   variationGroups   VariationGroup[]
+  inventories       Inventory[]
 
   @@map("menu_items")
 }
@@ -105,32 +108,33 @@ model VariationOption {
 }
 
 model Order {
-  id                String        @id @default(uuid())
-  userId            String?       @map("user_id")
-  orderNumber       String        @unique @map("order_number")
-  totalAmount       Decimal       @map("total_amount") @db.Decimal(10, 2)
-  paymentStatus     PaymentStatus @default(PENDING) @map("payment_status")
-  paymentId         String?       @map("payment_id")
-  fulfillmentStatus OrderStatus   @default(PLACED) @map("fulfillment_status")
-  specialRequests   String?       @map("special_requests")
-  orderDate         DateTime      @map("order_date") @db.Date
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
-  guestEmail        String?       @map("guest_email")
-  guestFirstName    String?       @map("guest_first_name")
-  guestLastName     String?       @map("guest_last_name")
-  locationId        String?       @map("location_id")
+  id                 String             @id @default(uuid())
+  userId             String?            @map("user_id")
+  orderNumber        String             @unique @map("order_number")
+  totalAmount        Decimal            @map("total_amount") @db.Decimal(10, 2)
+  paymentStatus      PaymentStatus      @default(PENDING) @map("payment_status")
+  paymentId          String?            @map("payment_id")
+  fulfillmentStatus  OrderStatus        @default(PLACED) @map("fulfillment_status")
+  specialRequests    String?            @map("special_requests")
+  orderDate          DateTime           @map("order_date") @db.Date
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  guestEmail         String?            @map("guest_email")
+  guestFirstName     String?            @map("guest_first_name")
+  guestLastName      String?            @map("guest_last_name")
+  locationId         String?            @map("location_id")
   // Location snapshots - preserved even if location is deleted
-  locationName      String?       @map("location_name")
-  locationAddress   String?       @map("location_address")
-  locationPhone     String?       @map("location_phone")
+  locationName       String?            @map("location_name")
+  locationAddress    String?            @map("location_address")
+  locationPhone      String?            @map("location_phone")
   // Customer snapshots - for registered users (guests use guestXxx fields)
-  customerFullName  String?       @map("customer_full_name")
-  customerEmail     String?       @map("customer_email")
-  customerDepartment String?      @map("customer_department")
-  orderItems        OrderItem[]
-  location          Location?     @relation(fields: [locationId], references: [id], onDelete: SetNull)
-  user              User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  customerFullName   String?            @map("customer_full_name")
+  customerEmail      String?            @map("customer_email")
+  customerDepartment String?            @map("customer_department")
+  orderItems         OrderItem[]
+  inventoryHistory   InventoryHistory[]
+  location           Location?          @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  user               User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([locationId])
@@ -186,6 +190,7 @@ model Location {
   menuItemLocations     MenuItemLocation[]
   orders                Order[]
   userLocations         UserLocation[]
+  inventories           Inventory[]
   usersWithLastLocation User[]             @relation("UserLastLocation")
 
   @@index([isActive])
@@ -218,6 +223,49 @@ model UserLocation {
   @@index([userId])
   @@index([locationId])
   @@map("user_locations")
+}
+
+model Inventory {
+  id                String             @id @default(uuid())
+  menuItemId        String             @map("menu_item_id")
+  locationId        String             @map("location_id")
+  stockQuantity     Int                @default(0) @map("stock_quantity")
+  lowStockThreshold Int                @default(5) @map("low_stock_threshold")
+  isAvailable       Boolean            @default(true) @map("is_available")
+  lastRestocked     DateTime?          @map("last_restocked")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  menuItem          MenuItem           @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  location          Location           @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  history           InventoryHistory[]
+
+  @@unique([menuItemId, locationId])
+  @@index([locationId])
+  @@index([menuItemId])
+  @@index([stockQuantity])
+  @@map("inventories")
+}
+
+model InventoryHistory {
+  id          String              @id @default(uuid())
+  inventoryId String              @map("inventory_id")
+  changeType  InventoryChangeType @map("change_type")
+  quantity    Int
+  previousQty Int                 @map("previous_qty")
+  newQty      Int                 @map("new_qty")
+  userId      String?             @map("user_id")
+  orderId     String?             @map("order_id")
+  reason      String?
+  createdAt   DateTime            @default(now()) @map("created_at")
+  inventory   Inventory           @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  user        User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  order       Order?              @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([inventoryId])
+  @@index([userId])
+  @@index([orderId])
+  @@index([createdAt])
+  @@map("inventory_history")
 }
 
 enum UserRole {
@@ -264,4 +312,11 @@ enum Weekday {
 enum VariationGroupType {
   SINGLE_SELECT
   MULTI_SELECT
+}
+
+enum InventoryChangeType {
+  RESTOCK
+  ORDER
+  ADJUSTMENT
+  WASTE
 }
