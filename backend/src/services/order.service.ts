@@ -544,6 +544,48 @@ export class OrderService {
     };
   }
 
+  async getLastOrderWithDetails(userId: string): Promise<any | null> {
+    const lastOrder = await prisma.order.findFirst({
+      where: {
+        userId,
+        paymentStatus: 'COMPLETED' // Only get successfully paid orders
+      },
+      include: {
+        location: {
+          select: {
+            id: true,
+            name: true,
+            address: true
+          }
+        },
+        orderItems: {
+          include: {
+            menuItem: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                imageUrl: true,
+                price: true,
+                category: true,
+                variationGroups: {
+                  include: {
+                    options: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    return lastOrder;
+  }
+
   private async generateOrderNumber(): Promise<string> {
     const today = new Date();
     const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD

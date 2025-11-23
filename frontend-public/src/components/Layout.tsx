@@ -22,7 +22,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LunchDiningIcon from '@mui/icons-material/LunchDining';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import CartDrawer from './CartDrawer';
@@ -37,11 +37,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { getCartItemCount } = useCart();
   const { locations, selectedLocation, selectLocation, isLoading: locationsLoading } = useLocationContext();
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const currentYear = new Date().getFullYear();
+
+  // Hide location selector on checkout page (location is managed within checkout)
+  const isCheckoutPage = location.pathname === '/checkout';
 
   const handleLogout = () => {
     logout();
@@ -261,16 +265,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </Button>
                 );
               })}
-              <Box sx={{ minWidth: 220 }}>
-                <LocationSelector
-                  locations={locations}
-                  selectedLocationId={selectedLocation?.id || null}
-                  onLocationChange={selectLocation}
-                  isLoading={locationsLoading}
-                  size="small"
-                  fullWidth
-                />
-              </Box>
+              {!isCheckoutPage && (
+                <Box sx={{ minWidth: 220 }}>
+                  <LocationSelector
+                    locations={locations}
+                    selectedLocationId={selectedLocation?.id || null}
+                    onLocationChange={selectLocation}
+                    isLoading={locationsLoading}
+                    size="small"
+                    fullWidth
+                  />
+                </Box>
+              )}
               <Button
                 variant="contained"
                 color="primary"
@@ -524,9 +530,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </Typography>
               <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', mt: 1 }}>
                 (03) 6123 4567
-              </Typography>
-              <Typography variant="caption" sx={{ display: 'block', color: 'rgba(255,255,255,0.6)', mt: 2 }}>
-                Service hours: 6:00am – 7:30pm, Monday to Sunday
               </Typography>
             </Grid>
           </Grid>

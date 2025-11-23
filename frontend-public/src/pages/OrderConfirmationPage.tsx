@@ -432,6 +432,7 @@ const OrderConfirmationPage: React.FC = () => {
                         )}
                       </>
                     }
+                    secondaryTypographyProps={{ component: 'div' }}
                   />
                   <Typography variant="body1" sx={{ mt: 0.5 }}>${subtotal.toFixed(2)}</Typography>
                 </ListItem>

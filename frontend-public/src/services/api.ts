@@ -112,4 +112,12 @@ export const menuApi = {
   },
 };
 
+// Order API
+export const orderApi = {
+  getLastOrder: async (): Promise<{ success: boolean; data: any; message?: string }> => {
+    const response = await api.get('/orders/last/details');
+    return response.data;
+  },
+};
+
 export default api;

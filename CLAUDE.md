@@ -20,6 +20,7 @@
 
 ### Key Features
 - Self-service ordering with guest checkout
+- **Repeat last order** (authenticated users, validates availability)
 - Multi-location support with location-based menu filtering
 - Weekend menu support (Monday-Sunday)
 - Domain-restricted management access
@@ -119,6 +120,11 @@ npm run db:seed      # Seed test data
 - Guest checkout supported
 - Location-based validation
 - Stripe PaymentIntent created before confirmation
+- **Repeat last order**: One-click reorder for authenticated users
+  - Validates items available at current location
+  - Checks ordering window and inventory
+  - Uses current pricing and menu data
+  - Prompts user if some items unavailable
 
 ### Code Quality (Updated Nov 2025)
 - ✅ No memory leaks (singleton Prisma instances)
@@ -229,7 +235,7 @@ npm run db:seed      # Seed test data
 ---
 
 **Last Updated**: 2025-11-23
-**Document Version**: 2.6 (Code Quality Review)
-**Line Count**: ~240 lines ✅
+**Document Version**: 2.7 (Repeat Order Feature)
+**Line Count**: ~241 lines ✅
 
 [Maintenance Guidelines](DOCUMENTATION_GUIDELINES.md) | [Archive](docs/05-archive/README.md) | [Code Review](docs/02-development/CODE_REVIEW_REPORT.md)

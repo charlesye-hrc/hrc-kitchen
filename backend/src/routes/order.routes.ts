@@ -18,6 +18,9 @@ router.post('/', orderController.createOrder);
 // Get user's orders
 router.get('/', orderController.getUserOrders);
 
+// Get user's last order (for repeat order feature)
+router.get('/last/details', orderController.getLastOrder);
+
 // Get specific order
 router.get('/:id', orderController.getOrder);
 

@@ -25,9 +25,11 @@ import {
   useTheme,
   useMediaQuery,
 } from '@mui/material';
-import { Add as AddIcon } from '@mui/icons-material';
-import { menuApi, MenuItem, VariationSelection } from '../services/api';
+import { Add as AddIcon, Replay as ReplayIcon } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
+import { menuApi, MenuItem, VariationSelection, orderApi } from '../services/api';
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
 import VariationSelector from '../components/VariationSelector';
 import { useLocationContext, LocationSelector } from '@hrc-kitchen/common';
 
@@ -43,9 +45,14 @@ const MenuPage: React.FC = () => {
   const [specialRequests, setSpecialRequests] = useState('');
   const [orderingWindow, setOrderingWindow] = useState<any>(null);
   const [activeCategory, setActiveCategory] = useState<string>('ALL');
+  const [repeatOrderLoading, setRepeatOrderLoading] = useState(false);
+  const [lastOrderData, setLastOrderData] = useState<any>(null);
+  const [lastOrderLoading, setLastOrderLoading] = useState(false);
 
-  const { items: cartItems, addItem, getCartItemCount, cartLocationId, setCartLocation, validateCartForLocation, removeItem } = useCart();
+  const { items: cartItems, addItem, getCartItemCount, cartLocationId, setCartLocation, validateCartForLocation, removeItem, clearCart } = useCart();
   const { locations, selectedLocation, selectLocation, isLoading: locationsLoading } = useLocationContext();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -54,6 +61,27 @@ const MenuPage: React.FC = () => {
       fetchTodaysMenu();
     }
   }, [selectedLocation]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchLastOrder();
+    }
+  }, [isAuthenticated]);
+
+  const fetchLastOrder = async () => {
+    try {
+      setLastOrderLoading(true);
+      const response = await orderApi.getLastOrder();
+      if (response.success && response.data) {
+        setLastOrderData(response.data);
+      }
+    } catch (err) {
+      // Silently fail - it's okay if user has no previous orders
+      console.log('No previous orders or error fetching:', err);
+    } finally {
+      setLastOrderLoading(false);
+    }
+  };
 
   const validateCartForCurrentLocation = (newMenuItems: MenuItem[]) => {
     if (!selectedLocation) return;
@@ -229,6 +257,169 @@ const MenuPage: React.FC = () => {
     );
   };
 
+  const handleRepeatLastOrder = async () => {
+    if (!isAuthenticated) {
+      alert('Please sign in to repeat your last order');
+      navigate('/login');
+      return;
+    }
+
+    if (!lastOrderData) {
+      alert('No previous orders found');
+      return;
+    }
+
+    if (!selectedLocation) {
+      alert('Please select a location first');
+      return;
+    }
+
+    setRepeatOrderLoading(true);
+    setError(null);
+
+    try {
+      const lastOrder = lastOrderData;
+
+      // Fetch today's menu for the CURRENT location to validate availability
+      let todaysMenuItems: MenuItem[] = [];
+      try {
+        const menuResponse = await menuApi.getTodaysMenu(selectedLocation.id);
+        if (menuResponse.success) {
+          todaysMenuItems = menuResponse.data.items;
+
+          // Check if ordering window is active
+          if (menuResponse.data.orderingWindow && !menuResponse.data.orderingWindow.active) {
+            alert('Ordering is currently closed. Please try again during ordering hours.');
+            setRepeatOrderLoading(false);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching menu:', err);
+        alert('Unable to verify menu availability. Please try again.');
+        setRepeatOrderLoading(false);
+        return;
+      }
+
+      // Validate that items from last order are available at the CURRENT location
+      const availableMenuItemIds = new Set(todaysMenuItems.map(item => item.id));
+      const unavailableItems = lastOrder.orderItems.filter(
+        (orderItem: any) => !availableMenuItemIds.has(orderItem.menuItemId)
+      );
+
+      if (unavailableItems.length === lastOrder.orderItems.length) {
+        // All items are unavailable at current location
+        alert(`None of the items from your last order are available at ${selectedLocation.name}. Please browse the current menu or try a different location.`);
+        setRepeatOrderLoading(false);
+        return;
+      }
+
+      if (unavailableItems.length > 0) {
+        // Some items are unavailable, ask user if they want to continue
+        const unavailableNames = unavailableItems.map((item: any) =>
+          item.menuItem?.name || item.itemName || 'Unknown item'
+        ).join('\n');
+
+        const shouldContinue = window.confirm(
+          `The following items from your last order are not available at ${selectedLocation.name}:\n\n${unavailableNames}\n\nWould you like to add the available items to your cart?`
+        );
+
+        if (!shouldContinue) {
+          setRepeatOrderLoading(false);
+          return;
+        }
+      }
+
+      // Clear current cart
+      clearCart();
+
+      // Set cart location to the CURRENT selected location (not the last order's location)
+      setCartLocation(selectedLocation.id);
+
+      // Add all items from last order to cart (only available ones)
+      let successCount = 0;
+      let failedItems: string[] = [];
+
+      for (const orderItem of lastOrder.orderItems) {
+        try {
+          // Skip items that are not available today
+          if (!availableMenuItemIds.has(orderItem.menuItemId)) {
+            continue;
+          }
+
+          // Get the current menu item (with updated pricing, variations, etc.)
+          const currentMenuItem = todaysMenuItems.find(item => item.id === orderItem.menuItemId);
+          if (!currentMenuItem) {
+            continue;
+          }
+
+          // Parse variations from the order item
+          let variationSelections: VariationSelection[] | undefined = undefined;
+          if (orderItem.selectedVariations?.variations) {
+            // Group variations by groupId
+            const groupMap = new Map<string, string[]>();
+            for (const variation of orderItem.selectedVariations.variations) {
+              if (!groupMap.has(variation.groupId)) {
+                groupMap.set(variation.groupId, []);
+              }
+              groupMap.get(variation.groupId)!.push(variation.optionId);
+            }
+
+            variationSelections = Array.from(groupMap.entries()).map(([groupId, optionIds]) => ({
+              groupId,
+              optionIds
+            }));
+          }
+
+          // Parse customizations
+          const customizations: string[] = [];
+          if (orderItem.customizations?.customizations) {
+            customizations.push(orderItem.customizations.customizations);
+          }
+
+          const specialReqs = orderItem.customizations?.specialRequests || undefined;
+
+          // Use current menu item (not the stored one from the order)
+          const result = await addItem(
+            currentMenuItem,
+            orderItem.quantity,
+            customizations,
+            specialReqs,
+            variationSelections
+          );
+
+          if (result.success) {
+            successCount++;
+          } else {
+            failedItems.push(currentMenuItem.name + (result.message ? ` (${result.message})` : ''));
+          }
+        } catch (err) {
+          console.error('Error adding item to cart:', err);
+          const itemName = orderItem.menuItem?.name || orderItem.itemName || 'Unknown item';
+          failedItems.push(itemName);
+        }
+      }
+
+      // Show result and navigate to checkout
+      if (failedItems.length > 0) {
+        const message = `Added ${successCount} items to cart.\n\nThe following items could not be added:\n${failedItems.join('\n')}`;
+        alert(message);
+      }
+
+      if (successCount > 0) {
+        // Navigate to checkout
+        navigate('/checkout');
+      } else {
+        alert('Could not add any items from your last order to cart. Please check item availability.');
+      }
+    } catch (err: any) {
+      console.error('Error repeating last order:', err);
+      setError(err.response?.data?.message || 'Failed to repeat last order');
+    } finally {
+      setRepeatOrderLoading(false);
+    }
+  };
+
   const getCategoryColor = (category: string) => {
     const colors: { [key: string]: 'primary' | 'secondary' | 'success' | 'warning' | 'info' } = {
       MAIN: 'primary',
@@ -351,6 +542,91 @@ const MenuPage: React.FC = () => {
               </Box>
             </Stack>
           </Paper>
+
+          {isAuthenticated && lastOrderData && !lastOrderLoading && (
+            <Paper
+              elevation={0}
+              sx={{
+                borderRadius: 2,
+                p: { xs: 2, md: 2.5 },
+                border: '1.5px solid',
+                borderColor: 'primary.main',
+                backgroundColor: 'rgba(45, 95, 63, 0.04)',
+                cursor: 'pointer',
+                transition: 'all 0.25s ease',
+                '&:hover': {
+                  backgroundColor: 'rgba(45, 95, 63, 0.08)',
+                  borderColor: 'primary.dark',
+                  boxShadow: '0 4px 12px rgba(45, 95, 63, 0.15)',
+                },
+              }}
+              onClick={handleRepeatLastOrder}
+            >
+              <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0, flex: 1 }}>
+                  <ReplayIcon sx={{ fontSize: 22, color: 'primary.main', flexShrink: 0 }} />
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        fontWeight: 600,
+                        color: 'primary.main',
+                        mb: 0.25,
+                        fontSize: { xs: '0.875rem', md: '0.9375rem' }
+                      }}
+                    >
+                      Repeat Last Order
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: 'text.secondary',
+                        fontSize: { xs: '0.8125rem', md: '0.875rem' },
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {(() => {
+                        const items = lastOrderData.orderItems || [];
+                        if (items.length === 0) return 'Your previous order';
+
+                        // Find the most expensive item
+                        const mostExpensiveItem = items.reduce((max: any, item: any) => {
+                          const itemPrice = Number(item.priceAtPurchase) * item.quantity;
+                          const maxPrice = Number(max.priceAtPurchase) * max.quantity;
+                          return itemPrice > maxPrice ? item : max;
+                        }, items[0]);
+
+                        const itemName = mostExpensiveItem.menuItem?.name || mostExpensiveItem.itemName || 'Item';
+                        const remainingCount = items.length - 1;
+
+                        return remainingCount > 0
+                          ? `${itemName} and ${remainingCount} other${remainingCount > 1 ? 's' : ''}`
+                          : itemName;
+                      })()}
+                    </Typography>
+                  </Box>
+                </Box>
+                <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
+                  {repeatOrderLoading ? (
+                    <CircularProgress size={20} sx={{ color: 'primary.main' }} />
+                  ) : (
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontWeight: 700,
+                        color: 'primary.main',
+                        fontSize: { xs: '1rem', md: '1.125rem' }
+                      }}
+                    >
+                      ${Number(lastOrderData.totalAmount || 0).toFixed(2)}
+                    </Typography>
+                  )}
+                </Box>
+              </Stack>
+            </Paper>
+          )}
 
           {categories.length > 0 && (
             <Box

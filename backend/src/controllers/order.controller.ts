@@ -104,6 +104,32 @@ export class OrderController {
     }
   };
 
+  getLastOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new ApiError(401, 'Authentication required');
+      }
+
+      const userId = req.user.id;
+      const lastOrder = await this.orderService.getLastOrderWithDetails(userId);
+
+      if (!lastOrder) {
+        res.status(404).json({
+          success: false,
+          message: 'No previous orders found'
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: lastOrder
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   createGuestOrder = async (req: Request, res: Response): Promise<void> => {
     try {
       const { guestInfo, ...orderData } = req.body;
