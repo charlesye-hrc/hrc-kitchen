@@ -23,6 +23,8 @@ This folder contains historical documentation that has been superseded by newer 
 | SESSION_MULTI_LOCATION_ENHANCEMENTS.md | 2025-11-16 | Session complete | Multi-location validation, checkout improvements, weekend menus |
 | 2025-01-17-bug-fixes.md | 2025-01-17 | Bug fixes documented | Finance reports revenue discrepancies, kitchen dashboard duplicate keys, deleted items grouping, reports page 403 error |
 | 2025-11-20-mfa-implementation.md | 2025-11-20 | Feature complete | Mandatory MFA with password + OTP, 7-day JWT tokens, two-step authentication flow |
+| 2025-11-23-code-quality-fixes.md | 2025-11-23 | Code review complete | Memory leak fixes, logging standardization, OTP security, API client consolidation, error handling improvements |
+| 2025-11-23-documentation-audit.md | 2025-11-23 | Documentation reorganization | CLAUDE.md trimmed to 235 lines, files reorganized per guidelines, redundancy eliminated |
 
 ---
 
@@ -52,4 +54,4 @@ For current, active documentation, see:
 
 ---
 
-**Last Updated:** 2025-11-20
+**Last Updated:** 2025-11-23

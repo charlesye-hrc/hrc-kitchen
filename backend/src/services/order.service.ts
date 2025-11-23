@@ -5,6 +5,7 @@ import { SelectedVariation } from '../types/variation.types';
 import { AuthService } from './auth.service';
 import { inventoryService } from './inventory.service';
 import prisma from '../lib/prisma';
+import { logger } from '../utils/logger';
 
 export class OrderService {
   private configService: ConfigService;
@@ -246,13 +247,16 @@ export class OrderService {
           const orderNumber = await this.generateOrderNumber();
 
           // Create payment intent with Stripe first
-          console.log(`[Order Service] Creating payment intent for ${customerInfo.customerEmail}, amount: $${totalAmount}`);
+          logger.info('Creating payment intent', {
+            email: customerInfo.customerEmail,
+            amount: totalAmount,
+          });
           const paymentIntent = await PaymentService.createPaymentIntent({
             amount: totalAmount,
             customerEmail: customerInfo.customerEmail,
             orderId: undefined // We don't have the orderId yet
           });
-          console.log(`[Order Service] Payment intent created: ${paymentIntent.id}`);
+          logger.info('Payment intent created', { paymentIntentId: paymentIntent.id });
 
           // Create order
           const order = await tx.order.create({
@@ -309,7 +313,11 @@ export class OrderService {
                 );
               } catch (error: any) {
                 // If deduction fails, the transaction will rollback
-                console.error(`[Order Service] Failed to deduct inventory for item ${item.menuItemId}:`, error.message);
+                logger.error('Failed to deduct inventory for order item', {
+                  menuItemId: item.menuItemId,
+                  orderId: order.id,
+                  error: error.message,
+                });
                 throw error;
               }
             }
@@ -319,7 +327,10 @@ export class OrderService {
         });
 
         // Update payment intent metadata with orderId after transaction completes
-        console.log(`[Order Service] Updating payment intent ${result.paymentIntentId} with orderId ${result.order.id}`);
+        logger.info('Updating payment intent with order ID', {
+          paymentIntentId: result.paymentIntentId,
+          orderId: result.order.id,
+        });
         await PaymentService.updatePaymentIntentMetadata(result.paymentIntentId, result.order.id);
 
         return result;
@@ -329,7 +340,7 @@ export class OrderService {
           retries--;
           lastError = error;
           if (retries > 0) {
-            console.log(`[Order Service] Order number collision detected, retrying... (${retries} retries left)`);
+            logger.warn('Order number collision detected, retrying', { retriesLeft: retries });
             // Small random delay to reduce collision probability
             await new Promise(resolve => setTimeout(resolve, Math.random() * 100));
             continue;

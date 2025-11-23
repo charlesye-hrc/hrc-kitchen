@@ -1,7 +1,8 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { OrderService } from '../services/order.service';
 import { CreateOrderDto } from '../types/order.types';
 import { AuthService } from '../services/auth.service';
+import { ApiError } from '../middleware/errorHandler';
 import prisma from '../lib/prisma';
 import { validatePagination } from '../utils/validation';
 
@@ -12,9 +13,13 @@ export class OrderController {
     this.orderService = new OrderService();
   }
 
-  createOrder = async (req: Request, res: Response): Promise<void> => {
+  createOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const userId = req.user!.id;
+      if (!req.user) {
+        throw new ApiError(401, 'Authentication required');
+      }
+
+      const userId = req.user.id;
       const orderData: CreateOrderDto = req.body;
 
       const result = await this.orderService.createOrder(userId, orderData);
@@ -24,27 +29,23 @@ export class OrderController {
         data: result
       });
     } catch (error) {
-      console.error('Error creating order:', error);
-      res.status(500).json({
-        success: false,
-        message: error instanceof Error ? error.message : 'Failed to create order'
-      });
+      next(error);
     }
   };
 
-  getOrder = async (req: Request, res: Response): Promise<void> => {
+  getOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const userId = req.user!.id;
+      if (!req.user) {
+        throw new ApiError(401, 'Authentication required');
+      }
+
+      const userId = req.user.id;
       const orderId = req.params.id;
 
       const order = await this.orderService.getOrderById(orderId, userId);
 
       if (!order) {
-        res.status(404).json({
-          success: false,
-          message: 'Order not found'
-        });
-        return;
+        throw new ApiError(404, 'Order not found');
       }
 
       res.json({
@@ -52,17 +53,17 @@ export class OrderController {
         data: order
       });
     } catch (error) {
-      console.error('Error fetching order:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to fetch order'
-      });
+      next(error);
     }
   };
 
-  getUserOrders = async (req: Request, res: Response): Promise<void> => {
+  getUserOrders = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const userId = req.user!.id;
+      if (!req.user) {
+        throw new ApiError(401, 'Authentication required');
+      }
+
+      const userId = req.user.id;
 
       // Extract query parameters
       const { startDate, endDate, page, limit } = req.query;

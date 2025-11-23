@@ -1,11 +1,9 @@
 import Stripe from 'stripe';
-import { PrismaClient } from '@prisma/client';
 import { ApiError } from '../middleware/errorHandler';
 import { EmailService } from './email.service';
 import { AuthService } from './auth.service';
 import { logger } from '../utils/logger';
-
-const prisma = new PrismaClient();
+import prisma from '../lib/prisma';
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('STRIPE_SECRET_KEY is not configured');

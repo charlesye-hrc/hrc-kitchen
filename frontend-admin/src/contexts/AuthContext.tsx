@@ -47,10 +47,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const storedHasAdminAccess = localStorage.getItem('admin_hasAdminAccess');
 
     if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-      setHasAdminAccess(storedHasAdminAccess === 'true');
-      axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+      try {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+        setHasAdminAccess(storedHasAdminAccess === 'true');
+        axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+      } catch (error) {
+        // Corrupted localStorage, clear and start fresh
+        console.error('Failed to parse stored user data:', error);
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_user');
+        localStorage.removeItem('admin_hasAdminAccess');
+      }
     }
 
     setIsLoading(false);

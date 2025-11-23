@@ -5,6 +5,7 @@ import { User, UserRole } from '@prisma/client';
 import { ApiError } from '../middleware/errorHandler';
 import prisma from '../lib/prisma';
 import { hasAdminDomainAccess } from '../middleware/domainValidation';
+import { logger } from '../utils/logger';
 
 export interface RegisterDTO {
   email: string;
@@ -87,7 +88,7 @@ export class AuthService {
     });
 
     // Link any existing guest orders to this new user account
-    await prisma.order.updateMany({
+    const linkedOrders = await prisma.order.updateMany({
       where: {
         guestEmail: data.email,
         userId: null, // Only link orders that aren't already linked to a user
@@ -97,7 +98,11 @@ export class AuthService {
       },
     });
 
-    console.log(`Linked guest orders for ${data.email} to new user account ${user.id}`);
+    logger.info('Linked guest orders to new user account', {
+      email: data.email,
+      userId: user.id,
+      count: linkedOrders.count,
+    });
 
     // Generate verification token
     const verificationToken = this.generateVerificationToken(user.id, user.email);
@@ -138,8 +143,8 @@ export class AuthService {
     }
 
     // Password is valid - now generate and send OTP
-    // Generate 6-digit OTP
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate 6-digit OTP using cryptographically secure randomness
+    const otpCode = crypto.randomInt(100000, 1000000).toString();
     const otpExpiresAt = new Date(Date.now() + this.OTP_CODE_EXPIRES_MINUTES * 60 * 1000);
 
     // Store OTP in database (invalidates any previous OTP)
@@ -151,7 +156,10 @@ export class AuthService {
       },
     });
 
-    console.log(`Login step 1 successful for ${data.email} - OTP generated`);
+    logger.info('Login step 1 successful - OTP generated', {
+      email: data.email,
+      userId: user.id,
+    });
 
     // Return response indicating OTP is required
     return {
@@ -192,7 +200,7 @@ export class AuthService {
       });
 
       result = { resetToken, fullName: user.fullName };
-      console.log(`Password reset token generated for ${email}`);
+      logger.info('Password reset token generated', { email, userId: user.id });
     }
 
     // Ensure consistent response time to prevent email enumeration via timing

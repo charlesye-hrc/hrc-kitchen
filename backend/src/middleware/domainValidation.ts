@@ -2,9 +2,7 @@ import { Response, NextFunction } from 'express';
 import { AuthRequest } from './auth';
 import { ApiError } from './errorHandler';
 import { UserRole } from '@prisma/client';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../lib/prisma';
 
 /**
  * Middleware that validates user's email domain for privileged roles
@@ -72,7 +70,7 @@ export const hasAdminDomainAccess = async (email: string): Promise<boolean> => {
     // Check if email ends with allowed domain
     return email.toLowerCase().endsWith(allowedDomain.toLowerCase());
   } catch (error) {
-    console.error('Error checking admin domain access:', error);
+    // Return false on error to fail safely
     return false;
   }
 };

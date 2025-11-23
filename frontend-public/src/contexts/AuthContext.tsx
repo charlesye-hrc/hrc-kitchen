@@ -44,9 +44,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const storedUser = localStorage.getItem('public_user');
 
     if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-      axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+      try {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+        axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+      } catch (error) {
+        // Corrupted localStorage, clear and start fresh
+        console.error('Failed to parse stored user data:', error);
+        localStorage.removeItem('public_token');
+        localStorage.removeItem('public_user');
+      }
     }
 
     setIsLoading(false);

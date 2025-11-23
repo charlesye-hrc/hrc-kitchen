@@ -1,44 +1,17 @@
-import axios from 'axios';
+import { createApiClient } from '../../../frontend-common/src/services/apiClient';
 
 // Use relative URL to leverage Vite's proxy in development
 // In production, set VITE_API_URL to your actual API domain
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
-// Create axios instance
-const api = axios.create({
+// Create axios instance with common configuration
+const api = createApiClient({
+  tokenKey: 'public_token',
+  userKey: 'public_user',
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  redirectOnUnauthorized: true,
+  loginPath: '/login',
 });
-
-// Request interceptor to add auth token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('public_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Response interceptor for error handling
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Clear token and redirect to login
-      localStorage.removeItem('public_token');
-      localStorage.removeItem('public_user');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
 
 // Types
 export type VariationGroupType = 'SINGLE_SELECT' | 'MULTI_SELECT';

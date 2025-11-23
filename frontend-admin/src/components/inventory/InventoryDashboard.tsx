@@ -30,6 +30,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocationContext } from '@hrc-kitchen/common';
 import AdminPageLayout from '../AdminPageLayout';
+import api from '../../services/api';
 
 interface InventoryItem {
   id: string;
@@ -82,21 +83,8 @@ export const InventoryDashboard: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/inventory/location/${selectedLocation.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch inventory');
-      }
-
-      const data = await response.json();
-      setInventory(data.data);
+      const response = await api.get(`/inventory/location/${selectedLocation.id}`);
+      setInventory(response.data.data);
     } catch (err: any) {
       setError(err.message || 'Failed to load inventory');
     } finally {
@@ -166,24 +154,10 @@ export const InventoryDashboard: React.FC = () => {
         return { menuItemId, locationId, stockQuantity: quantity };
       });
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/inventory/bulk-update`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
-          },
-          body: JSON.stringify({
-            updates,
-            reason: 'Bulk inventory adjustment',
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to update inventory');
-      }
+      await api.post('/inventory/bulk-update', {
+        updates,
+        reason: 'Bulk inventory adjustment',
+      });
 
       setSuccess(`Successfully updated ${updates.length} item${updates.length > 1 ? 's' : ''}`);
       setEditedQuantities({});
