@@ -44,7 +44,6 @@ export interface MenuItem {
     imageUrl: string | null;
     weekdays: Weekday[];
     dietaryTags: string[];
-    isActive: boolean;
     customizations: MenuItemCustomization[];
     variationGroups?: VariationGroup[];
     createdAt?: string;

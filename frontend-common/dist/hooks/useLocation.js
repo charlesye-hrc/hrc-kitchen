@@ -88,9 +88,9 @@ export const useLocation = (options) => {
         if (location) {
             setSelectedLocation(location);
             localStorage.setItem(SELECTED_LOCATION_KEY, locationId);
-            // Update user's last selected location on server (if authenticated)
+            // Update user's last selected location on server (if authenticated and allowed)
             const token = localStorage.getItem(TOKEN_KEY);
-            if (token) {
+            if (token && !options?.forceAllLocations) {
                 fetch(`${API_URL}/locations/user/last-selected`, {
                     method: 'PUT',
                     headers: {
@@ -101,7 +101,7 @@ export const useLocation = (options) => {
                 }).catch(err => console.error('Failed to update last selected location:', err));
             }
         }
-    }, [locations, API_URL, TOKEN_KEY]);
+    }, [locations, API_URL, TOKEN_KEY, options?.forceAllLocations]);
     const refreshLocations = useCallback(async () => {
         await fetchLocations();
     }, [fetchLocations]);

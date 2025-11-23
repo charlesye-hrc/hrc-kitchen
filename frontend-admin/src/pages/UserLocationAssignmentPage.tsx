@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Container,
   Typography,
   Box,
   Paper,
@@ -27,6 +26,7 @@ import {
 import { Edit as EditIcon, AdminPanelSettings as AdminIcon } from '@mui/icons-material';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
+import AdminPageLayout from '../components/AdminPageLayout';
 
 interface User {
   id: string;
@@ -147,29 +147,17 @@ const UserLocationAssignmentPage: React.FC = () => {
 
   if (loading) {
     return (
-      <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <CircularProgress />
-      </Container>
+      </Box>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{
-      py: { xs: 2, sm: 4 },
-      px: { xs: 1, sm: 2 },
-      width: '100%',
-      maxWidth: '100%',
-      overflowX: 'hidden',
-    }}>
-      <Box sx={{ mb: { xs: 2, sm: 4 } }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 1, fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
-          User Location Assignments
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Manage which locations KITCHEN and FINANCE users can access. ADMIN and STAFF users automatically have access to all locations.
-        </Typography>
-      </Box>
-
+    <AdminPageLayout
+      title="User Location Assignments"
+      subtitle="Manage which locations KITCHEN and FINANCE users can access. ADMIN and STAFF users automatically see every location."
+    >
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
           {error}
@@ -205,6 +193,14 @@ const UserLocationAssignmentPage: React.FC = () => {
                       color={user.role === 'ADMIN' ? 'error' : user.role === 'KITCHEN' ? 'primary' : user.role === 'FINANCE' ? 'success' : 'default'}
                       size="small"
                       icon={user.role === 'ADMIN' ? <AdminIcon fontSize="small" /> : undefined}
+                      sx={{
+                        fontWeight: 600,
+                        ...(user.role === 'FINANCE' && {
+                          bgcolor: 'success.main',
+                          color: 'common.white',
+                          '& .MuiChip-icon': { color: 'common.white' },
+                        }),
+                      }}
                     />
                   </TableCell>
                   <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, px: { xs: 1, sm: 2 } }}>
@@ -284,7 +280,7 @@ const UserLocationAssignmentPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Container>
+    </AdminPageLayout>
   );
 };
 

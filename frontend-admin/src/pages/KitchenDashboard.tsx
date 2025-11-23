@@ -34,6 +34,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useLocationContext, LocationSelector } from '@hrc-kitchen/common';
 import api from '../services/api';
+import AdminPageLayout from '../components/AdminPageLayout';
 
 interface Order {
   id: string;
@@ -397,23 +398,10 @@ const KitchenDashboard = () => {
   }
 
   return (
-    <Box sx={{
-      width: '100%',
-      maxWidth: '100%',
-      overflowX: 'hidden',
-    }}>
-      {/* Header with Print Button */}
-      <Box sx={{
-        display: 'flex',
-        flexDirection: { xs: 'column', sm: 'row' },
-        justifyContent: 'space-between',
-        alignItems: { xs: 'stretch', sm: 'center' },
-        gap: { xs: 2, sm: 0 },
-        mb: 3
-      }}>
-        <Typography variant="h4" sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
-          Kitchen Dashboard
-        </Typography>
+    <AdminPageLayout
+      title="Kitchen Dashboard"
+      subtitle="Monitor fulfillment progress by location and menu item."
+      actions={
         <Button
           variant="contained"
           color="primary"
@@ -421,8 +409,8 @@ const KitchenDashboard = () => {
           onClick={async () => {
             try {
               const response = await api.get(`/kitchen/print?date=${selectedDate}`, {
-                headers: { 'Accept': 'text/html' },
-                responseType: 'text'
+                headers: { Accept: 'text/html' },
+                responseType: 'text',
               });
               const printWindow = window.open('', '_blank');
               if (printWindow) {
@@ -434,54 +422,57 @@ const KitchenDashboard = () => {
               alert('Failed to generate print view. Please try again.');
             }
           }}
+          sx={{ width: { xs: '100%', sm: 'auto' } }}
         >
           Print All
         </Button>
-      </Box>
+      }
+    >
 
-      {/* Date filter and stats */}
-      <Paper sx={{ p: { xs: 1.5, sm: 2 }, mb: 3 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6} md={2.5}>
-            <LocationSelector
-              locations={locations}
-              selectedLocationId={selectedLocation?.id || null}
-              onLocationChange={selectLocation}
-              isLoading={locationsLoading}
-              size="small"
-              fullWidth
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={2.5}>
-            <TextField
-              label="Date"
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              fullWidth
-              size="small"
-              InputLabelProps={{ shrink: true }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6} md={2.5}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Status Filter</InputLabel>
-              <Select
-                value={statusFilter}
-                label="Status Filter"
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <MenuItem value="all">All Orders</MenuItem>
-                <MenuItem value="PLACED">Placed</MenuItem>
-                <MenuItem value="PARTIALLY_FULFILLED">Partially Fulfilled</MenuItem>
-                <MenuItem value="FULFILLED">Fulfilled</MenuItem>
-              </Select>
-            </FormControl>
+        {/* Date filter and stats */}
+        <Paper sx={{ p: { xs: 1.5, sm: 2.5 }, mb: 3 }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} sm={6} md={2.5}>
+              <LocationSelector
+                locations={locations}
+                selectedLocationId={selectedLocation?.id || null}
+                onLocationChange={selectLocation}
+                isLoading={locationsLoading}
+                size="small"
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={2.5}>
+              <TextField
+                label="Date"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                fullWidth
+                size="small"
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={2.5}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Status Filter</InputLabel>
+                <Select
+                  value={statusFilter}
+                  label="Status Filter"
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <MenuItem value="all">All Orders</MenuItem>
+                  <MenuItem value="PLACED">Placed</MenuItem>
+                  <MenuItem value="PARTIALLY_FULFILLED">Partially Fulfilled</MenuItem>
+                  <MenuItem value="FULFILLED">Fulfilled</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
           </Grid>
 
           {stats && (
-            <>
-              <Grid item xs={12} sm={6} md={2}>
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              <Grid item xs={12} sm={4} md={2}>
                 <Card>
                   <CardContent>
                     <Typography color="text.secondary" variant="body2">
@@ -491,7 +482,7 @@ const KitchenDashboard = () => {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={12} sm={6} md={2}>
+              <Grid item xs={12} sm={4} md={2}>
                 <Card>
                   <CardContent>
                     <Typography color="text.secondary" variant="body2">
@@ -503,7 +494,7 @@ const KitchenDashboard = () => {
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={12} sm={6} md={2}>
+              <Grid item xs={12} sm={4} md={2}>
                 <Card>
                   <CardContent>
                     <Typography color="text.secondary" variant="body2">
@@ -515,31 +506,35 @@ const KitchenDashboard = () => {
                   </CardContent>
                 </Card>
               </Grid>
-            </>
+            </Grid>
           )}
-        </Grid>
-      </Paper>
+        </Paper>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
-          {error}
-        </Alert>
-      )}
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+            {error}
+          </Alert>
+        )}
 
-      {/* Tabs for different views */}
-      <Paper sx={{ mb: 3 }}>
-        <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
-          <Tab label="Group by Item" />
-          <Tab label="Order List" />
-        </Tabs>
-      </Paper>
+        {/* Tabs for different views */}
+        <Paper sx={{ mb: 3 }}>
+          <Tabs
+            value={tabValue}
+            onChange={(_, newValue) => setTabValue(newValue)}
+            textColor="primary"
+            indicatorColor="primary"
+          >
+            <Tab label="Group by Item" />
+            <Tab label="Order List" />
+          </Tabs>
+        </Paper>
 
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <>
           {/* Group by Item View */}
           {tabValue === 0 && (
             <Box>
@@ -832,14 +827,18 @@ const KitchenDashboard = () => {
                                     />
                                   ) : (
                                     <Button
-                                      variant="contained"
+                                      variant="outlined"
                                       size="small"
                                       color="success"
-                                      startIcon={<CheckCircleIcon />}
+                                      startIcon={<CheckCircleIcon fontSize="small" />}
                                       onClick={() => handleItemStatusChange(orderItem?.id || '', 'FULFILLED')}
-                                      sx={{ color: 'white' }}
+                                      sx={{
+                                        fontWeight: 500,
+                                        borderRadius: 999,
+                                        px: 1.5,
+                                      }}
                                     >
-                                      Mark Fulfilled
+                                      Mark fulfilled
                                     </Button>
                                   )}
                                 </Box>
@@ -979,14 +978,14 @@ const KitchenDashboard = () => {
                                     />
                                   ) : (
                                     <Button
-                                      variant="contained"
+                                      variant="outlined"
                                       size="small"
                                       color="success"
-                                      startIcon={<CheckCircleIcon />}
+                                      startIcon={<CheckCircleIcon fontSize="small" />}
                                       onClick={() => handleItemStatusChange(item.id, 'FULFILLED')}
-                                      sx={{ ml: 2, flexShrink: 0 }}
+                                      sx={{ ml: 2, flexShrink: 0, borderRadius: 999, px: 1.5, fontWeight: 500 }}
                                     >
-                                      Mark Fulfilled
+                                      Mark fulfilled
                                     </Button>
                                   )}
                                 </Box>
@@ -1023,9 +1022,9 @@ const KitchenDashboard = () => {
               )}
             </Box>
           )}
-        </>
-      )}
-    </Box>
+          </>
+        )}
+    </AdminPageLayout>
   );
 };
 

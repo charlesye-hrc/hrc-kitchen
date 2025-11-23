@@ -33,6 +33,23 @@ interface VariationGroupManagerProps {
   onUpdate?: () => void;
 }
 
+const normalizePriceModifier = (value: number | string | null | undefined) => {
+  if (typeof value === 'number' && !Number.isNaN(value)) {
+    return value;
+  }
+  const parsed = parseFloat(value as string);
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+  const formatPriceModifierDisplay = (value: number | string | null | undefined) => {
+    const num = normalizePriceModifier(value);
+    if (num === 0) {
+      return '';
+    }
+    const sign = num > 0 ? '+' : '-';
+    return `${sign}$${Math.abs(num).toFixed(2)}`;
+  };
+
 const VariationGroupManager: React.FC<VariationGroupManagerProps> = ({ menuItemId, onUpdate }) => {
   const [groups, setGroups] = useState<VariationGroup[]>([]);
   const [loading, setLoading] = useState(false);
@@ -542,12 +559,26 @@ const VariationGroupManager: React.FC<VariationGroupManagerProps> = ({ menuItemI
                           <Typography variant="body2" sx={{ flexGrow: 1 }}>
                             {option.name}
                           </Typography>
-                          <Chip
-                            label={formatPrice(option.priceModifier)}
-                            size="small"
-                            color={option.priceModifier > 0 ? 'success' : 'default'}
-                            sx={{ mr: 1 }}
-                          />
+                          {formatPriceModifierDisplay(option.priceModifier) && (
+                            <Chip
+                              label={formatPriceModifierDisplay(option.priceModifier)}
+                              size="small"
+                              sx={{
+                                mr: 1,
+                                fontWeight: 600,
+                                bgcolor: (() => {
+                                  const num = normalizePriceModifier(option.priceModifier);
+                                  if (num > 0) return 'success.main';
+                                  if (num < 0) return 'error.main';
+                                  return 'grey.300';
+                                })(),
+                                color: (() => {
+                                  const num = normalizePriceModifier(option.priceModifier);
+                                  return num === 0 ? 'text.primary' : 'common.white';
+                                })(),
+                              }}
+                            />
+                          )}
                           {option.isDefault && (
                             <Chip label="Default" size="small" sx={{ mr: 1 }} />
                           )}

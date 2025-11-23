@@ -29,7 +29,6 @@ import {
   Checkbox,
   ToggleButtonGroup,
   ToggleButton,
-  Tooltip,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -38,9 +37,6 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   CloudUpload as CloudUploadIcon,
-  ViewWeek as ViewWeekIcon,
-  Category as CategoryIcon,
-  ViewList as ViewListIcon,
 } from '@mui/icons-material';
 import api from '../../services/api';
 import VariationGroupManager from './VariationGroupManager';
@@ -78,7 +74,7 @@ const MenuManagement = () => {
   const [itemToDelete, setItemToDelete] = useState<MenuItem | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'weekday' | 'category' | 'all'>('weekday');
+  const [viewMode, setViewMode] = useState<'weekday' | 'category' | 'all'>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('MAIN');
   const [dialogTab, setDialogTab] = useState(0);
 
@@ -344,13 +340,16 @@ const MenuManagement = () => {
 
   // Get all items across all weekdays
   const getAllItems = (): MenuItem[] => {
-    const allItems: MenuItem[] = [];
+    const itemMap = new Map<string, MenuItem>();
     WEEKDAYS.forEach(day => {
-      if (menuItems[day]) {
-        allItems.push(...menuItems[day]);
-      }
+      const dayItems = menuItems[day] || [];
+      dayItems.forEach(item => {
+        if (!itemMap.has(item.id)) {
+          itemMap.set(item.id, item);
+        }
+      });
     });
-    return allItems;
+    return Array.from(itemMap.values());
   };
 
   // Filter items based on view mode and search query
@@ -427,7 +426,11 @@ const MenuManagement = () => {
         </Button>
       </Box>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 3, px: { xs: 2, md: 0 } }}>
+      <Stack
+        direction={{ xs: 'column', lg: 'row' }}
+        spacing={2}
+        sx={{ mb: 3, px: { xs: 2, md: 0 }, alignItems: { lg: 'center' } }}
+      >
         <TextField
           fullWidth
           placeholder={isMobile ? "Search menu items..." : "Search menu items by name, description, category, or dietary tags..."}
@@ -436,6 +439,7 @@ const MenuManagement = () => {
           variant="outlined"
           size="small"
           sx={{
+            maxWidth: { lg: 520 },
             '& .MuiInputBase-input': {
               fontSize: { xs: '0.875rem', sm: '1rem' },
             }
@@ -450,23 +454,24 @@ const MenuManagement = () => {
             }
           }}
           size="small"
-          sx={{ width: { xs: '100%', sm: 'auto' } }}
+          sx={{
+            width: { xs: '100%', lg: 'auto' },
+            flexWrap: { xs: 'wrap', sm: 'nowrap' },
+            '& .MuiToggleButton-root': {
+              flex: { xs: 1, sm: 1 },
+              minWidth: 110,
+            },
+          }}
         >
-          <Tooltip title="By Day">
-            <ToggleButton value="weekday" sx={{ px: 2, flex: { xs: 1, sm: 'initial' } }}>
-              <ViewWeekIcon fontSize="small" />
-            </ToggleButton>
-          </Tooltip>
-          <Tooltip title="By Category">
-            <ToggleButton value="category" sx={{ px: 2, flex: { xs: 1, sm: 'initial' } }}>
-              <CategoryIcon fontSize="small" />
-            </ToggleButton>
-          </Tooltip>
-          <Tooltip title="All Items">
-            <ToggleButton value="all" sx={{ px: 2, flex: { xs: 1, sm: 'initial' } }}>
-              <ViewListIcon fontSize="small" />
-            </ToggleButton>
-          </Tooltip>
+          <ToggleButton value="all" sx={{ px: 2 }}>
+            All Items
+          </ToggleButton>
+          <ToggleButton value="weekday" sx={{ px: 2 }}>
+            By Day
+          </ToggleButton>
+          <ToggleButton value="category" sx={{ px: 2 }}>
+            By Category
+          </ToggleButton>
         </ToggleButtonGroup>
       </Stack>
 
@@ -573,14 +578,36 @@ const MenuManagement = () => {
                   <Typography variant="h6" color="primary" gutterBottom>
                     ${Number(item.price).toFixed(2)}
                   </Typography>
-                  <Box display="flex" flexWrap="wrap" gap={0.5} mb={1}>
-                    {viewMode !== 'category' && (
-                      <Chip label={item.category} size="small" color="primary" />
+                  <Stack spacing={0.5} mb={1}>
+                    {(
+                      (viewMode === 'category' && searchQuery.trim().length > 0) ||
+                      viewMode !== 'category'
+                    ) && (
+                      <Box display="flex" flexWrap="wrap" gap={0.5}>
+                        <Chip label={item.category} size="small" color="primary" />
+                      </Box>
                     )}
-                    {viewMode !== 'weekday' && item.weekdays.map((day) => (
-                      <Chip key={day} label={day} size="small" color="secondary" />
-                    ))}
-                  </Box>
+                    {viewMode !== 'weekday' && (
+                      <Box display="flex" flexWrap="wrap" gap={0.5}>
+                        {item.weekdays.map((day) => {
+                          const shortLabel = day.slice(0, 3);
+                          const isWeekend = day === 'SATURDAY' || day === 'SUNDAY';
+                          return (
+                            <Chip
+                              key={day}
+                              label={shortLabel}
+                              size="small"
+                              color={isWeekend ? 'warning' : 'secondary'}
+                              sx={{
+                                bgcolor: isWeekend ? 'warning.light' : undefined,
+                                color: isWeekend ? 'warning.dark' : undefined,
+                              }}
+                            />
+                          );
+                        })}
+                      </Box>
+                    )}
+                  </Stack>
                   {item.dietaryTags.length > 0 && (
                     <Box display="flex" flexWrap="wrap" gap={0.5}>
                       {item.dietaryTags.map((tag) => (

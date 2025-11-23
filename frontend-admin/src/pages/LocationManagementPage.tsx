@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Container,
   Typography,
   Box,
   Button,
@@ -32,6 +31,7 @@ import {
 } from '@mui/icons-material';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
+import AdminPageLayout from '../components/AdminPageLayout';
 
 interface Location {
   id: string;
@@ -284,33 +284,29 @@ const LocationManagementPage: React.FC = () => {
 
   if (loading) {
     return (
-      <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <CircularProgress />
-      </Container>
+      </Box>
     );
   }
 
+  const headerActions = (
+    <Button
+      variant="contained"
+      startIcon={<AddIcon />}
+      onClick={() => handleOpenDialog()}
+      sx={{ px: 3 }}
+    >
+      Add Location
+    </Button>
+  );
+
   return (
-    <Container maxWidth="lg" sx={{
-      py: { xs: 2, sm: 4 },
-      px: { xs: 1, sm: 2 },
-      width: '100%',
-      maxWidth: '100%',
-      overflowX: 'hidden',
-    }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 2, sm: 4 }, flexWrap: 'wrap', gap: 2 }}>
-        <Typography variant="h4" component="h1" sx={{ fontWeight: 700, fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
-          Location Management
-        </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-          sx={{ px: 3 }}
-        >
-          Add Location
-        </Button>
-      </Box>
+    <AdminPageLayout
+      title="Location Management"
+      subtitle="Manage physical locations, contact information, and activation status."
+      actions={headerActions}
+    >
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
@@ -349,6 +345,13 @@ const LocationManagementPage: React.FC = () => {
                       label={location.isActive ? 'Active' : 'Inactive'}
                       color={location.isActive ? 'success' : 'default'}
                       size="small"
+                      sx={{
+                        fontWeight: 600,
+                        ...(location.isActive && {
+                          bgcolor: 'success.main',
+                          color: 'common.white',
+                        }),
+                      }}
                     />
                   </TableCell>
                   <TableCell align="right" sx={{ px: { xs: 1, sm: 2 } }}>
@@ -598,7 +601,7 @@ const LocationManagementPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Container>
+    </AdminPageLayout>
   );
 };
 

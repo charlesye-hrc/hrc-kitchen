@@ -50,6 +50,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [cartLocationId, setCartLocationId] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1').replace(/\/$/, '');
 
   // Helper function to generate a unique cart item ID based on menu item and variations
   const generateCartItemId = (menuItemId: string, selectedVariations?: VariationSelection[]): string => {
@@ -145,7 +146,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         const existingItem = items.find((item) => isSameCartItem(item, menuItem.id, selectedVariations));
         const totalQuantity = (existingItem?.quantity || 0) + quantity;
 
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/inventory/check-availability`, {
+        const response = await fetch(`${API_BASE_URL}/inventory/check-availability`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

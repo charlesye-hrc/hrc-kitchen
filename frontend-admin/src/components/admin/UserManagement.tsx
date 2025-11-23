@@ -317,8 +317,8 @@ const UserManagement = () => {
       )}
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, px: { xs: 2, md: 0 } }}>
-        <Typography variant="h6">
-          User Management
+        <Typography variant="subtitle1" color="text.secondary">
+          Manage user access and roles
         </Typography>
         <Button
           variant="contained"
@@ -467,6 +467,13 @@ const UserManagement = () => {
                     label={user.isActive ? 'Active' : 'Inactive'}
                     size="small"
                     color={user.isActive ? 'success' : 'default'}
+                    sx={{
+                      fontWeight: 600,
+                      ...(user.isActive && {
+                        bgcolor: 'success.main',
+                        color: 'common.white',
+                      }),
+                    }}
                   />
                 </TableCell>
                 <TableCell sx={{ px: { xs: 1, sm: 2 }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, display: { xs: 'none', lg: 'table-cell' } }}>

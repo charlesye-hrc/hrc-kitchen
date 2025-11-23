@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import {
-  Container,
   Typography,
   Paper,
   Box,
@@ -29,6 +28,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { LocationSelector, Location } from '@hrc-kitchen/common';
 import axios from 'axios';
+import AdminPageLayout from '../components/AdminPageLayout';
 
 interface RevenueByUser {
   user: {
@@ -245,27 +245,22 @@ const ReportsPage = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{
-      py: { xs: 2, sm: 4 },
-      px: { xs: 1, sm: 2 },
-      width: '100%',
-      maxWidth: '100%',
-      overflowX: 'hidden',
-    }}>
-      <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
-        Reports & Analytics
-      </Typography>
-
+    <AdminPageLayout
+      title="Reports & Analytics"
+      subtitle="Review performance by date range and location."
+    >
       {/* Date Range Filter */}
-      <Paper sx={{
-        p: { xs: 1.5, sm: 2 },
-        mb: 3,
-        width: '100%',
-        maxWidth: '100%',
-        overflowX: 'hidden',
-      }}>
+      <Paper
+        sx={{
+          p: { xs: 1.5, sm: 2 },
+          mb: 3,
+          width: '100%',
+          maxWidth: '100%',
+          overflowX: 'hidden',
+        }}
+      >
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6} md={2.5}>
+          <Grid item xs={12} sm={6} md={3}>
             <LocationSelector
               locations={locations}
               selectedLocationId={locationFilter}
@@ -299,35 +294,72 @@ const ReportsPage = () => {
               InputLabelProps={{ shrink: true }}
             />
           </Grid>
-          <Grid item xs={12} sm={6} md={2.5}>
-            <Button
-              variant="contained"
-              color="primary"
-              fullWidth
-              onClick={handleGenerate}
-              disabled={loading}
-              startIcon={<RefreshIcon />}
-              sx={{ height: '40px', fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
-            >
-              Generate
-            </Button>
-          </Grid>
-          <Grid item xs={12} sm={6} md={2}>
-            <Button
-              variant="outlined"
-              fullWidth
-              startIcon={<DownloadIcon />}
-              onClick={() => {
-                const reportTypes = ['revenue-by-user', 'popular-items'];
-                downloadCSV(reportTypes[Math.min(tabValue, 1)]);
-              }}
-              disabled={loading || (tabValue === 0 && revenueData.length === 0) || (tabValue === 1 && popularItems.length === 0)}
-              sx={{ height: '40px', fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
-            >
-              Export CSV
-            </Button>
-          </Grid>
         </Grid>
+        <Box
+          sx={{
+            mt: 2,
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'stretch', sm: 'center' },
+            gap: 1.5,
+            flexWrap: 'wrap',
+            alignSelf: 'flex-start',
+            maxWidth: { sm: '80%', md: '60%' }
+          }}
+        >
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={handleGenerate}
+            disabled={loading}
+            sx={{
+              height: 40,
+              px: 3,
+              fontSize: { xs: '0.8rem', sm: '0.875rem' },
+              width: { xs: '100%', sm: 'auto' },
+              minWidth: { sm: 130 }
+            }}
+          >
+            Refresh
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleGenerate}
+            disabled={loading}
+            sx={{
+              height: 40,
+              px: 3,
+              fontSize: { xs: '0.8rem', sm: '0.875rem' },
+              width: { xs: '100%', sm: 'auto' },
+              minWidth: { sm: 150 }
+            }}
+          >
+            Generate
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={() => {
+              const reportTypes = ['revenue-by-user', 'popular-items'];
+              downloadCSV(reportTypes[Math.min(tabValue, 1)]);
+            }}
+            disabled={
+              loading ||
+              (tabValue === 0 && revenueData.length === 0) ||
+              (tabValue === 1 && popularItems.length === 0)
+            }
+            sx={{
+              height: 40,
+              px: 3,
+              fontSize: { xs: '0.8rem', sm: '0.875rem' },
+              width: { xs: '100%', sm: 'auto' },
+              minWidth: { sm: 150 }
+            }}
+          >
+            Export CSV
+          </Button>
+        </Box>
       </Paper>
 
       {error && (
@@ -336,11 +368,13 @@ const ReportsPage = () => {
         </Alert>
       )}
 
-      <Paper sx={{
-        width: '100%',
-        maxWidth: '100%',
-        overflowX: 'hidden',
-      }}>
+      <Paper
+        sx={{
+          width: '100%',
+          maxWidth: '100%',
+          overflowX: 'hidden',
+        }}
+      >
         <Tabs
           value={tabValue}
           onChange={handleTabChange}
@@ -479,12 +513,12 @@ const ReportsPage = () => {
                         </Card>
                       </Grid>
                       <Grid item xs={12} md={6}>
-                        <Card>
-                          <CardContent>
+                        <Card sx={{ height: '100%' }}>
+                          <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                             <Typography variant="h6" gutterBottom>
                               Orders by Fulfillment Status
                             </Typography>
-                            <Box>
+                            <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                               <Typography>Placed: {summaryStats.ordersByStatus.PLACED}</Typography>
                               <Typography>Partially Fulfilled: {summaryStats.ordersByStatus.PARTIALLY_FULFILLED}</Typography>
                               <Typography>Fulfilled: {summaryStats.ordersByStatus.FULFILLED}</Typography>
@@ -493,12 +527,12 @@ const ReportsPage = () => {
                         </Card>
                       </Grid>
                       <Grid item xs={12} md={6}>
-                        <Card>
-                          <CardContent>
+                        <Card sx={{ height: '100%' }}>
+                          <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                             <Typography variant="h6" gutterBottom>
                               Orders by Payment Status
                             </Typography>
-                            <Box>
+                            <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                               <Typography>Pending: {summaryStats.ordersByPayment.PENDING}</Typography>
                               <Typography>Completed: {summaryStats.ordersByPayment.COMPLETED}</Typography>
                               <Typography>Failed: {summaryStats.ordersByPayment.FAILED}</Typography>
@@ -521,7 +555,7 @@ const ReportsPage = () => {
           )}
         </Box>
       </Paper>
-    </Container>
+    </AdminPageLayout>
   );
 };
 

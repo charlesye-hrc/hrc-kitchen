@@ -145,9 +145,6 @@ const SystemConfig = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        System Configuration
-      </Typography>
 
       <div ref={alertRef}>
         {error && (
@@ -296,9 +293,6 @@ const SystemConfig = () => {
           </Typography>
           <Typography variant="body2" color="text.secondary">
             • End time must be after start time
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            • Ordering window applies Monday through Friday only
           </Typography>
           <Typography variant="body2" color="text.secondary">
             • Staff can only order during the configured window

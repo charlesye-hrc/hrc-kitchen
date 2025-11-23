@@ -59,7 +59,15 @@ const RegisterPage = () => {
   };
 
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', py: { xs: 3, md: 5 } }}>
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '60vh',
+        py: { xs: 3, md: 5 },
+      }}
+    >
       <Paper
         sx={{
           p: { xs: 3, sm: 4.5 },

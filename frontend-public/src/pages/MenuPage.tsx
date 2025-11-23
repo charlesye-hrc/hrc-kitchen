@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Container,
   Typography,
@@ -20,15 +20,14 @@ import {
   FormGroup,
   FormControlLabel,
   Checkbox,
-  IconButton,
-  Badge,
+  Paper,
+  Stack,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
-import { Add as AddIcon, ShoppingCart as CartIcon } from '@mui/icons-material';
+import { Add as AddIcon } from '@mui/icons-material';
 import { menuApi, MenuItem, VariationSelection } from '../services/api';
 import { useCart } from '../contexts/CartContext';
-import CartDrawer from '../components/CartDrawer';
 import VariationSelector from '../components/VariationSelector';
 import { useLocationContext, LocationSelector } from '@hrc-kitchen/common';
 
@@ -42,8 +41,8 @@ const MenuPage: React.FC = () => {
   const [selectedCustomizations, setSelectedCustomizations] = useState<string[]>([]);
   const [selectedVariations, setSelectedVariations] = useState<VariationSelection[]>([]);
   const [specialRequests, setSpecialRequests] = useState('');
-  const [cartOpen, setCartOpen] = useState(false);
   const [orderingWindow, setOrderingWindow] = useState<any>(null);
+  const [activeCategory, setActiveCategory] = useState<string>('ALL');
 
   const { items: cartItems, addItem, getCartItemCount, cartLocationId, setCartLocation, validateCartForLocation, removeItem } = useCart();
   const { locations, selectedLocation, selectLocation, isLoading: locationsLoading } = useLocationContext();
@@ -241,18 +240,34 @@ const MenuPage: React.FC = () => {
     return colors[category] || 'default';
   };
 
-  // Group items by category
-  const groupedItems = menuItems.reduce((acc, item) => {
-    if (!acc[item.category]) {
-      acc[item.category] = [];
-    }
-    acc[item.category].push(item);
-    return acc;
-  }, {} as { [key: string]: MenuItem[] });
+  // Group items by category for easier rendering
+  const groupedItems = useMemo(() => {
+    return menuItems.reduce((acc, item) => {
+      if (!acc[item.category]) {
+        acc[item.category] = [];
+      }
+      acc[item.category].push(item);
+      return acc;
+    }, {} as { [key: string]: MenuItem[] });
+  }, [menuItems]);
 
-  const categories = ['MAIN', 'SIDE', 'DRINK', 'DESSERT', 'OTHER'].filter(
-    (cat) => groupedItems[cat]?.length > 0
-  );
+  const categories = useMemo(() => {
+    return ['MAIN', 'SIDE', 'DRINK', 'DESSERT', 'OTHER'].filter(
+      (cat) => groupedItems[cat]?.length > 0
+    );
+  }, [groupedItems]);
+
+  useEffect(() => {
+    if (activeCategory !== 'ALL' && !categories.includes(activeCategory)) {
+      setActiveCategory('ALL');
+    }
+  }, [activeCategory, categories]);
+
+  const visibleCategories =
+    activeCategory === 'ALL' ? categories : categories.filter((cat) => cat === activeCategory);
+
+  const formatCategoryLabel = (category: string) =>
+    category.charAt(0) + category.slice(1).toLowerCase();
 
   // Show loading spinner while locations or menu is loading
   if (locationsLoading || (loading && selectedLocation)) {
@@ -275,254 +290,288 @@ const MenuPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 } }}>
-      <Box sx={{
-        display: 'flex',
-        flexDirection: { xs: 'column', sm: 'row' },
-        justifyContent: 'space-between',
-        alignItems: { xs: 'stretch', sm: 'center' },
-        mb: 4,
-        gap: { xs: 2, sm: 2 },
-        pb: 2
-      }}>
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, gap: { xs: 1.5, sm: 3 } }}>
-          <Box>
-            <Typography
-              variant="h4"
-              component="h1"
-              gutterBottom
-              sx={{
-                fontSize: { xs: '1.875rem', md: '2.25rem' },
-                fontWeight: 700,
-                mb: 0.5,
-                background: 'linear-gradient(135deg, #2D5F3F 0%, #4A8862 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-            >
-              Today's Menu
-            </Typography>
-            {weekday && (
-              <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 500 }}>
-                {weekday}
-              </Typography>
-            )}
-          </Box>
-          <Box sx={{ minWidth: { xs: '100%', sm: 250 }, mt: { xs: 0, sm: 1 } }}>
-            <LocationSelector
-              locations={locations}
-              selectedLocationId={selectedLocation?.id || null}
-              onLocationChange={selectLocation}
-              isLoading={locationsLoading}
-              size="small"
-              fullWidth={isMobile}
-            />
-          </Box>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'flex-end', sm: 'center' }, mt: { xs: -1, sm: 0 } }}>
-          <IconButton
-            color="primary"
-            size="large"
-            onClick={() => setCartOpen(true)}
+    <Box sx={{ position: 'relative' }}>
+      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 4 } }}>
+        <Stack spacing={{ xs: 3, md: 4 }}>
+          <Paper
+            elevation={0}
             sx={{
-              bgcolor: 'primary.main',
-              color: 'white',
-              '&:hover': {
-                bgcolor: 'primary.dark',
-                transform: 'scale(1.05)',
-              },
-              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+              borderRadius: 3,
+              p: { xs: 2.5, md: 3 },
+              border: '1px solid rgba(45, 95, 63, 0.12)',
+              backgroundColor: 'rgba(255,255,255,0.92)',
             }}
           >
-            <Badge
-              badgeContent={getCartItemCount()}
-              color="error"
-              sx={{
-                '& .MuiBadge-badge': {
-                  fontWeight: 600,
-                }
-              }}
+            <Stack
+              direction={{ xs: 'column', md: 'row' }}
+              spacing={{ xs: 2, md: 3 }}
+              alignItems={{ xs: 'flex-start', md: 'center' }}
             >
-              <CartIcon />
-            </Badge>
-          </IconButton>
-        </Box>
-      </Box>
-
-      {error && (
-        <Alert
-          severity="warning"
-          sx={{
-            mb: 3,
-            borderLeft: '4px solid',
-            borderLeftColor: 'warning.main',
-            '& .MuiAlert-icon': {
-              fontSize: '1.5rem',
-            }
-          }}
-        >
-          {error}
-        </Alert>
-      )}
-
-      {orderingWindow && !orderingWindow.active && (
-        <Alert
-          severity="error"
-          sx={{
-            mb: 3,
-            borderLeft: '4px solid',
-            borderLeftColor: 'error.main',
-            '& .MuiAlert-icon': {
-              fontSize: '1.5rem',
-            }
-          }}
-        >
-          {orderingWindow.message || 'Ordering is currently closed'}
-          {orderingWindow.window.start && orderingWindow.window.end && (
-            <Typography variant="body2" sx={{ mt: 1, fontWeight: 500 }}>
-              Ordering window: {orderingWindow.window.start} - {orderingWindow.window.end}
-            </Typography>
-          )}
-        </Alert>
-      )}
-
-      {menuItems.length === 0 ? (
-        <Alert
-          severity="info"
-          sx={{
-            borderLeft: '4px solid',
-            borderLeftColor: 'info.main',
-            textAlign: 'center',
-            py: 3,
-          }}
-        >
-          No menu items available for today.
-        </Alert>
-      ) : (
-        categories.map((category) => (
-          <Box key={category} sx={{ mb: 5 }}>
-            <Typography
-              variant="h5"
-              gutterBottom
-              sx={{
-                mb: 3,
-                fontSize: { xs: '1.5rem', md: '1.625rem' },
-                fontWeight: 600,
-                color: 'text.primary',
-                position: 'relative',
-                pb: 1,
-                '&:after': {
-                  content: '""',
-                  position: 'absolute',
-                  bottom: 0,
-                  left: 0,
-                  width: 60,
-                  height: 3,
-                  background: 'linear-gradient(90deg, #2D5F3F 0%, #4A8862 100%)',
-                  borderRadius: 2,
-                }
-              }}
-            >
-              {category}
-            </Typography>
-            <Grid container spacing={{ xs: 2, md: 3 }}>
-              {groupedItems[category].map((item) => (
-                <Grid item xs={12} sm={6} md={4} key={item.id}>
-                  <Card
+              <Box flexGrow={1}>
+                <Typography
+                  variant="h4"
+                  component="h1"
+                  sx={{ fontWeight: 700, fontSize: { xs: '1.875rem', md: '2.25rem' } }}
+                >
+                  Today's Menu
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  Choose the dishes you'd like delivered today.
+                </Typography>
+                {weekday && (
+                  <Chip
+                    label={weekday}
+                    size="small"
                     sx={{
-                      height: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      position: 'relative',
-                      overflow: 'hidden',
-                      '&:hover': {
-                        '& .menu-item-image': {
-                          transform: 'scale(1.05)',
-                        }
-                      }
+                      mt: 1.5,
+                      fontWeight: 600,
+                      backgroundColor: 'rgba(45,95,63,0.08)',
+                      color: 'primary.main',
                     }}
-                  >
-                    {item.imageUrl && (
-                      <Box sx={{ overflow: 'hidden', position: 'relative', height: 200 }}>
-                        <CardMedia
-                          component="img"
-                          height="200"
-                          image={item.imageUrl}
-                          alt={item.name}
-                          className="menu-item-image"
-                          sx={{
-                            transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                            objectFit: 'cover',
-                          }}
-                        />
+                  />
+                )}
+              </Box>
+
+              <Box
+                sx={{
+                  display: { xs: 'block', md: 'none' },
+                  width: '100%',
+                }}
+              >
+                <Box sx={{ mt: 2 }}>
+                  <LocationSelector
+                    locations={locations}
+                    selectedLocationId={selectedLocation?.id || null}
+                    onLocationChange={selectLocation}
+                    isLoading={locationsLoading}
+                    size="small"
+                    fullWidth
+                  />
+                </Box>
+              </Box>
+            </Stack>
+          </Paper>
+
+          {categories.length > 0 && (
+            <Box
+              sx={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 1,
+              }}
+            >
+              <Chip
+                label="All items"
+                onClick={() => setActiveCategory('ALL')}
+                color={activeCategory === 'ALL' ? 'primary' : 'default'}
+                variant={activeCategory === 'ALL' ? 'filled' : 'outlined'}
+                sx={{ textTransform: 'capitalize', fontWeight: 600 }}
+              />
+              {categories.map((category) => (
+                <Chip
+                  key={category}
+                  label={formatCategoryLabel(category)}
+                  onClick={() => setActiveCategory(category)}
+                  variant={activeCategory === category ? 'filled' : 'outlined'}
+                  color={activeCategory === category ? 'primary' : 'default'}
+                  sx={{ textTransform: 'capitalize', fontWeight: 600 }}
+                />
+              ))}
+            </Box>
+          )}
+
+          {error && (
+            <Alert
+              severity="warning"
+              sx={{
+                borderLeft: '4px solid',
+                borderLeftColor: 'warning.main',
+                '& .MuiAlert-icon': {
+                  fontSize: '1.5rem',
+                },
+              }}
+            >
+              {error}
+            </Alert>
+          )}
+
+          {orderingWindow && !orderingWindow.active && (
+            <Alert
+              severity="error"
+              sx={{
+                borderLeft: '4px solid',
+                borderLeftColor: 'error.main',
+                '& .MuiAlert-icon': {
+                  fontSize: '1.5rem',
+                },
+              }}
+            >
+              {orderingWindow.message || 'Ordering is currently closed'}
+              {orderingWindow.window.start && orderingWindow.window.end && (
+                <Typography variant="body2" sx={{ mt: 1, fontWeight: 500 }}>
+                  Ordering window: {orderingWindow.window.start} - {orderingWindow.window.end}
+                </Typography>
+              )}
+            </Alert>
+          )}
+
+          {menuItems.length === 0 ? (
+            <Alert
+              severity="info"
+              sx={{
+                borderLeft: '4px solid',
+                borderLeftColor: 'info.main',
+                textAlign: 'center',
+                py: 3,
+              }}
+            >
+              No menu items available for today.
+            </Alert>
+          ) : (
+            visibleCategories.map((category) => (
+              <Box key={category}>
+                <Typography
+                  variant="h5"
+                  gutterBottom
+                  sx={{
+                    mb: 3,
+                    fontSize: { xs: '1.5rem', md: '1.625rem' },
+                    fontWeight: 700,
+                    color: 'text.primary',
+                    position: 'relative',
+                    pb: 1,
+                    '&:after': {
+                      content: '""',
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      width: 80,
+                      height: 3,
+                      background: 'linear-gradient(90deg, #2D5F3F 0%, #4A8862 100%)',
+                      borderRadius: 2,
+                    },
+                  }}
+                >
+                  {formatCategoryLabel(category)}
+                </Typography>
+                <Grid container spacing={{ xs: 2, md: 3 }}>
+                  {groupedItems[category].map((item) => (
+                    <Grid item xs={12} sm={6} md={4} key={item.id}>
+                      <Card
+                        sx={{
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          borderRadius: 3,
+                          border: '1px solid rgba(45, 95, 63, 0.1)',
+                          background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, #F8FAF8 100%)',
+                          '&:hover': {
+                            boxShadow: '0px 25px 45px rgba(0,0,0,0.08)',
+                          },
+                        }}
+                      >
+                        {item.imageUrl && (
+                          <Box sx={{ overflow: 'hidden', position: 'relative', height: 200 }}>
+                            <CardMedia
+                              component="img"
+                              height="200"
+                              image={item.imageUrl}
+                              alt={item.name}
+                              className="menu-item-image"
+                              sx={{
+                                transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                                objectFit: 'cover',
+                              }}
+                            />
+                            <Box
+                              sx={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.15) 100%)',
+                              }}
+                            />
+                          </Box>
+                        )}
                         <Box
                           sx={{
                             position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            background: 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.1) 100%)',
+                            top: 16,
+                            right: 16,
+                            backgroundColor: 'rgba(255,255,255,0.9)',
+                            borderRadius: 999,
+                            px: 1.5,
+                            py: 0.35,
+                            boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
+                            fontWeight: 700,
+                            color: 'primary.main',
                           }}
-                        />
-                      </Box>
-                    )}
-                    <CardContent sx={{ flexGrow: 1, p: 2.5 }}>
-                      <Typography variant="h6" component="h3" gutterBottom sx={{ fontWeight: 600, mb: 1 }}>
-                        {item.name}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" paragraph sx={{ mb: 2, lineHeight: 1.6 }}>
-                        {item.description}
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mb: 2 }}>
-                        {item.dietaryTags.map((tag) => (
+                        >
+                          ${Number(item.price).toFixed(2)}
+                        </Box>
+                        <CardContent sx={{ flexGrow: 1, p: 2.75, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                           <Chip
-                            key={tag}
-                            label={tag}
+                            label={formatCategoryLabel(item.category)}
                             size="small"
-                            variant="outlined"
                             sx={{
-                              borderColor: 'primary.light',
-                              color: 'primary.main',
-                              fontWeight: 500,
-                              fontSize: '0.75rem',
+                              alignSelf: 'flex-start',
+                              backgroundColor: 'rgba(45,95,63,0.08)',
+                              fontWeight: 600,
                             }}
                           />
-                        ))}
-                      </Box>
-                      <Typography
-                        variant="h6"
-                        color="primary"
-                        sx={{
-                          fontWeight: 700,
-                          fontSize: '1.25rem',
-                        }}
-                      >
-                        ${Number(item.price).toFixed(2)}
-                      </Typography>
-                    </CardContent>
-                    <CardActions sx={{ p: 2.5, pt: 0 }}>
-                      <Button
-                        fullWidth
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={() => handleAddToCart(item)}
-                        sx={{
-                          py: 1.25,
-                          fontSize: '0.9375rem',
-                        }}
-                      >
-                        Add to Cart
-                      </Button>
-                    </CardActions>
-                  </Card>
+                          <Typography variant="h6" component="h3" sx={{ fontWeight: 700 }}>
+                            {item.name}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+                            {item.description}
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                            {item.dietaryTags.map((tag) => (
+                              <Chip
+                                key={tag}
+                                label={tag}
+                                size="small"
+                                variant="outlined"
+                                sx={{
+                                  borderColor: 'primary.light',
+                                  color: 'primary.main',
+                                  fontWeight: 500,
+                                  fontSize: '0.75rem',
+                                }}
+                              />
+                            ))}
+                          </Box>
+                        </CardContent>
+                        <CardActions sx={{ p: 2.75, pt: 0, mt: 'auto' }}>
+                          <Button
+                            fullWidth
+                            variant="contained"
+                            startIcon={<AddIcon />}
+                            onClick={() => handleAddToCart(item)}
+                            sx={{
+                              py: 1.1,
+                              fontSize: '0.95rem',
+                              textTransform: 'none',
+                              fontWeight: 700,
+                              borderRadius: 2,
+                            }}
+                          >
+                            Add to Cart
+                          </Button>
+                        </CardActions>
+                      </Card>
+                    </Grid>
+                  ))}
                 </Grid>
-              ))}
-            </Grid>
-          </Box>
-        ))
-      )}
+              </Box>
+            ))
+          )}
+        </Stack>
+      </Container>
 
       {/* Add to Cart Dialog */}
       <Dialog
@@ -625,13 +674,7 @@ const MenuPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Cart Drawer */}
-      <CartDrawer
-        open={cartOpen}
-        onClose={() => setCartOpen(false)}
-        orderingWindow={orderingWindow}
-      />
-    </Container>
+    </Box>
   );
 };
 

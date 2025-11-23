@@ -364,99 +364,104 @@ export class KitchenService {
     }
 
     body {
-      font-family: Arial, sans-serif;
-      max-width: 800px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      max-width: 900px;
       margin: 0 auto;
-      padding: 20px;
+      padding: 24px 32px 32px;
+      color: #222;
+      background: #fff;
     }
 
     .header {
       text-align: center;
-      margin-bottom: 30px;
-      border-bottom: 3px solid #333;
-      padding-bottom: 15px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #999;
+      padding-bottom: 10px;
     }
 
     .header h1 {
-      margin: 0 0 10px 0;
-      font-size: 28px;
+      margin: 0 0 6px 0;
+      font-size: 26px;
+      font-weight: 700;
     }
 
     .header .date {
-      font-size: 18px;
+      font-size: 15px;
       color: #666;
     }
 
     .menu-item {
-      margin-bottom: 30px;
+      margin-bottom: 16px;
       page-break-inside: avoid;
-      border: 2px solid #ddd;
-      padding: 15px;
-      background: #f9f9f9;
+      border: 1px solid #ccc;
+      padding: 12px 14px 8px;
+      background: transparent;
+      border-radius: 4px;
     }
 
     .item-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 15px;
-      border-bottom: 2px solid #333;
-      padding-bottom: 10px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 6px;
     }
 
     .item-name {
-      font-size: 22px;
-      font-weight: bold;
+      font-size: 18px;
+      font-weight: 600;
     }
 
     .item-quantity {
-      font-size: 28px;
-      font-weight: bold;
-      background: #333;
-      color: white;
-      padding: 5px 15px;
-      border-radius: 5px;
+      font-size: 15px;
+      font-weight: 600;
+      border: 1px solid #555;
+      color: #333;
+      padding: 3px 10px;
+      border-radius: 12px;
+      background: transparent;
     }
 
     .order-list {
-      margin-top: 10px;
+      margin-top: 6px;
     }
 
     .order {
-      margin-bottom: 10px;
-      padding: 10px;
-      background: white;
-      border-left: 4px solid #666;
+      margin-bottom: 4px;
+      padding: 6px 8px;
+      border-left: 2px solid #666;
       display: grid;
-      grid-template-columns: 180px 180px 1fr 80px;
-      gap: 15px;
+      grid-template-columns: 180px 140px 1fr 60px;
+      gap: 10px;
       align-items: center;
+      font-size: 13px;
     }
 
     .customer-name {
-      font-weight: bold;
-      font-size: 16px;
+      font-weight: 600;
+      font-size: 14px;
     }
 
     .order-number {
       color: #666;
-      font-size: 14px;
+      font-size: 12px;
     }
 
     .quantity {
-      font-weight: bold;
-      font-size: 16px;
+      font-weight: 600;
+      font-size: 14px;
       text-align: right;
     }
 
     .details {
       display: flex;
-      gap: 15px;
+      gap: 10px;
       flex-wrap: wrap;
     }
 
     .customizations {
-      font-size: 14px;
+      font-size: 12px;
       color: #444;
     }
 
@@ -465,21 +470,21 @@ export class KitchenService {
     }
 
     .variations {
-      font-size: 14px;
+      font-size: 12px;
       color: #1976d2;
       font-weight: 500;
     }
 
     .print-button {
       position: fixed;
-      top: 20px;
-      right: 20px;
-      padding: 12px 24px;
+      top: 18px;
+      right: 24px;
+      padding: 8px 16px;
       background: #1976d2;
       color: white;
       border: none;
-      border-radius: 5px;
-      font-size: 16px;
+      border-radius: 4px;
+      font-size: 13px;
       cursor: pointer;
     }
 
@@ -489,7 +494,7 @@ export class KitchenService {
   </style>
 </head>
 <body>
-  <button class="print-button" onclick="window.print()">🖨️ Print</button>
+  <button class="print-button" onclick="window.print()">Print</button>
 
   <div class="header">
     <h1>Kitchen Batch Summary</h1>

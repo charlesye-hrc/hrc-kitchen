@@ -1,7 +1,7 @@
-import { Container, Box, Typography } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import MenuManagement from '../components/admin/MenuManagement';
+import AdminPageLayout from '../components/AdminPageLayout';
 
 const MenuManagementPage = () => {
   const { user, isLoading } = useAuth();
@@ -17,24 +17,12 @@ const MenuManagementPage = () => {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 4 }, px: { xs: 0, sm: 2 } }}>
-      <Box mb={{ xs: 2, sm: 4 }}>
-        <Typography
-          variant="h4"
-          component="h1"
-          gutterBottom
-          fontWeight="bold"
-          sx={{ fontSize: { xs: '1.75rem', md: '2.125rem' } }}
-        >
-          Menu Management
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Manage daily menu items, categories, variations, and location assignments
-        </Typography>
-      </Box>
-
+    <AdminPageLayout
+      title="Menu Management"
+      subtitle="Manage daily menu items, categories, variations, and location assignments."
+    >
       <MenuManagement />
-    </Container>
+    </AdminPageLayout>
   );
 };
 

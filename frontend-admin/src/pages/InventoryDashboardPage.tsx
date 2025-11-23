@@ -1,11 +1,11 @@
-import { Box, Container } from '@mui/material';
+import { Box } from '@mui/material';
 import { InventoryDashboard } from '../components/inventory/InventoryDashboard';
 
 const InventoryDashboardPage = () => {
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Box sx={{ width: '100%' }}>
       <InventoryDashboard />
-    </Container>
+    </Box>
   );
 };
 

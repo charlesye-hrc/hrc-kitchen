@@ -127,8 +127,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose, orderingWindow }
             </Box>
           ) : (
             <List sx={{ p: 0 }}>
-              {items.map((item) => (
-                <React.Fragment key={item.menuItem.id}>
+              {items.map((item, index) => (
+                <React.Fragment key={item.cartItemId || `${item.menuItem.id}-${index}`}>
                   <ListItem
                     sx={{
                       flexDirection: 'column',

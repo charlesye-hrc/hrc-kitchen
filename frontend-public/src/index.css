@@ -11,6 +11,11 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: radial-gradient(circle at top, rgba(77, 136, 98, 0.12), transparent 55%),
+    radial-gradient(circle at 20% 20%, rgba(191, 216, 203, 0.5), transparent 40%),
+    #f4f6f8;
+  color: #1a1a1a;
+  min-height: 100vh;
 }
 
 code {
@@ -20,4 +25,5 @@ code {
 
 #root {
   min-height: 100vh;
+  background: transparent;
 }

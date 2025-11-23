@@ -127,11 +127,17 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       {/* Top AppBar */}
       <AppBar
         position="fixed"
+        color="transparent"
+        elevation={0}
         sx={{
           zIndex: (theme) => theme.zIndex.drawer + 1,
+          backdropFilter: 'blur(16px)',
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
         }}
       >
-        <Toolbar>
+        <Toolbar sx={{ px: { xs: 2, md: 3 } }}>
           {isAuthenticated && (
             <IconButton
               color="inherit"
@@ -143,43 +149,81 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
               {drawerOpen ? <ChevronLeftIcon /> : <ChevronRightIcon />}
             </IconButton>
           )}
-          <Typography
-            variant="h6"
-            component="div"
-            sx={{
-              flexGrow: 1,
-              fontSize: { xs: '1rem', sm: '1.25rem' },
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis'
-            }}
-          >
-            {isMobile ? 'HRC Kitchen' : 'HRC Kitchen - Management'}
-          </Typography>
-
-          {isAuthenticated ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1, minWidth: 0 }}>
+            <Box
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: '40%',
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                mr: 1.5,
+              }}
+            >
+              HK
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontWeight: 600,
+                  letterSpacing: 0.5,
+                  textTransform: 'uppercase',
+                  color: 'text.secondary',
+                }}
+              >
+                Huon Regional Care
+              </Typography>
               <Typography
                 variant="body2"
                 sx={{
-                  display: { xs: 'none', sm: 'block' }
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
                 }}
               >
-                {user?.fullName} ({user?.role})
+                Kitchen Management
               </Typography>
-              <Button
-                color="inherit"
-                onClick={handleLogout}
-                startIcon={isMobile ? undefined : <LogoutIcon />}
+            </Box>
+          </Box>
+
+          {isAuthenticated ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Box
                 sx={{
-                  '&:hover': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  },
-                  minWidth: { xs: 'auto', sm: '64px' },
-                  px: { xs: 1, sm: 2 },
+                  display: { xs: 'none', sm: 'flex' },
+                  flexDirection: 'column',
+                  alignItems: 'flex-end',
+                  lineHeight: 1.1,
                 }}
               >
-                {isMobile ? <LogoutIcon /> : 'Logout'}
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {user?.fullName}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {user?.role}
+                </Typography>
+              </Box>
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={handleLogout}
+                startIcon={!isMobile ? <LogoutIcon /> : undefined}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: 999,
+                  px: { xs: 1.5, sm: 2 },
+                  minWidth: 'auto',
+                }}
+              >
+                {isMobile ? <LogoutIcon fontSize="small" /> : 'Logout'}
               </Button>
             </Box>
           ) : (

@@ -20,6 +20,7 @@ import {
   Snackbar,
   Button,
   CircularProgress,
+  Stack,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -28,6 +29,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocationContext } from '@hrc-kitchen/common';
+import AdminPageLayout from '../AdminPageLayout';
 
 interface InventoryItem {
   id: string;
@@ -243,49 +245,68 @@ export const InventoryDashboard: React.FC = () => {
   }
 
   return (
-    <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h5" component="h2">
-          Inventory Management
-        </Typography>
+    <AdminPageLayout
+      title="Inventory Management"
+      subtitle="Track stock levels and availability across locations."
+    >
+      {((locations && locations.length > 1) || hasChanges) && (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'stretch', md: 'center' },
+            gap: { xs: 1.5, md: 2 },
+            mb: 2
+          }}
+        >
+          {locations && locations.length > 1 && (
+            <FormControl
+              size="small"
+              sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 }, maxWidth: 320 }}
+            >
+              <InputLabel>Location</InputLabel>
+              <Select
+                value={selectedLocation?.id || ''}
+                onChange={(e) => selectLocation(e.target.value)}
+                label="Location"
+              >
+                {locations.map((location) => (
+                  <MenuItem key={location.id} value={location.id}>
+                    {location.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
 
-        {locations && locations.length > 1 && (
-          <FormControl sx={{ minWidth: 250 }}>
-            <InputLabel>Location</InputLabel>
-            <Select
-              value={selectedLocation?.id || ''}
-              onChange={(e) => selectLocation(e.target.value)}
-              label="Location"
+          {hasChanges && (
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
-              {locations.map((location) => (
-                <MenuItem key={location.id} value={location.id}>
-                  {location.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
-
-        {hasChanges && (
-          <Box display="flex" gap={2}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleSaveAll}
-              disabled={updating}
-            >
-              Save Changes ({Object.keys(editedQuantities).length})
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={handleCancelChanges}
-              disabled={updating}
-            >
-              Cancel
-            </Button>
-          </Box>
-        )}
-      </Box>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleSaveAll}
+                disabled={updating}
+                sx={{ flex: { xs: 1, sm: 'none' }, minWidth: { sm: 140 } }}
+              >
+                Save Changes ({Object.keys(editedQuantities).length})
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={handleCancelChanges}
+                disabled={updating}
+                sx={{ flex: { xs: 1, sm: 'none' }, minWidth: { sm: 120 } }}
+              >
+                Cancel
+              </Button>
+            </Stack>
+          )}
+        </Box>
+      )}
 
       {inventory.length === 0 ? (
         <Alert severity="info">
@@ -337,6 +358,16 @@ export const InventoryDashboard: React.FC = () => {
                         color={status.color}
                         size="small"
                         icon={status.color === 'error' || status.color === 'warning' ? <WarningIcon /> : undefined}
+                        sx={{
+                          fontWeight: 600,
+                          ...(status.color === 'success' && {
+                            backgroundColor: 'success.main',
+                            color: 'common.white',
+                            '& .MuiChip-icon': {
+                              color: 'common.white',
+                            },
+                          }),
+                        }}
                       />
                     </TableCell>
                     <TableCell align="center" sx={{ py: 1 }}>
@@ -416,10 +447,24 @@ export const InventoryDashboard: React.FC = () => {
         open={!!success}
         autoHideDuration={3000}
         onClose={() => setSuccess(null)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        sx={{ mt: 8 }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        sx={{
+          top: { xs: 96, sm: 112 },
+          right: { xs: 16, sm: 32 },
+        }}
       >
-        <Alert onClose={() => setSuccess(null)} severity="success" sx={{ width: '100%' }} variant="filled">
+        <Alert
+          onClose={() => setSuccess(null)}
+          severity="success"
+          variant="standard"
+          sx={{
+            width: '100%',
+            bgcolor: '#f2fbf4',
+            color: '#14532d',
+            border: '1px solid #22c55e',
+            boxShadow: 3,
+          }}
+        >
           {success}
         </Alert>
       </Snackbar>
@@ -429,13 +474,28 @@ export const InventoryDashboard: React.FC = () => {
         open={!!error}
         autoHideDuration={6000}
         onClose={() => setError(null)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        sx={{ mt: 8 }}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        sx={{
+          top: { xs: 96, sm: 112 },
+          right: { xs: 16, sm: 32 },
+        }}
       >
-        <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }} variant="filled">
+        <Alert
+          onClose={() => setError(null)}
+          severity="error"
+          variant="standard"
+          sx={{
+            width: '100%',
+            bgcolor: (theme) => theme.palette.error.light,
+            color: (theme) => theme.palette.error.dark,
+            border: '1px solid',
+            borderColor: 'error.main',
+            boxShadow: 3,
+          }}
+        >
           {error}
         </Alert>
       </Snackbar>
-    </Box>
+    </AdminPageLayout>
   );
 };

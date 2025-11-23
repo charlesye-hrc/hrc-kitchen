@@ -1,7 +1,7 @@
-import { Container, Box, Typography } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import UserManagement from '../components/admin/UserManagement';
+import AdminPageLayout from '../components/AdminPageLayout';
 
 const UserManagementPage = () => {
   const { user, isLoading } = useAuth();
@@ -17,24 +17,12 @@ const UserManagementPage = () => {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Box mb={4}>
-        <Typography
-          variant="h4"
-          component="h1"
-          gutterBottom
-          fontWeight="bold"
-          sx={{ fontSize: { xs: '1.75rem', md: '2.125rem' } }}
-        >
-          User Management
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Manage user accounts, roles, and permissions
-        </Typography>
-      </Box>
-
+    <AdminPageLayout
+      title="User Management"
+      subtitle="Manage user accounts, roles, and permissions."
+    >
       <UserManagement />
-    </Container>
+    </AdminPageLayout>
   );
 };
 
