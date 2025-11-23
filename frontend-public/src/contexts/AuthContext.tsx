@@ -6,6 +6,7 @@ interface User {
   email: string;
   fullName: string;
   role: 'STAFF' | 'KITCHEN' | 'FINANCE' | 'ADMIN';
+  hasAdminAccess?: boolean; // Indicates if user can access management app
 }
 
 interface AuthContextType {
@@ -82,13 +83,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         code,
       });
 
-      const { user: userData, token: authToken } = response.data;
+      const { user: userData, token: authToken, hasAdminAccess } = response.data;
 
-      setUser(userData);
+      // Add hasAdminAccess to user object
+      const userWithAccess = {
+        ...userData,
+        hasAdminAccess,
+      };
+
+      setUser(userWithAccess);
       setToken(authToken);
 
       localStorage.setItem('public_token', authToken);
-      localStorage.setItem('public_user', JSON.stringify(userData));
+      localStorage.setItem('public_user', JSON.stringify(userWithAccess));
 
       axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
     } catch (error) {

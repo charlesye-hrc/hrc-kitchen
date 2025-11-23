@@ -22,6 +22,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LunchDiningIcon from '@mui/icons-material/LunchDining';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
@@ -43,6 +44,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const currentYear = new Date().getFullYear();
+
+  // Get admin app URL from environment
+  const ADMIN_APP_URL = import.meta.env.VITE_ADMIN_APP_URL || 'http://localhost:5174';
+
+  // Check if user has access to admin app
+  const hasAdminAccess = isAuthenticated && user?.hasAdminAccess && ['KITCHEN', 'ADMIN', 'FINANCE'].includes(user.role);
 
   // Hide location selector on checkout page (location is managed within checkout)
   const isCheckoutPage = location.pathname === '/checkout';
@@ -119,6 +126,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 primaryTypographyProps={{ fontWeight: 600 }}
               />
             </ListItem>
+            {hasAdminAccess && (
+              <ListItemButton
+                component="a"
+                href={ADMIN_APP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{
+                  mx: 1,
+                  mb: 1,
+                  borderRadius: 2,
+                  bgcolor: 'rgba(45,95,63,0.08)',
+                }}
+              >
+                <AdminPanelSettingsIcon fontSize="small" sx={{ mr: 1 }} />
+                <ListItemText
+                  primary="Management Portal"
+                  primaryTypographyProps={{ fontWeight: 600 }}
+                />
+              </ListItemButton>
+            )}
             <Divider sx={{ my: 1.5 }} />
           </>
         )}
@@ -335,6 +362,24 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         {user?.role}
                       </Typography>
                     </Box>
+                    {hasAdminAccess && (
+                      <Button
+                        component="a"
+                        href={ADMIN_APP_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="contained"
+                        color="secondary"
+                        startIcon={<AdminPanelSettingsIcon />}
+                        sx={{
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          boxShadow: '0 8px 16px rgba(212, 165, 116, 0.25)',
+                        }}
+                      >
+                        Management
+                      </Button>
+                    )}
                     <Button
                       variant="outlined"
                       color="primary"
@@ -362,13 +407,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <Button
                     component={Link}
                     to="/register"
-                    variant="contained"
                     color="primary"
-                    sx={{
-                      textTransform: 'none',
-                      fontWeight: 700,
-                      boxShadow: '0px 12px 24px rgba(45, 95, 63, 0.25)',
-                    }}
+                    sx={{ textTransform: 'none', fontWeight: 600 }}
                   >
                     Create Account
                   </Button>

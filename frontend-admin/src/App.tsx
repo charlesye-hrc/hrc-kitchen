@@ -95,7 +95,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
 };
 
 const AppRoutes = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
 
   // Default redirect based on role
   const getDefaultRoute = () => {
@@ -107,6 +107,15 @@ const AppRoutes = () => {
 
     return '/login';
   };
+
+  // Show loading while auth state is being determined
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Routes>

@@ -31,6 +31,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import SettingsIcon from '@mui/icons-material/Settings';
 import InventoryIcon from '@mui/icons-material/Inventory';
+import StorefrontIcon from '@mui/icons-material/Storefront';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -53,6 +54,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md')); // Mobile/tablet: < 900px
   const [drawerOpen, setDrawerOpen] = useState(!isMobile); // Closed on mobile by default
+
+  // Get public app URL from environment
+  const PUBLIC_APP_URL = import.meta.env.VITE_PUBLIC_APP_URL || 'http://localhost:5173';
 
   const handleLogout = () => {
     logout();
@@ -195,6 +199,25 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
 
           {isAuthenticated ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Button
+                component="a"
+                href={PUBLIC_APP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="contained"
+                color="secondary"
+                startIcon={!isMobile ? <StorefrontIcon /> : undefined}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: 999,
+                  px: { xs: 1.5, sm: 2 },
+                  minWidth: 'auto',
+                  boxShadow: '0 8px 16px rgba(212, 165, 116, 0.25)',
+                }}
+              >
+                {isMobile ? <StorefrontIcon fontSize="small" /> : 'Order Food'}
+              </Button>
               <Box
                 sx={{
                   display: { xs: 'none', sm: 'flex' },
