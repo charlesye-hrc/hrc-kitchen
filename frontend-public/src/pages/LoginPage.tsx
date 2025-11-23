@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Box, Paper, TextField, Button, Typography, Alert } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,12 +12,19 @@ const LoginPage = () => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { loginWithPassword, verifyOtp } = useAuth();
+  const { loginWithPassword, verifyOtp, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   // Get the redirect path from location state (e.g., from checkout page)
   const from = (location.state as any)?.from || '/menu';
+
+  // Redirect to menu if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/menu', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

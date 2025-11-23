@@ -5,20 +5,19 @@
   "private": true,
   "workspaces": [
     "backend",
-    "frontend",
     "frontend-common",
     "frontend-public",
     "frontend-admin"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:public\" \"npm run dev:admin\"",
     "dev:backend": "npm run dev --workspace=backend",
-    "dev:frontend": "npm run dev --workspace=frontend",
     "dev:public": "npm run dev --workspace=frontend-public",
     "dev:admin": "npm run dev --workspace=frontend-admin",
     "build": "npm run build --workspaces",
     "build:backend": "npm run build --workspace=backend",
-    "build:frontend": "npm run build --workspace=frontend",
+    "build:public": "npm run build --workspace=frontend-public",
+    "build:admin": "npm run build --workspace=frontend-admin",
     "start": "npm run start --workspace=backend",
     "db:migrate": "npm run db:migrate --workspace=backend",
     "db:seed": "npm run db:seed --workspace=backend",

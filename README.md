@@ -14,7 +14,6 @@ hrc-kitchen/
 ├── frontend-public/        # Public ordering app (React/TypeScript)
 ├── frontend-admin/         # Internal management app (React/TypeScript)
 ├── frontend-common/        # Shared types and utilities
-├── frontend/               # Original frontend (legacy)
 ├── docs/                   # Organized documentation
 │   ├── 01-planning/        # PRD, roadmaps
 │   ├── 02-development/     # Setup guides
@@ -129,11 +128,13 @@ npm run dev:admin    # Port 5174
 ## Available Scripts
 
 ### Root Level
-- `npm run dev` - Start original frontend + backend (legacy)
+- `npm run dev` - Start backend + both frontend apps
 - `npm run dev:backend` - Start backend API only
 - `npm run dev:public` - Start public ordering app
 - `npm run dev:admin` - Start internal management app
 - `npm run build` - Build all applications
+- `npm run build:public` - Build public app only
+- `npm run build:admin` - Build admin app only
 - `npm run db:migrate` - Run database migrations
 - `npm run db:seed` - Seed database with test data
 
