@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { errorHandler } from './middleware/errorHandler';
 import { logger } from './utils/logger';
@@ -14,13 +15,29 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const API_VERSION = process.env.API_VERSION || 'v1';
 
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
 // Middleware
 app.use(helmet({
-  contentSecurityPolicy: false, // Disable CSP as it conflicts with Vite dev server
-  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: isDevelopment
+    ? false
+    : {
+        directives: {
+          defaultSrc: ["'self'"],
+          baseUri: ["'self'"],
+          fontSrc: ["'self'", 'https:', 'data:'],
+          imgSrc: ["'self'", 'data:', 'https:'],
+          objectSrc: ["'none'"],
+          scriptSrc: ["'self'"],
+          scriptSrcAttr: ["'none'"],
+          styleSrc: ["'self'", 'https:', "'unsafe-inline'"],
+          connectSrc: ["'self'"],
+        },
+      },
 })); // Security headers
+
 // CORS configuration
-const isDevelopment = process.env.NODE_ENV !== 'production';
 
 const allowedOrigins: (string | RegExp | undefined)[] = isDevelopment
   ? [
@@ -87,6 +104,7 @@ app.use('/api/v1/payment/webhook', express.raw({ type: 'application/json' }));
 // Increase payload size limit for image uploads (default is 100kb)
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
 app.use(morgan('combined', { stream: { write: (message) => logger.info(message.trim()) } }));
 
 // Health check endpoint

@@ -74,14 +74,17 @@ export class PaymentController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { paymentIntentId } = req.body;
+      const { paymentIntentId, clientSecret } = req.body;
 
       if (!paymentIntentId) {
         throw new ApiError(400, 'Payment intent ID is required');
       }
+      if (!clientSecret) {
+        throw new ApiError(400, 'Client secret is required');
+      }
 
       // Verify the payment intent and get order ownership info
-      const paymentIntent = await PaymentService.confirmPayment(paymentIntentId, req.user?.id);
+      const paymentIntent = await PaymentService.confirmPayment(paymentIntentId, clientSecret, req.user?.id);
 
       res.json({
         success: true,

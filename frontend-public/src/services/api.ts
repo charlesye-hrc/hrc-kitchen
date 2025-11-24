@@ -6,11 +6,12 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 // Create axios instance with common configuration
 const api = createApiClient({
-  tokenKey: 'public_token',
   userKey: 'public_user',
   baseURL: API_BASE_URL,
   redirectOnUnauthorized: true,
   loginPath: '/login',
+  useTokenStorage: false,
+  withCredentials: true,
 });
 
 // Types

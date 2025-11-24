@@ -63,7 +63,7 @@ interface PaginationData {
 }
 
 const OrdersPage: React.FC = () => {
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -94,9 +94,7 @@ const OrdersPage: React.FC = () => {
         const response = await axios.get(
           `${import.meta.env.VITE_API_URL}/orders`,
           {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            withCredentials: true,
             params
           }
         );
@@ -111,10 +109,25 @@ const OrdersPage: React.FC = () => {
       }
     };
 
-    if (token) {
+    if (isAuthenticated) {
       fetchOrders();
     }
-  }, [token, currentPage, startDate, endDate]);
+  }, [isAuthenticated, currentPage, startDate, endDate]);
+
+  if (!isAuthenticated) {
+    return (
+      <Container maxWidth="sm" sx={{ py: 4 }}>
+        <Alert severity="info">
+          Please sign in to view your past orders.
+        </Alert>
+        <Box sx={{ mt: 2 }}>
+          <Button variant="contained" onClick={() => navigate('/login')}>
+            Go to Login
+          </Button>
+        </Box>
+      </Container>
+    );
+  }
 
   if (loading) {
     return (

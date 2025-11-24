@@ -25,9 +25,10 @@ export const paymentService = {
     return response.data;
   },
 
-  async confirmPayment(paymentIntentId: string): Promise<ConfirmPaymentResponse> {
+  async confirmPayment(paymentIntentId: string, clientSecret: string): Promise<ConfirmPaymentResponse> {
     const response = await axios.post(`${API_URL}/payment/confirm`, {
       paymentIntentId,
+      clientSecret,
     });
     return response.data;
   },

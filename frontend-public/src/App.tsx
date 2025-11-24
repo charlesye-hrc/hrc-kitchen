@@ -77,7 +77,7 @@ const LayoutWrapper = ({ children }: { children: ReactNode }) => {
 function App() {
   return (
     <AuthProvider>
-      <LocationProvider apiUrl={API_URL} forceAllLocations={true} tokenKey="public_token">
+      <LocationProvider apiUrl={API_URL} forceAllLocations={true}>
         <CartProvider>
           <LayoutWrapper>
             <AppRoutes />

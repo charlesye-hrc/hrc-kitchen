@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container,
   Paper,
@@ -31,23 +31,78 @@ import { Elements, CardElement, useStripe, useElements, PaymentRequestButtonElem
 import type { PaymentRequest } from '@stripe/stripe-js';
 import axios from 'axios';
 
+declare global {
+  interface Window {
+    grecaptcha?: {
+      ready: (cb: () => void) => void;
+      execute: (siteKey: string, options: { action: string }) => Promise<string>;
+    };
+  }
+}
+
+let recaptchaScriptPromise: Promise<void> | null = null;
+
+const loadRecaptchaScript = (siteKey: string): Promise<void> => {
+  const waitForReady = () =>
+    new Promise<void>((resolve) => {
+      if (window.grecaptcha) {
+        window.grecaptcha.ready(() => resolve());
+      } else {
+        resolve();
+      }
+    });
+
+  if (window.grecaptcha) {
+    return waitForReady();
+  }
+
+  if (!recaptchaScriptPromise) {
+    recaptchaScriptPromise = new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        if (!window.grecaptcha) {
+          reject(new Error('reCAPTCHA failed to initialize'));
+          return;
+        }
+        window.grecaptcha.ready(() => resolve());
+      };
+      script.onerror = () => reject(new Error('Failed to load reCAPTCHA script'));
+      document.head.appendChild(script);
+    });
+  }
+
+  return recaptchaScriptPromise;
+};
+
+interface GuestOrderSecurityToken {
+  nonce: string;
+  timestamp: number;
+  signature: string;
+}
+
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 const CheckoutForm: React.FC = () => {
   const { items, clearCart, getCartTotal, calculateItemPrice, cartLocationId, removeItem, updateQuantity, setCartLocation, validateCartForLocation } = useCart();
-  const { token, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { locations, selectedLocation, selectLocation, isLoading: locationsLoading } = useLocationContext();
   const navigate = useNavigate();
   const stripe = useStripe();
   const elements = useElements();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [orderingWindow, setOrderingWindow] = useState<any>(null);
   const [checkingWindow, setCheckingWindow] = useState(true);
+  const [guestSecurityToken, setGuestSecurityToken] = useState<GuestOrderSecurityToken | null>(null);
+  const [guestTokenExpiry, setGuestTokenExpiry] = useState<number | null>(null);
 
   // Guest checkout fields
   const [guestFirstName, setGuestFirstName] = useState('');
@@ -62,6 +117,42 @@ const CheckoutForm: React.FC = () => {
   const [canMakePayment, setCanMakePayment] = useState(false);
 
   const cartTotal = getCartTotal();
+  const apiBaseUrl = import.meta.env.VITE_API_URL || '/api/v1';
+
+  const ensureGuestSecurityToken = useCallback(async (): Promise<GuestOrderSecurityToken> => {
+    if (guestSecurityToken && guestTokenExpiry && guestTokenExpiry > Date.now()) {
+      return guestSecurityToken;
+    }
+
+    if (!recaptchaSiteKey) {
+      throw new Error('Guest checkout security is not configured. Please contact support.');
+    }
+
+    await loadRecaptchaScript(recaptchaSiteKey);
+
+    if (!window.grecaptcha) {
+      throw new Error('Security verification failed to load. Please refresh and try again.');
+    }
+
+    const captchaToken = await window.grecaptcha.execute(recaptchaSiteKey, {
+      action: 'guest_checkout',
+    });
+
+    const response = await axios.post(`${apiBaseUrl}/orders/guest/token`, {
+      captchaToken,
+    });
+
+    const tokenPayload: GuestOrderSecurityToken | undefined = response.data?.data?.token;
+    const expiresInMs: number | undefined = response.data?.data?.expiresInMs;
+
+    if (!tokenPayload) {
+      throw new Error('Unable to verify guest checkout. Please try again.');
+    }
+
+    setGuestSecurityToken(tokenPayload);
+    setGuestTokenExpiry(expiresInMs ? Date.now() + expiresInMs : Date.now() + 5 * 60 * 1000);
+    return tokenPayload;
+  }, [guestSecurityToken, guestTokenExpiry, recaptchaSiteKey, apiBaseUrl]);
 
   // Check ordering window on page load
   useEffect(() => {
@@ -224,30 +315,37 @@ const CheckoutForm: React.FC = () => {
         };
 
         let response;
+        let guestTokenPayload: GuestOrderSecurityToken | undefined;
+        const authConfig = isAuthenticated ? { withCredentials: true } : undefined;
+
         if (isAuthenticated) {
           // Authenticated order
           response = await axios.post(
             `${import.meta.env.VITE_API_URL}/orders`,
             orderData,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
+            authConfig
           );
         } else {
+          try {
+            guestTokenPayload = await ensureGuestSecurityToken();
+          } catch (tokenErr) {
+            console.error('Guest token error:', tokenErr);
+            event.complete('fail');
+            setError(tokenErr instanceof Error ? tokenErr.message : 'Unable to verify guest checkout. Please try again.');
+            setLoading(false);
+            return;
+          }
+
           // Guest order
-          response = await axios.post(
-            `${import.meta.env.VITE_API_URL}/orders/guest`,
-            {
-              ...orderData,
-              guestInfo: {
-                firstName: firstName || guestFirstName,
-                lastName: lastName || guestLastName,
-                email: payerEmail,
-              },
-            }
-          );
+          response = await axios.post(`${import.meta.env.VITE_API_URL}/orders/guest`, {
+            ...orderData,
+            guestInfo: {
+              firstName: firstName || guestFirstName,
+              lastName: lastName || guestLastName,
+              email: payerEmail,
+            },
+            guestToken: guestTokenPayload,
+          });
         }
 
         const { order, clientSecret, accessToken } = response.data.data;
@@ -271,8 +369,8 @@ const CheckoutForm: React.FC = () => {
           try {
             await axios.post(
               `${import.meta.env.VITE_API_URL}/payment/confirm`,
-              { paymentIntentId: paymentIntent.id },
-              isAuthenticated ? { headers: { Authorization: `Bearer ${token}` } } : {}
+              { paymentIntentId: paymentIntent.id, clientSecret },
+              isAuthenticated ? { withCredentials: true } : undefined
             );
             console.log('[Checkout] Payment status confirmed with backend');
           } catch (confirmErr) {
@@ -281,6 +379,8 @@ const CheckoutForm: React.FC = () => {
           }
 
           clearCart();
+          setGuestSecurityToken(null);
+          setGuestTokenExpiry(null);
           navigate(`/order-confirmation/${order.id}`, {
             state: {
               isGuest: !isAuthenticated,
@@ -308,7 +408,7 @@ const CheckoutForm: React.FC = () => {
         setLoading(false);
       }
     });
-  }, [stripe, cartTotal, isAuthenticated, items, deliveryNotes, token, navigate, clearCart, guestFirstName, guestLastName, guestEmail]);
+  }, [stripe, cartTotal, isAuthenticated, items, deliveryNotes, navigate, clearCart, guestFirstName, guestLastName, guestEmail, ensureGuestSecurityToken]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -360,18 +460,26 @@ const CheckoutForm: React.FC = () => {
       };
 
       let response;
-      if (isAuthenticated) {
-        // Authenticated order
-        response = await axios.post(
-          `${import.meta.env.VITE_API_URL}/orders`,
-          orderData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-      } else {
+      let guestTokenPayload: GuestOrderSecurityToken | undefined;
+        const authConfig = isAuthenticated ? { withCredentials: true } : undefined;
+
+        if (isAuthenticated) {
+          // Authenticated order
+          response = await axios.post(
+            `${import.meta.env.VITE_API_URL}/orders`,
+            orderData,
+            authConfig
+          );
+        } else {
+        try {
+          guestTokenPayload = await ensureGuestSecurityToken();
+        } catch (tokenErr) {
+          console.error('Guest token error:', tokenErr);
+          setError(tokenErr instanceof Error ? tokenErr.message : 'Unable to verify guest checkout. Please try again.');
+          setLoading(false);
+          return;
+        }
+
         // Guest order
         response = await axios.post(
           `${import.meta.env.VITE_API_URL}/orders/guest`,
@@ -382,6 +490,7 @@ const CheckoutForm: React.FC = () => {
               lastName: guestLastName,
               email: guestEmail,
             },
+            guestToken: guestTokenPayload,
           }
         );
       }
@@ -410,8 +519,8 @@ const CheckoutForm: React.FC = () => {
         try {
           await axios.post(
             `${import.meta.env.VITE_API_URL}/payment/confirm`,
-            { paymentIntentId: paymentIntent.id },
-            isAuthenticated ? { headers: { Authorization: `Bearer ${token}` } } : {}
+            { paymentIntentId: paymentIntent.id, clientSecret },
+            isAuthenticated ? { withCredentials: true } : undefined
           );
           console.log('[Checkout] Payment status confirmed with backend');
         } catch (confirmErr) {
@@ -421,6 +530,8 @@ const CheckoutForm: React.FC = () => {
 
         // Payment successful
         clearCart();
+        setGuestSecurityToken(null);
+        setGuestTokenExpiry(null);
         navigate(`/order-confirmation/${order.id}`, {
           state: {
             isGuest: !isAuthenticated,

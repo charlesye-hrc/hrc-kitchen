@@ -1,11 +1,13 @@
 import axios, { AxiosInstance } from 'axios';
 
 export interface ApiClientConfig {
-  tokenKey: string;
+  tokenKey?: string;
   userKey: string;
   baseURL: string;
   redirectOnUnauthorized?: boolean;
   loginPath?: string;
+  useTokenStorage?: boolean;
+  withCredentials?: boolean;
 }
 
 /**
@@ -38,7 +40,11 @@ export function createApiClient(config: ApiClientConfig): AxiosInstance {
     baseURL,
     redirectOnUnauthorized = true,
     loginPath = '/login',
+    useTokenStorage = true,
+    withCredentials = false,
   } = config;
+
+  const shouldUseTokenStorage = useTokenStorage && Boolean(tokenKey);
 
   // Create axios instance
   const api = axios.create({
@@ -46,14 +52,17 @@ export function createApiClient(config: ApiClientConfig): AxiosInstance {
     headers: {
       'Content-Type': 'application/json',
     },
+    withCredentials,
   });
 
   // Request interceptor to add auth token
   api.interceptors.request.use(
     (requestConfig) => {
-      const token = localStorage.getItem(tokenKey);
-      if (token) {
-        requestConfig.headers.Authorization = `Bearer ${token}`;
+      if (shouldUseTokenStorage && tokenKey) {
+        const token = localStorage.getItem(tokenKey);
+        if (token) {
+          requestConfig.headers.Authorization = `Bearer ${token}`;
+        }
       }
       return requestConfig;
     },
@@ -68,7 +77,9 @@ export function createApiClient(config: ApiClientConfig): AxiosInstance {
     (error) => {
       if (error.response?.status === 401 && redirectOnUnauthorized) {
         // Clear authentication data
-        localStorage.removeItem(tokenKey);
+        if (shouldUseTokenStorage && tokenKey) {
+          localStorage.removeItem(tokenKey);
+        }
         localStorage.removeItem(userKey);
 
         // Additional cleanup for admin app

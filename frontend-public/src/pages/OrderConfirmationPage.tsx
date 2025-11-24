@@ -67,7 +67,7 @@ interface Order {
 
 const OrderConfirmationPage: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
-  const { token, isAuthenticated, loginWithPassword, verifyOtp } = useAuth();
+  const { isAuthenticated, loginWithPassword, verifyOtp } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -98,11 +98,7 @@ const OrderConfirmationPage: React.FC = () => {
           // Authenticated user
           response = await axios.get(
             `${import.meta.env.VITE_API_URL}/orders/${orderId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
+            { withCredentials: true }
           );
         } else if (accessToken) {
           // Guest order with access token
@@ -131,7 +127,7 @@ const OrderConfirmationPage: React.FC = () => {
     if (orderId) {
       fetchOrder();
     }
-  }, [orderId, token, isAuthenticated, isGuest, guestEmail, accessToken]);
+  }, [orderId, isAuthenticated, isGuest, guestEmail, accessToken]);
 
   const handleCreateAccount = async () => {
     if (!password || !confirmPassword) {

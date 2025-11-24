@@ -39,3 +39,18 @@ export const paymentLimiter = rateLimit({
   legacyHeaders: false,
   skipSuccessfulRequests: false, // Count all requests (even successful ones)
 });
+
+export const paymentConfirmLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 5,
+  message: 'Too many payment confirmation attempts, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const intentId = req.body?.paymentIntentId;
+    if (typeof intentId === 'string' && intentId.trim().length > 0) {
+      return `${intentId.trim()}`;
+    }
+    return req.ip ?? 'unknown';
+  },
+});

@@ -43,10 +43,18 @@ export class PaymentService {
     }
   }
 
-  static async confirmPayment(paymentIntentId: string, userId?: string): Promise<Stripe.PaymentIntent> {
+  static async confirmPayment(paymentIntentId: string, clientSecret: string, userId?: string): Promise<Stripe.PaymentIntent> {
     try {
       // 1. Verify payment with Stripe (source of truth)
       const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+      if (!paymentIntent.client_secret) {
+        throw new ApiError(400, 'Payment intent is missing client secret data');
+      }
+
+      if (!clientSecret || paymentIntent.client_secret !== clientSecret) {
+        throw new ApiError(403, 'Invalid client secret for this payment intent');
+      }
 
       if (paymentIntent.status !== 'succeeded') {
         throw new ApiError(400, 'Payment has not been completed');
@@ -71,8 +79,11 @@ export class PaymentService {
 
       // 4. Verify ownership - either user owns the order or it's a guest order matching the email
       if (existingOrder.userId) {
-        // Registered user order - verify user ID matches
-        if (userId && existingOrder.userId !== userId) {
+        // Registered user order - must be authenticated and match owner
+        if (!userId) {
+          throw new ApiError(401, 'Authentication required to confirm this payment');
+        }
+        if (existingOrder.userId !== userId) {
           throw new ApiError(403, 'Not authorized to confirm payment for this order');
         }
       } else if (existingOrder.guestEmail) {

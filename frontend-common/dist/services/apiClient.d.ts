@@ -1,10 +1,12 @@
 import { AxiosInstance } from 'axios';
 export interface ApiClientConfig {
-    tokenKey: string;
+    tokenKey?: string;
     userKey: string;
     baseURL: string;
     redirectOnUnauthorized?: boolean;
     loginPath?: string;
+    useTokenStorage?: boolean;
+    withCredentials?: boolean;
 }
 /**
  * Creates a configured axios instance with authentication and error handling

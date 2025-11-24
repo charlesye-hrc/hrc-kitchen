@@ -31,7 +31,7 @@ import axios from 'axios';
 const HomePage = () => {
   const navigate = useNavigate();
   const { addItem, getCartItemCount } = useCart();
-  const { isAuthenticated, token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [displayItems, setDisplayItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [orderingWindow, setOrderingWindow] = useState<any>(null);
@@ -44,13 +44,11 @@ const HomePage = () => {
 
   const fetchDisplayItems = async () => {
     try {
-      if (isAuthenticated && token) {
+      if (isAuthenticated) {
         // Fetch user's recent orders to get menu item IDs
         const ordersResponse = await axios.get(
           `${import.meta.env.VITE_API_URL}/orders?limit=10`,
-          {
-            headers: { Authorization: `Bearer ${token}` }
-          }
+          { withCredentials: true }
         );
 
         // Extract unique menu item IDs from recent orders, ranked by recency

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { PaymentController } from '../controllers/payment.controller';
-import { authenticate } from '../middleware/auth';
-import { paymentLimiter } from '../middleware/rateLimiter';
+import { authenticate, authenticateOptional } from '../middleware/auth';
+import { paymentLimiter, paymentConfirmLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
@@ -9,9 +9,8 @@ const router = Router();
 router.post('/create-intent', authenticate, PaymentController.createPaymentIntent);
 
 // POST /api/v1/payment/confirm
-// Note: Authentication is optional for guest orders
-// Rate limited to prevent abuse
-router.post('/confirm', paymentLimiter, PaymentController.confirmPayment);
+// Auth optional to support guest orders (registered orders must include token)
+router.post('/confirm', paymentLimiter, paymentConfirmLimiter, authenticateOptional, PaymentController.confirmPayment);
 
 // POST /api/v1/payment/webhook
 // Note: This endpoint should NOT use authenticate middleware

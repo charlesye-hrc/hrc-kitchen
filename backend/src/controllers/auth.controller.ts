@@ -3,6 +3,7 @@ import { AuthService } from '../services/auth.service';
 import { EmailService } from '../services/email.service';
 import { ApiError } from '../middleware/errorHandler';
 import prisma from '../lib/prisma';
+import { AUTH_COOKIE_NAME, getAuthCookieOptions } from '../utils/cookies';
 
 export class AuthController {
   static async register(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -167,9 +168,20 @@ export class AuthController {
 
       const result = await AuthService.verifyOtp(email, code);
 
-      res.json(result);
+      const cookieOptions = getAuthCookieOptions();
+      res.cookie(AUTH_COOKIE_NAME, result.token, cookieOptions);
+
+      const { token, ...responsePayload } = result;
+
+      res.json(responsePayload);
     } catch (error) {
       next(error);
     }
+  }
+
+  static async logout(_req: Request, res: Response): Promise<void> {
+    const cookieOptions = getAuthCookieOptions();
+    res.clearCookie(AUTH_COOKIE_NAME, { ...cookieOptions, maxAge: 0 });
+    res.json({ success: true });
   }
 }

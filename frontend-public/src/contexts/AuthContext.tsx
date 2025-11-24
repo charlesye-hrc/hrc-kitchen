@@ -11,7 +11,6 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
   loginWithPassword: (email: string, password: string) => Promise<{ requiresOtp: boolean }>;
   verifyOtp: (email: string, code: string) => Promise<void>;
   logout: () => void;
@@ -33,26 +32,24 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
   useEffect(() => {
+    // Remove legacy token storage
+    localStorage.removeItem('public_token');
+
     // Load user from localStorage on mount
     // Use app-specific keys to avoid conflicts with admin app
-    const storedToken = localStorage.getItem('public_token');
     const storedUser = localStorage.getItem('public_user');
 
-    if (storedToken && storedUser) {
+    if (storedUser) {
       try {
-        setToken(storedToken);
         setUser(JSON.parse(storedUser));
-        axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
       } catch (error) {
         // Corrupted localStorage, clear and start fresh
         console.error('Failed to parse stored user data:', error);
-        localStorage.removeItem('public_token');
         localStorage.removeItem('public_user');
       }
     }
@@ -78,12 +75,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const verifyOtp = async (email: string, code: string) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/verify-otp`, {
-        email,
-        code,
-      });
+      const response = await axios.post(
+        `${API_URL}/auth/verify-otp`,
+        {
+          email,
+          code,
+        },
+        { withCredentials: true }
+      );
 
-      const { user: userData, token: authToken, hasAdminAccess } = response.data;
+      const { user: userData, hasAdminAccess } = response.data;
 
       // Add hasAdminAccess to user object
       const userWithAccess = {
@@ -92,24 +93,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       setUser(userWithAccess);
-      setToken(authToken);
 
-      localStorage.setItem('public_token', authToken);
       localStorage.setItem('public_user', JSON.stringify(userWithAccess));
-
-      axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
     } catch (error) {
       console.error('OTP verification failed:', error);
       throw error;
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await axios.post(`${API_URL}/auth/logout`, {}, { withCredentials: true });
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
     setUser(null);
-    setToken(null);
-    localStorage.removeItem('public_token');
     localStorage.removeItem('public_user');
-    delete axios.defaults.headers.common['Authorization'];
+    localStorage.removeItem('public_token');
   };
 
   const register = async (data: RegisterData) => {
@@ -123,7 +123,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const value = {
     user,
-    token,
     loginWithPassword,
     verifyOtp,
     logout,

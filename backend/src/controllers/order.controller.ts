@@ -6,6 +6,8 @@ import { AuthService } from '../services/auth.service';
 import { ApiError } from '../middleware/errorHandler';
 import prisma from '../lib/prisma';
 import { validatePagination } from '../utils/validation';
+import { CaptchaService } from '../services/captcha.service';
+import { GuestOrderTokenService, GuestOrderTokenPayload } from '../services/guestOrderToken.service';
 
 export class OrderController {
   private orderService: OrderService;
@@ -136,9 +138,67 @@ export class OrderController {
     }
   };
 
+  requestGuestOrderToken = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { captchaToken } = req.body;
+
+      if (!captchaToken) {
+        res.status(400).json({
+          success: false,
+          message: 'captchaToken is required',
+        });
+        return;
+      }
+
+      if (!process.env.RECAPTCHA_SECRET_KEY) {
+        res.status(500).json({
+          success: false,
+          message: 'Captcha verification is not configured on the server',
+        });
+        return;
+      }
+
+      const captchaValid = await CaptchaService.verify(captchaToken, req.ip);
+      if (!captchaValid) {
+        res.status(400).json({
+          success: false,
+          message: 'Captcha verification failed',
+        });
+        return;
+      }
+
+      const token = GuestOrderTokenService.issueToken();
+
+      res.json({
+        success: true,
+        data: {
+          token,
+          expiresInMs: GuestOrderTokenService.ttlMs,
+        },
+      });
+    } catch (error) {
+      console.error('Error issuing guest order token:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to issue guest order token',
+      });
+    }
+  };
+
   createGuestOrder = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { guestInfo, ...orderData } = req.body;
+      const { guestInfo, guestToken, ...orderData } = req.body as {
+        guestInfo: { email: string; firstName: string; lastName: string };
+        guestToken?: GuestOrderTokenPayload;
+      } & CreateOrderDto;
+
+      if (!GuestOrderTokenService.verifyToken(guestToken)) {
+        res.status(400).json({
+          success: false,
+          message: 'Invalid or expired guest order token. Please refresh the checkout page.',
+        });
+        return;
+      }
 
       if (!guestInfo?.email || !guestInfo?.firstName || !guestInfo?.lastName) {
         res.status(400).json({
