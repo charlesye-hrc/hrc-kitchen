@@ -2,25 +2,34 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Box, Paper, TextField, Button, Typography, Alert } from '@mui/material';
+import { executeRecaptcha } from '../utils/recaptcha';
 const ForgotPasswordPage = ({ api, loginPath = '/login', appContext }) => {
     const [email, setEmail] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
+    const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
         setLoading(true);
         try {
+            if (!siteKey) {
+                throw new Error('Captcha is not configured. Please contact support.');
+            }
+            const captchaToken = await executeRecaptcha(siteKey, appContext === 'admin' ? 'admin_forgot_password' : 'public_forgot_password');
             const payload = { email };
             if (appContext) {
                 payload.app = appContext;
             }
+            payload.captchaToken = captchaToken;
             await api.post('/auth/forgot-password', payload);
             setSuccess(true);
         }
         catch (err) {
-            setError(err.response?.data?.error?.message || 'Failed to send reset email. Please try again.');
+            setError(err.response?.data?.error?.message ||
+                err.message ||
+                'Failed to send reset email. Please try again.');
         }
         finally {
             setLoading(false);

@@ -24,9 +24,8 @@ import {
   Tooltip,
 } from '@mui/material';
 import { Edit as EditIcon, AdminPanelSettings as AdminIcon } from '@mui/icons-material';
-import axios from 'axios';
-import { useAuth } from '../contexts/AuthContext';
 import AdminPageLayout from '../components/AdminPageLayout';
+import api from '../services/api';
 
 interface User {
   id: string;
@@ -49,7 +48,6 @@ interface Location {
 }
 
 const UserLocationAssignmentPage: React.FC = () => {
-  const { token } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,14 +64,7 @@ const UserLocationAssignmentPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [usersRes, locationsRes] = await Promise.all([
-        axios.get(`${import.meta.env.VITE_API_URL}/admin/users`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        axios.get(`${import.meta.env.VITE_API_URL}/admin/locations`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
+      const [usersRes, locationsRes] = await Promise.all([api.get('/admin/users'), api.get('/admin/locations')]);
 
       if (usersRes.data.success) {
         // Filter out ADMIN and STAFF users - they don't need location assignments
@@ -119,11 +110,9 @@ const UserLocationAssignmentPage: React.FC = () => {
 
     try {
       setSubmitting(true);
-      await axios.put(
-        `${import.meta.env.VITE_API_URL}/admin/users/${selectedUser.id}/locations`,
-        { locationIds: selectedLocationIds },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.put(`/admin/users/${selectedUser.id}/locations`, {
+        locationIds: selectedLocationIds,
+      });
 
       await loadData();
       handleCloseDialog();

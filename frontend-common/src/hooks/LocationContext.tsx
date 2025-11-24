@@ -8,10 +8,17 @@ interface LocationProviderProps {
   apiUrl?: string;
   forceAllLocations?: boolean; // If true, always fetch all active locations (for public ordering)
   tokenKey?: string; // localStorage key for auth token
+  authMode?: 'token' | 'cookie';
 }
 
-export const LocationProvider: React.FC<LocationProviderProps> = ({ children, apiUrl, forceAllLocations, tokenKey }) => {
-  const locationState = useLocation({ apiUrl, forceAllLocations, tokenKey });
+export const LocationProvider: React.FC<LocationProviderProps> = ({
+  children,
+  apiUrl,
+  forceAllLocations,
+  tokenKey,
+  authMode,
+}) => {
+  const locationState = useLocation({ apiUrl, forceAllLocations, tokenKey, authMode });
 
   return (
     <LocationContext.Provider value={locationState}>

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/auth.controller';
 import { authLimiter, accountLimiter } from '../middleware/rateLimiter';
+import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
@@ -24,6 +25,9 @@ router.post('/verify-reset-token', authLimiter, AuthController.verifyResetToken)
 
 // POST /api/v1/auth/verify-otp (Step 2 of login - verify OTP after password)
 router.post('/verify-otp', authLimiter, accountLimiter, AuthController.verifyOtp);
+
+// GET /api/v1/auth/me
+router.get('/me', authenticate, AuthController.getSession);
 
 // POST /api/v1/auth/logout
 router.post('/logout', AuthController.logout);

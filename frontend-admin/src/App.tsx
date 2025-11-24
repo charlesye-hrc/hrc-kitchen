@@ -248,7 +248,7 @@ const LayoutWrapper = ({ children }: { children: ReactNode }) => {
 function App() {
   return (
     <AuthProvider>
-      <LocationProvider apiUrl={API_URL} tokenKey="admin_token">
+      <LocationProvider apiUrl={API_URL} authMode="cookie">
         <LayoutWrapper>
           <AppRoutes />
         </LayoutWrapper>

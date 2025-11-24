@@ -1,14 +1,57 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { inventoryService } from '../services/inventory.service';
-import { InventoryChangeType } from '@prisma/client';
+import { InventoryChangeType, UserRole } from '@prisma/client';
+import prisma from '../lib/prisma';
+
+interface LocationAccessResult {
+  allowed: boolean;
+  status?: number;
+  message?: string;
+}
+
+const ensureLocationAccess = async (req: AuthRequest, locationId?: string): Promise<LocationAccessResult> => {
+  if (!req.user) {
+    return { allowed: false, status: 401, message: 'Authentication required' };
+  }
+
+  if (req.user.role === UserRole.ADMIN) {
+    return { allowed: true };
+  }
+
+  if (!locationId) {
+    return { allowed: false, status: 400, message: 'locationId is required' };
+  }
+
+  const assignment = await prisma.userLocation.findFirst({
+    where: {
+      userId: req.user.id,
+      locationId,
+    },
+  });
+
+  if (!assignment) {
+    return { allowed: false, status: 403, message: 'Not authorized to access this location' };
+  }
+
+  return { allowed: true };
+};
 
 /**
  * Get inventory for a specific location (Kitchen Staff)
  */
-export const getInventoryByLocation = async (req: Request, res: Response): Promise<void> => {
+export const getInventoryByLocation = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { locationId } = req.params;
+
+    const access = await ensureLocationAccess(req, locationId);
+    if (!access.allowed) {
+      res.status(access.status || 403).json({
+        success: false,
+        message: access.message,
+      });
+      return;
+    }
 
     const inventories = await inventoryService.getInventoryByLocation(
       locationId
@@ -56,9 +99,18 @@ export const getAllInventory = async (_req: Request, res: Response): Promise<voi
 /**
  * Get inventory for a specific menu item at a location
  */
-export const getInventoryByMenuItem = async (req: Request, res: Response): Promise<void> => {
+export const getInventoryByMenuItem = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { menuItemId, locationId } = req.params;
+
+    const access = await ensureLocationAccess(req, locationId);
+    if (!access.allowed) {
+      res.status(access.status || 403).json({
+        success: false,
+        message: access.message,
+      });
+      return;
+    }
 
     const inventory = await inventoryService.getInventory(
       menuItemId,
@@ -92,9 +144,17 @@ export const getInventoryByMenuItem = async (req: Request, res: Response): Promi
 /**
  * Get low stock items for a location
  */
-export const getLowStockItems = async (req: Request, res: Response): Promise<void> => {
+export const getLowStockItems = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { locationId } = req.params;
+    const access = await ensureLocationAccess(req, locationId);
+    if (!access.allowed) {
+      res.status(access.status || 403).json({
+        success: false,
+        message: access.message,
+      });
+      return;
+    }
 
     const lowStockItems = await inventoryService.getLowStockItems(locationId);
 
@@ -127,6 +187,15 @@ export const updateInventory = async (req: AuthRequest, res: Response): Promise<
       res.status(400).json({
         success: false,
         message: 'stockQuantity is required',
+      });
+      return;
+    }
+
+    const access = await ensureLocationAccess(req, locationId);
+    if (!access.allowed) {
+      res.status(access.status || 403).json({
+        success: false,
+        message: access.message,
       });
       return;
     }
@@ -174,6 +243,15 @@ export const restockInventory = async (req: AuthRequest, res: Response): Promise
       res.status(400).json({
         success: false,
         message: 'Valid quantity is required',
+      });
+      return;
+    }
+
+    const access = await ensureLocationAccess(req, locationId);
+    if (!access.allowed) {
+      res.status(access.status || 403).json({
+        success: false,
+        message: access.message,
       });
       return;
     }
@@ -295,10 +373,19 @@ export const checkAvailability = async (req: Request, res: Response): Promise<vo
 /**
  * Get inventory history
  */
-export const getInventoryHistory = async (req: Request, res: Response): Promise<void> => {
+export const getInventoryHistory = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { locationId, menuItemId } = req.query;
     const limit = parseInt(req.query.limit as string) || 100;
+
+    const access = await ensureLocationAccess(req, locationId as string | undefined);
+    if (!access.allowed) {
+      res.status(access.status || 403).json({
+        success: false,
+        message: access.message,
+      });
+      return;
+    }
 
     const history = await inventoryService.getInventoryHistory(
       locationId as string,

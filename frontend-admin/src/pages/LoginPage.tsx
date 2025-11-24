@@ -45,40 +45,30 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      await verifyOtp(email, otpCode);
+      const result = await verifyOtp(email, otpCode);
 
-      // Check if user has admin access to this application
-      const storedHasAdminAccess = localStorage.getItem('admin_hasAdminAccess');
-      const hasAdminAccess = storedHasAdminAccess === 'true';
-
-      if (!hasAdminAccess) {
-        setError('Access Denied: This application is restricted to authorized domain users only. Your email domain does not have access to management features. Please contact your administrator.');
+      if (!result.hasAdminAccess) {
+        setError(
+          'Access Denied: This application is restricted to authorized domain users only. Your email domain does not have access to management features. Please contact your administrator.'
+        );
         setLoading(false);
         return;
       }
 
-      // Wait a bit for context to update with user info
-      setTimeout(() => {
+      const destination = (() => {
         if (from && from !== '/login') {
-          navigate(from);
-        } else {
-          const storedUser = localStorage.getItem('admin_user');
-          if (storedUser) {
-            const userData = JSON.parse(storedUser);
-            if (userData.role === 'ADMIN') {
-              navigate('/kitchen');
-            } else if (userData.role === 'KITCHEN') {
-              navigate('/kitchen');
-            } else if (userData.role === 'FINANCE') {
-              navigate('/reports');
-            } else {
-              navigate('/kitchen');
-            }
-          } else {
-            navigate('/');
-          }
+          return from;
         }
-      }, 100);
+        if (result.user.role === 'ADMIN' || result.user.role === 'KITCHEN') {
+          return '/kitchen';
+        }
+        if (result.user.role === 'FINANCE') {
+          return '/reports';
+        }
+        return '/kitchen';
+      })();
+
+      navigate(destination);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Invalid code. Please try again.');
     } finally {

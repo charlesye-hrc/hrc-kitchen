@@ -5,6 +5,7 @@ interface LocationProviderProps {
     apiUrl?: string;
     forceAllLocations?: boolean;
     tokenKey?: string;
+    authMode?: 'token' | 'cookie';
 }
 export declare const LocationProvider: React.FC<LocationProviderProps>;
 export declare const useLocationContext: () => UseLocationReturn;

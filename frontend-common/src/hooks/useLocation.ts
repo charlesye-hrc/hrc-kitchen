@@ -14,6 +14,7 @@ export interface UseLocationOptions {
   apiUrl?: string;
   forceAllLocations?: boolean; // If true, always fetch all active locations (for public ordering)
   tokenKey?: string; // localStorage key for auth token (default: 'token')
+  authMode?: 'token' | 'cookie';
 }
 
 /**
@@ -25,6 +26,8 @@ export interface UseLocationOptions {
 export const useLocation = (options?: UseLocationOptions): UseLocationReturn => {
   const API_URL = options?.apiUrl || 'http://localhost:3000/api/v1';
   const TOKEN_KEY = options?.tokenKey || 'token';
+  const authMode = options?.authMode || 'token';
+  const useCookies = authMode === 'cookie';
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -36,8 +39,7 @@ export const useLocation = (options?: UseLocationOptions): UseLocationReturn => 
     setIsLoading(true);
     setError(null);
     try {
-      // Check if user is authenticated
-      const token = localStorage.getItem(TOKEN_KEY);
+      const token = useCookies ? null : localStorage.getItem(TOKEN_KEY);
 
       // For public ordering app, always fetch all locations regardless of user assignments
       // For internal apps (kitchen, admin), fetch user-specific accessible locations
@@ -49,6 +51,8 @@ export const useLocation = (options?: UseLocationOptions): UseLocationReturn => 
         // This ensures we always get all locations regardless of user assignments
         endpoint = `${API_URL}/locations`;
         // Do NOT send token for public ordering - we want ALL locations
+      } else if (useCookies) {
+        endpoint = `${API_URL}/locations/user/accessible`;
       } else {
         // Internal apps: use authentication and location assignments
         endpoint = token
@@ -61,14 +65,28 @@ export const useLocation = (options?: UseLocationOptions): UseLocationReturn => 
         }
       }
 
-      let response = await fetch(endpoint, { headers });
+      const requestOptions: RequestInit = { headers };
+
+      if (useCookies) {
+        requestOptions.credentials = 'include';
+      }
+
+      let response = await fetch(endpoint, requestOptions);
 
       // If authenticated endpoint fails with 401, fall back to public endpoint
-      if (token && response.status === 401 && !options?.forceAllLocations) {
+      if (!useCookies && token && response.status === 401 && !options?.forceAllLocations) {
         // Token is invalid or expired, remove it and try public endpoint
         localStorage.removeItem(TOKEN_KEY);
         endpoint = `${API_URL}/locations`;
         response = await fetch(endpoint);
+      }
+
+      if (useCookies && response.status === 401) {
+        setLocations([]);
+        setSelectedLocation(null);
+        setError('Authentication required');
+        setIsLoading(false);
+        return;
       }
 
       const data = await response.json();
@@ -99,12 +117,12 @@ export const useLocation = (options?: UseLocationOptions): UseLocationReturn => 
     } finally {
       setIsLoading(false);
     }
-  }, [API_URL, TOKEN_KEY, options?.forceAllLocations]);
+  }, [API_URL, TOKEN_KEY, options?.forceAllLocations, useCookies]);
 
   useEffect(() => {
     fetchLocations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [API_URL, TOKEN_KEY, options?.forceAllLocations]);
+  }, [API_URL, TOKEN_KEY, options?.forceAllLocations, useCookies]);
 
   const selectLocation = useCallback((locationId: string) => {
     const location = locations.find(loc => loc.id === locationId);
@@ -113,19 +131,34 @@ export const useLocation = (options?: UseLocationOptions): UseLocationReturn => 
       localStorage.setItem(SELECTED_LOCATION_KEY, locationId);
 
       // Update user's last selected location on server (if authenticated and allowed)
-      const token = localStorage.getItem(TOKEN_KEY);
-      if (token && !options?.forceAllLocations) {
-        fetch(`${API_URL}/locations/user/last-selected`, {
+      if (!options?.forceAllLocations) {
+        const requestOptions: RequestInit = {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({ locationId }),
-        }).catch(err => console.error('Failed to update last selected location:', err));
+        };
+
+        if (useCookies) {
+          requestOptions.credentials = 'include';
+        } else {
+          const token = localStorage.getItem(TOKEN_KEY);
+          if (!token) {
+            return;
+          }
+          requestOptions.headers = {
+            ...requestOptions.headers,
+            Authorization: `Bearer ${token}`,
+          };
+        }
+
+        fetch(`${API_URL}/locations/user/last-selected`, requestOptions).catch(err =>
+          console.error('Failed to update last selected location:', err)
+        );
       }
     }
-  }, [locations, API_URL, TOKEN_KEY, options?.forceAllLocations]);
+  }, [locations, API_URL, TOKEN_KEY, options?.forceAllLocations, useCookies]);
 
   const refreshLocations = useCallback(async () => {
     await fetchLocations();

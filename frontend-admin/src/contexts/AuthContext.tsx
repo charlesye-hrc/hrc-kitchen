@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { executeRecaptcha } from '@hrc-kitchen/common';
 
 interface User {
   id: string;
@@ -10,10 +11,9 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
   hasAdminAccess: boolean;
   loginWithPassword: (email: string, password: string) => Promise<{ requiresOtp: boolean }>;
-  verifyOtp: (email: string, code: string) => Promise<void>;
+  verifyOtp: (email: string, code: string) => Promise<{ user: User; hasAdminAccess: boolean }>;
   logout: () => void;
   register: (data: RegisterData) => Promise<void>;
   isAuthenticated: boolean;
@@ -31,45 +31,70 @@ interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+axios.defaults.withCredentials = true;
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [hasAdminAccess, setHasAdminAccess] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+  const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+
+  const getCaptchaToken = async (action: string): Promise<string> => {
+    if (!RECAPTCHA_SITE_KEY) {
+      throw new Error('Captcha is not configured. Please contact support.');
+    }
+    return executeRecaptcha(RECAPTCHA_SITE_KEY, action);
+  };
 
   useEffect(() => {
-    // Load user from localStorage on mount
-    // Use app-specific keys to avoid conflicts with public app
-    const storedToken = localStorage.getItem('admin_token');
-    const storedUser = localStorage.getItem('admin_user');
-    const storedHasAdminAccess = localStorage.getItem('admin_hasAdminAccess');
+    let isMounted = true;
 
-    if (storedToken && storedUser) {
+    const loadSession = async () => {
       try {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
-        setHasAdminAccess(storedHasAdminAccess === 'true');
-        axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-      } catch (error) {
-        // Corrupted localStorage, clear and start fresh
-        console.error('Failed to parse stored user data:', error);
-        localStorage.removeItem('admin_token');
-        localStorage.removeItem('admin_user');
-        localStorage.removeItem('admin_hasAdminAccess');
-      }
-    }
+        const response = await axios.get(`${API_URL}/auth/me`, {
+          withCredentials: true,
+        });
 
-    setIsLoading(false);
-  }, []);
+        if (!isMounted) {
+          return;
+        }
+
+        setUser(response.data.user);
+        setHasAdminAccess(response.data.hasAdminAccess || false);
+      } catch (_error) {
+        if (isMounted) {
+          setUser(null);
+          setHasAdminAccess(false);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [API_URL]);
 
   const loginWithPassword = async (email: string, password: string): Promise<{ requiresOtp: boolean }> => {
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, {
-        email,
-        password,
-      });
+      const response = await axios.post(
+        `${API_URL}/auth/login`,
+        {
+          email,
+          password,
+          captchaToken: await getCaptchaToken('admin_login'),
+        },
+        {
+          withCredentials: true,
+        }
+      );
 
       // New flow: login endpoint always returns requiresOtp: true
       // OTP is sent automatically by backend
@@ -82,22 +107,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const verifyOtp = async (email: string, code: string) => {
     try {
-      const response = await axios.post(`${API_URL}/auth/verify-otp`, {
-        email,
-        code,
-      });
+      const response = await axios.post(
+        `${API_URL}/auth/verify-otp`,
+        {
+          email,
+          code,
+        },
+        {
+          withCredentials: true,
+        }
+      );
 
-      const { user: userData, token: authToken, hasAdminAccess: adminAccess } = response.data;
+      const { user: userData, hasAdminAccess: adminAccess } = response.data;
 
       setUser(userData);
-      setToken(authToken);
       setHasAdminAccess(adminAccess || false);
 
-      localStorage.setItem('admin_token', authToken);
-      localStorage.setItem('admin_user', JSON.stringify(userData));
-      localStorage.setItem('admin_hasAdminAccess', String(adminAccess || false));
-
-      axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+      return {
+        user: userData,
+        hasAdminAccess: adminAccess || false,
+      };
     } catch (error) {
       console.error('OTP verification failed:', error);
       throw error;
@@ -105,18 +134,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
-    setUser(null);
-    setToken(null);
-    setHasAdminAccess(false);
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_user');
-    localStorage.removeItem('admin_hasAdminAccess');
-    delete axios.defaults.headers.common['Authorization'];
+    axios
+      .post(
+        `${API_URL}/auth/logout`,
+        {},
+        {
+          withCredentials: true,
+        }
+      )
+      .catch((error) => {
+        console.error('Logout failed:', error);
+      })
+      .finally(() => {
+        setUser(null);
+        setHasAdminAccess(false);
+      });
   };
 
   const register = async (data: RegisterData) => {
     try {
-      await axios.post(`${API_URL}/auth/register`, data);
+      const captchaToken = await getCaptchaToken('admin_register');
+      await axios.post(
+        `${API_URL}/auth/register`,
+        { ...data, captchaToken },
+        { withCredentials: true }
+      );
     } catch (error) {
       console.error('Registration failed:', error);
       throw error;
@@ -125,7 +167,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const value = {
     user,
-    token,
     hasAdminAccess,
     loginWithPassword,
     verifyOtp,

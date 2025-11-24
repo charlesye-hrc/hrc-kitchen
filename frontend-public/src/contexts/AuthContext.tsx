@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { executeRecaptcha } from '@hrc-kitchen/common';
 
 interface User {
   id: string;
@@ -35,6 +36,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+  const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+
+  const getCaptchaToken = async (action: string): Promise<string> => {
+    if (!RECAPTCHA_SITE_KEY) {
+      throw new Error('Captcha is not configured. Please contact support.');
+    }
+    return executeRecaptcha(RECAPTCHA_SITE_KEY, action);
+  };
 
   useEffect(() => {
     // Remove legacy token storage
@@ -59,9 +68,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithPassword = async (email: string, password: string): Promise<{ requiresOtp: boolean }> => {
     try {
+      const captchaToken = await getCaptchaToken('public_login');
       const response = await axios.post(`${API_URL}/auth/login`, {
         email,
         password,
+        captchaToken,
       });
 
       // New flow: login endpoint always returns requiresOtp: true
@@ -114,7 +125,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (data: RegisterData) => {
     try {
-      await axios.post(`${API_URL}/auth/register`, data);
+      const captchaToken = await getCaptchaToken('public_register');
+      await axios.post(`${API_URL}/auth/register`, { ...data, captchaToken });
     } catch (error) {
       console.error('Registration failed:', error);
       throw error;

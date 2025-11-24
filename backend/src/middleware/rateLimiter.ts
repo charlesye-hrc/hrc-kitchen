@@ -18,7 +18,7 @@ export const authLimiter = rateLimit({
 
 export const accountLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Per-account attempts
+  max: 15, // Per-account attempts
   message: 'Too many attempts for this account, please try again later',
   standardHeaders: true,
   legacyHeaders: false,
@@ -53,4 +53,20 @@ export const paymentConfirmLimiter = rateLimit({
     }
     return req.ip ?? 'unknown';
   },
+});
+
+export const adminWriteLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 30,
+  message: 'Too many admin changes, please slow down and try again shortly',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+export const inventoryWriteLimiter = rateLimit({
+  windowMs: 2 * 60 * 1000, // 2 minutes
+  max: 20,
+  message: 'Too many inventory updates, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
 });

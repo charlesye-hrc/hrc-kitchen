@@ -24,58 +24,12 @@ import { Add as AddIcon, Remove as RemoveIcon, Delete as DeleteIcon } from '@mui
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
-import { useLocationContext, LocationSelector } from '@hrc-kitchen/common';
+import { useLocationContext, LocationSelector, executeRecaptcha } from '@hrc-kitchen/common';
 import { menuApi } from '../services/api';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements, PaymentRequestButtonElement } from '@stripe/react-stripe-js';
 import type { PaymentRequest } from '@stripe/stripe-js';
 import axios from 'axios';
-
-declare global {
-  interface Window {
-    grecaptcha?: {
-      ready: (cb: () => void) => void;
-      execute: (siteKey: string, options: { action: string }) => Promise<string>;
-    };
-  }
-}
-
-let recaptchaScriptPromise: Promise<void> | null = null;
-
-const loadRecaptchaScript = (siteKey: string): Promise<void> => {
-  const waitForReady = () =>
-    new Promise<void>((resolve) => {
-      if (window.grecaptcha) {
-        window.grecaptcha.ready(() => resolve());
-      } else {
-        resolve();
-      }
-    });
-
-  if (window.grecaptcha) {
-    return waitForReady();
-  }
-
-  if (!recaptchaScriptPromise) {
-    recaptchaScriptPromise = new Promise<void>((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
-      script.async = true;
-      script.defer = true;
-      script.onload = () => {
-        if (!window.grecaptcha) {
-          reject(new Error('reCAPTCHA failed to initialize'));
-          return;
-        }
-        window.grecaptcha.ready(() => resolve());
-      };
-      script.onerror = () => reject(new Error('Failed to load reCAPTCHA script'));
-      document.head.appendChild(script);
-    });
-  }
-
-  return recaptchaScriptPromise;
-};
 
 interface GuestOrderSecurityToken {
   nonce: string;
@@ -128,15 +82,7 @@ const CheckoutForm: React.FC = () => {
       throw new Error('Guest checkout security is not configured. Please contact support.');
     }
 
-    await loadRecaptchaScript(recaptchaSiteKey);
-
-    if (!window.grecaptcha) {
-      throw new Error('Security verification failed to load. Please refresh and try again.');
-    }
-
-    const captchaToken = await window.grecaptcha.execute(recaptchaSiteKey, {
-      action: 'guest_checkout',
-    });
+    const captchaToken = await executeRecaptcha(recaptchaSiteKey, 'guest_checkout');
 
     const response = await axios.post(`${apiBaseUrl}/orders/guest/token`, {
       captchaToken,

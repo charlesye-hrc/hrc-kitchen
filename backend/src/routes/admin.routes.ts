@@ -5,6 +5,7 @@ import locationController from '../controllers/location.controller';
 import { authenticate, authorize } from '../middleware/auth';
 import { validateAdminDomain } from '../middleware/domainValidation';
 import { UserRole } from '@prisma/client';
+import { adminWriteLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
@@ -30,28 +31,28 @@ router.use(authorize(UserRole.ADMIN));
  * @desc    Create a new menu item
  * @access  Admin only
  */
-router.post('/menu/items', adminController.createMenuItem);
+router.post('/menu/items', adminWriteLimiter, adminController.createMenuItem);
 
 /**
  * @route   PUT /api/v1/admin/menu/items/:id
  * @desc    Update a menu item
  * @access  Admin only
  */
-router.put('/menu/items/:id', adminController.updateMenuItem);
+router.put('/menu/items/:id', adminWriteLimiter, adminController.updateMenuItem);
 
 /**
  * @route   DELETE /api/v1/admin/menu/items/:id
  * @desc    Delete/deactivate a menu item
  * @access  Admin only
  */
-router.delete('/menu/items/:id', adminController.deleteMenuItem);
+router.delete('/menu/items/:id', adminWriteLimiter, adminController.deleteMenuItem);
 
 /**
  * @route   POST /api/v1/admin/menu/items/:id/customizations
  * @desc    Add a customization option to a menu item
  * @access  Admin only
  */
-router.post('/menu/items/:id/customizations', adminController.addCustomization);
+router.post('/menu/items/:id/customizations', adminWriteLimiter, adminController.addCustomization);
 
 /**
  * @route   DELETE /api/v1/admin/menu/customizations/:id
@@ -69,7 +70,7 @@ router.delete('/menu/customizations/:id', adminController.deleteCustomization);
  * @desc    Create a variation group for a menu item
  * @access  Admin only
  */
-router.post('/menu/items/:id/variation-groups', adminController.createVariationGroup);
+router.post('/menu/items/:id/variation-groups', adminWriteLimiter, adminController.createVariationGroup);
 
 /**
  * @route   GET /api/v1/admin/menu/items/:id/variation-groups
@@ -83,14 +84,14 @@ router.get('/menu/items/:id/variation-groups', adminController.getVariationGroup
  * @desc    Update a variation group
  * @access  Admin only
  */
-router.put('/variation-groups/:id', adminController.updateVariationGroup);
+router.put('/variation-groups/:id', adminWriteLimiter, adminController.updateVariationGroup);
 
 /**
  * @route   DELETE /api/v1/admin/variation-groups/:id
  * @desc    Delete a variation group
  * @access  Admin only
  */
-router.delete('/variation-groups/:id', adminController.deleteVariationGroup);
+router.delete('/variation-groups/:id', adminWriteLimiter, adminController.deleteVariationGroup);
 
 /**
  * Variation Option Routes
@@ -101,7 +102,7 @@ router.delete('/variation-groups/:id', adminController.deleteVariationGroup);
  * @desc    Create a variation option
  * @access  Admin only
  */
-router.post('/variation-groups/:id/options', adminController.createVariationOption);
+router.post('/variation-groups/:id/options', adminWriteLimiter, adminController.createVariationOption);
 
 /**
  * @route   GET /api/v1/admin/variation-groups/:id/options
@@ -115,14 +116,14 @@ router.get('/variation-groups/:id/options', adminController.getVariationOptions)
  * @desc    Update a variation option
  * @access  Admin only
  */
-router.put('/variation-options/:id', adminController.updateVariationOption);
+router.put('/variation-options/:id', adminWriteLimiter, adminController.updateVariationOption);
 
 /**
  * @route   DELETE /api/v1/admin/variation-options/:id
  * @desc    Delete a variation option
  * @access  Admin only
  */
-router.delete('/variation-options/:id', adminController.deleteVariationOption);
+router.delete('/variation-options/:id', adminWriteLimiter, adminController.deleteVariationOption);
 
 /**
  * User Management Routes
@@ -140,21 +141,21 @@ router.get('/users', adminController.getUsers);
  * @desc    Update user role
  * @access  Admin only
  */
-router.patch('/users/:id/role', adminController.updateUserRole);
+router.patch('/users/:id/role', adminWriteLimiter, adminController.updateUserRole);
 
 /**
  * @route   PATCH /api/v1/admin/users/:id/status
  * @desc    Activate/deactivate user
  * @access  Admin only
  */
-router.patch('/users/:id/status', adminController.updateUserStatus);
+router.patch('/users/:id/status', adminWriteLimiter, adminController.updateUserStatus);
 
 /**
  * @route   DELETE /api/v1/admin/users/:id
  * @desc    Delete a user
  * @access  Admin only
  */
-router.delete('/users/:id', adminController.deleteUser);
+router.delete('/users/:id', adminWriteLimiter, adminController.deleteUser);
 
 /**
  * System Configuration Routes
@@ -172,7 +173,7 @@ router.get('/config', adminController.getConfig);
  * @desc    Update system configuration
  * @access  Admin only
  */
-router.put('/config', adminController.updateConfig);
+router.put('/config', adminWriteLimiter, adminController.updateConfig);
 
 /**
  * Upload Routes
@@ -183,14 +184,14 @@ router.put('/config', adminController.updateConfig);
  * @desc    Generate signed upload signature for Cloudinary
  * @access  Admin only
  */
-router.post('/upload/signature', adminController.getUploadSignature);
+router.post('/upload/signature', adminWriteLimiter, adminController.getUploadSignature);
 
 /**
  * @route   POST /api/v1/admin/upload/image
  * @desc    Upload image to Cloudinary (server-side)
  * @access  Admin only
  */
-router.post('/upload/image', adminController.uploadImage);
+router.post('/upload/image', adminWriteLimiter, adminController.uploadImage);
 
 /**
  * Location Management Routes
@@ -208,14 +209,14 @@ router.get('/locations', locationController.getAdminLocations);
  * @desc    Create a new location
  * @access  Admin only
  */
-router.post('/locations', locationController.createLocation);
+router.post('/locations', adminWriteLimiter, locationController.createLocation);
 
 /**
  * @route   PUT /api/v1/admin/locations/:id
  * @desc    Update a location
  * @access  Admin only
  */
-router.put('/locations/:id', locationController.updateLocation);
+router.put('/locations/:id', adminWriteLimiter, locationController.updateLocation);
 
 /**
  * @route   GET /api/v1/admin/locations/:id/removal-preview
@@ -229,21 +230,21 @@ router.get('/locations/:id/removal-preview', locationController.getRemovalPrevie
  * @desc    Delete a location (validates dependencies, supports cascade)
  * @access  Admin only
  */
-router.delete('/locations/:id', locationController.deleteLocation);
+router.delete('/locations/:id', adminWriteLimiter, locationController.deleteLocation);
 
 /**
  * @route   PATCH /api/v1/admin/locations/:id/deactivate
  * @desc    Deactivate a location (soft delete)
  * @access  Admin only
  */
-router.patch('/locations/:id/deactivate', locationController.deactivateLocation);
+router.patch('/locations/:id/deactivate', adminWriteLimiter, locationController.deactivateLocation);
 
 /**
  * @route   PATCH /api/v1/admin/locations/:id/activate
  * @desc    Activate a location
  * @access  Admin only
  */
-router.patch('/locations/:id/activate', locationController.activateLocation);
+router.patch('/locations/:id/activate', adminWriteLimiter, locationController.activateLocation);
 
 /**
  * @route   GET /api/v1/admin/users/:userId/locations
@@ -257,7 +258,7 @@ router.get('/users/:userId/locations', locationController.getUserAssignedLocatio
  * @desc    Assign locations to a user
  * @access  Admin only
  */
-router.put('/users/:userId/locations', locationController.assignLocationsToUser);
+router.put('/users/:userId/locations', adminWriteLimiter, locationController.assignLocationsToUser);
 
 /**
  * @route   GET /api/v1/admin/menu-items/:menuItemId/locations
@@ -271,6 +272,6 @@ router.get('/menu-items/:menuItemId/locations', locationController.getMenuItemLo
  * @desc    Assign menu item to locations
  * @access  Admin only
  */
-router.put('/menu-items/:menuItemId/locations', locationController.assignMenuItemToLocations);
+router.put('/menu-items/:menuItemId/locations', adminWriteLimiter, locationController.assignMenuItemToLocations);
 
 export default router;

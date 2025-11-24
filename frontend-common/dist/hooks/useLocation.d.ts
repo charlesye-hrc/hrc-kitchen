@@ -11,6 +11,7 @@ export interface UseLocationOptions {
     apiUrl?: string;
     forceAllLocations?: boolean;
     tokenKey?: string;
+    authMode?: 'token' | 'cookie';
 }
 /**
  * Hook to manage locations

@@ -1,13 +1,31 @@
 import { Request, Response, NextFunction } from 'express';
+import { AuthRequest } from '../middleware/auth';
 import { AuthService } from '../services/auth.service';
 import { EmailService } from '../services/email.service';
 import { ApiError } from '../middleware/errorHandler';
 import prisma from '../lib/prisma';
 import { AUTH_COOKIE_NAME, getAuthCookieOptions } from '../utils/cookies';
+import { CaptchaService } from '../services/captcha.service';
+import { hasAdminDomainAccess } from '../middleware/domainValidation';
 
 export class AuthController {
+  private static async verifyCaptcha(req: Request): Promise<void> {
+    const { captchaToken } = req.body;
+
+    if (!captchaToken) {
+      throw new ApiError(400, 'Captcha token is required');
+    }
+
+    const captchaValid = await CaptchaService.verify(captchaToken, req.ip);
+    if (!captchaValid) {
+      throw new ApiError(400, 'Captcha verification failed');
+    }
+  }
+
   static async register(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      await AuthController.verifyCaptcha(req);
+
       const { email, password, fullName, department, location, phone } = req.body;
 
       if (!email || !password || !fullName) {
@@ -41,6 +59,8 @@ export class AuthController {
 
   static async login(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      await AuthController.verifyCaptcha(req);
+
       const { email, password } = req.body;
 
       if (!email || !password) {
@@ -99,6 +119,8 @@ export class AuthController {
 
   static async forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      await AuthController.verifyCaptcha(req);
+
       const { email, app } = req.body;
 
       if (!email) {
@@ -171,9 +193,7 @@ export class AuthController {
       const cookieOptions = getAuthCookieOptions();
       res.cookie(AUTH_COOKIE_NAME, result.token, cookieOptions);
 
-      const { token, ...responsePayload } = result;
-
-      res.json(responsePayload);
+      res.json(result);
     } catch (error) {
       next(error);
     }
@@ -183,5 +203,43 @@ export class AuthController {
     const cookieOptions = getAuthCookieOptions();
     res.clearCookie(AUTH_COOKIE_NAME, { ...cookieOptions, maxAge: 0 });
     res.json({ success: true });
+  }
+
+  static async getSession(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) {
+        throw new ApiError(401, 'Authentication required');
+      }
+
+      const userRecord = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          role: true,
+          lastSelectedLocationId: true,
+        },
+      });
+
+      if (!userRecord) {
+        throw new ApiError(404, 'User not found');
+      }
+
+      const hasAccess = await hasAdminDomainAccess(userRecord.email);
+
+      res.json({
+        user: {
+          id: userRecord.id,
+          email: userRecord.email,
+          fullName: userRecord.fullName,
+          role: userRecord.role,
+          lastSelectedLocationId: userRecord.lastSelectedLocationId,
+        },
+        hasAdminAccess: hasAccess,
+      });
+    } catch (error) {
+      next(error);
+    }
   }
 }

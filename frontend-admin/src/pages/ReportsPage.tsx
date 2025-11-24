@@ -25,10 +25,9 @@ import {
   Download as DownloadIcon,
   Refresh as RefreshIcon
 } from '@mui/icons-material';
-import { useAuth } from '../contexts/AuthContext';
 import { LocationSelector, Location } from '@hrc-kitchen/common';
-import axios from 'axios';
 import AdminPageLayout from '../components/AdminPageLayout';
+import api from '../services/api';
 
 interface RevenueByUser {
   user: {
@@ -75,7 +74,6 @@ interface SummaryStats {
 }
 
 const ReportsPage = () => {
-  const { token } = useAuth();
   const [locations, setLocations] = useState<Location[]>([]);
   const [locationsLoading, setLocationsLoading] = useState(false);
   const [locationFilter, setLocationFilter] = useState<string>('all');
@@ -101,10 +99,7 @@ const ReportsPage = () => {
     const fetchLocations = async () => {
       try {
         setLocationsLoading(true);
-        const response = await axios.get(
-          `${import.meta.env.VITE_API_URL}/locations/user/accessible`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const response = await api.get('/locations/user/accessible');
         if (response.data.success) {
           // Show only user-accessible active locations
           const activeLocations = response.data.data.filter((loc: Location) => loc.isActive);
@@ -118,7 +113,7 @@ const ReportsPage = () => {
     };
 
     fetchLocations();
-  }, [token]);
+  }, []);
 
   const loadRevenueByUser = async () => {
     try {
@@ -128,13 +123,9 @@ const ReportsPage = () => {
       if (locationFilter !== 'all') {
         params.locationId = locationFilter;
       }
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/admin/reports/revenue-by-user`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          params
-        }
-      );
+        const response = await api.get('/admin/reports/revenue-by-user', {
+          params,
+        });
       setRevenueData(response.data.data);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load revenue report');
@@ -151,13 +142,9 @@ const ReportsPage = () => {
       if (locationFilter !== 'all') {
         params.locationId = locationFilter;
       }
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/admin/reports/popular-items`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          params
-        }
-      );
+        const response = await api.get('/admin/reports/popular-items', {
+          params,
+        });
       setPopularItems(response.data.data);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load popular items');
@@ -174,13 +161,9 @@ const ReportsPage = () => {
       if (locationFilter !== 'all') {
         params.locationId = locationFilter;
       }
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/admin/reports/summary`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          params
-        }
-      );
+        const response = await api.get('/admin/reports/summary', {
+          params,
+        });
       setSummaryStats(response.data.data);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load summary');
@@ -199,16 +182,10 @@ const ReportsPage = () => {
       if (locationFilter !== 'all') {
         params.locationId = locationFilter;
       }
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/admin/reports/${reportType}`,
-        {
+        const response = await api.get(`/admin/reports/${reportType}`, {
           params,
-          headers: {
-            Authorization: `Bearer ${token}`
-          },
-          responseType: 'blob'
-        }
-      );
+          responseType: 'blob',
+        });
 
       // Create download link
       const url = window.URL.createObjectURL(new Blob([response.data]));

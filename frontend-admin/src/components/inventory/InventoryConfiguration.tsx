@@ -26,6 +26,7 @@ import {
   Chip,
 } from '@mui/material';
 import { Inventory as InventoryIcon, History as HistoryIcon } from '@mui/icons-material';
+import api from '../../services/api';
 
 interface MenuItem {
   id: string;
@@ -89,56 +90,26 @@ export const InventoryConfiguration: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      // Use the new /menu/items endpoint that returns all items in a flat array
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/menu/items`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
-          },
-        }
-      );
+      const [menuResponse, inventoryResponse] = await Promise.all([
+        api.get('/menu/items'),
+        api.get('/inventory/all'),
+      ]);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch menu items');
-      }
+      const allItems = menuResponse.data?.data || [];
+      const inventoryData = inventoryResponse.data?.data || [];
 
-      const data = await response.json();
-      const allItems = data.data;
-
-      // Fetch inventory for each menu item
-      const itemsWithInventory = await Promise.all(
-        allItems.map(async (item: any) => {
-          if (!item.trackInventory) {
-            return { ...item, inventories: [] };
-          }
-
-          try {
-            const invResponse = await fetch(
-              `${import.meta.env.VITE_API_URL}/inventory/all`,
-              {
-                headers: {
-                  Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
-                },
-              }
-            );
-
-            if (invResponse.ok) {
-              const invData = await invResponse.json();
-              const itemInventories = invData.data.filter((inv: any) => inv.menuItemId === item.id);
-              return { ...item, inventories: itemInventories };
-            }
-          } catch (err) {
-            console.error('Failed to fetch inventory for item:', err);
-          }
-
+      const itemsWithInventory = allItems.map((item: any) => {
+        if (!item.trackInventory) {
           return { ...item, inventories: [] };
-        })
-      );
+        }
+
+        const itemInventories = inventoryData.filter((inv: any) => inv.menuItemId === item.id);
+        return { ...item, inventories: itemInventories };
+      });
 
       setMenuItems(itemsWithInventory);
     } catch (err: any) {
-      setError(err.message || 'Failed to load menu items');
+      setError(err.response?.data?.message || err.message || 'Failed to load menu items');
     } finally {
       setLoading(false);
     }
@@ -146,21 +117,10 @@ export const InventoryConfiguration: React.FC = () => {
 
   const fetchHistory = async () => {
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/inventory/history?limit=50`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch history');
-      }
-
-      const data = await response.json();
-      setHistory(data.data);
+      const response = await api.get('/inventory/history', {
+        params: { limit: 50 },
+      });
+      setHistory(response.data?.data || []);
     } catch (err: any) {
       console.error('Failed to load history:', err);
     }
@@ -171,27 +131,15 @@ export const InventoryConfiguration: React.FC = () => {
       setUpdating(menuItemId);
       setError(null);
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/inventory/menu-item/${menuItemId}/tracking`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('admin_token')}`,
-          },
-          body: JSON.stringify({ trackInventory }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to toggle inventory tracking');
-      }
+      await api.patch(`/inventory/menu-item/${menuItemId}/tracking`, {
+        trackInventory,
+      });
 
       setSuccess(`Inventory tracking ${trackInventory ? 'enabled' : 'disabled'} successfully`);
       setTimeout(() => setSuccess(null), 3000);
       await fetchMenuItems();
     } catch (err: any) {
-      setError(err.message || 'Failed to toggle inventory tracking');
+      setError(err.response?.data?.message || err.message || 'Failed to toggle inventory tracking');
     } finally {
       setUpdating(null);
     }

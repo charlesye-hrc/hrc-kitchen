@@ -148,18 +148,36 @@ export const InventoryDashboard: React.FC = () => {
       setUpdating(true);
       setError(null);
 
-      // Prepare bulk update payload
-      const updates = Object.entries(editedQuantities).map(([key, quantity]) => {
-        const [menuItemId, locationId] = key.split('|||');
-        return { menuItemId, locationId, stockQuantity: quantity };
-      });
+      if (user?.role === 'ADMIN') {
+        // Prepare bulk update payload for admins
+        const updates = Object.entries(editedQuantities).map(([key, quantity]) => {
+          const [menuItemId, locationId] = key.split('|||');
+          return { menuItemId, locationId, stockQuantity: quantity };
+        });
 
-      await api.post('/inventory/bulk-update', {
-        updates,
-        reason: 'Bulk inventory adjustment',
-      });
+        await api.post('/inventory/bulk-update', {
+          updates,
+          reason: 'Bulk inventory adjustment',
+        });
 
-      setSuccess(`Successfully updated ${updates.length} item${updates.length > 1 ? 's' : ''}`);
+        setSuccess(`Successfully updated ${updates.length} item${updates.length > 1 ? 's' : ''}`);
+      } else {
+        // Kitchen staff only have access to their assigned locations,
+        // so update each item individually
+        const updateEntries = Object.entries(editedQuantities);
+        await Promise.all(
+          updateEntries.map(async ([key, quantity]) => {
+            const [menuItemId, locationId] = key.split('|||');
+            await api.patch(`/inventory/item/${menuItemId}/${locationId}`, {
+              stockQuantity: quantity,
+              reason: 'Manual inventory adjustment',
+            });
+          })
+        );
+
+        setSuccess(`Successfully updated ${updateEntries.length} item${updateEntries.length > 1 ? 's' : ''}`);
+      }
+
       setEditedQuantities({});
       setHasChanges(false);
       await fetchInventory();

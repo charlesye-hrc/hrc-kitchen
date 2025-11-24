@@ -29,9 +29,8 @@ import {
   ToggleOff as DeactivateIcon,
   ToggleOn as ActivateIcon,
 } from '@mui/icons-material';
-import axios from 'axios';
-import { useAuth } from '../contexts/AuthContext';
 import AdminPageLayout from '../components/AdminPageLayout';
+import api from '../services/api';
 
 interface Location {
   id: string;
@@ -44,7 +43,6 @@ interface Location {
 }
 
 const LocationManagementPage: React.FC = () => {
-  const { token } = useAuth();
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,9 +79,7 @@ const LocationManagementPage: React.FC = () => {
   const fetchLocations = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/locations`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await api.get('/admin/locations');
 
       if (response.data.success) {
         setLocations(response.data.data);
@@ -147,21 +143,13 @@ const LocationManagementPage: React.FC = () => {
         isActive: formData.isActive,
       };
 
-      if (editingLocation) {
-        // Update existing location
-        await axios.put(
-          `${import.meta.env.VITE_API_URL}/admin/locations/${editingLocation.id}`,
-          dataToSubmit,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      } else {
-        // Create new location
-        await axios.post(
-          `${import.meta.env.VITE_API_URL}/admin/locations`,
-          dataToSubmit,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      }
+        if (editingLocation) {
+          // Update existing location
+          await api.put(`/admin/locations/${editingLocation.id}`, dataToSubmit);
+        } else {
+          // Create new location
+          await api.post('/admin/locations', dataToSubmit);
+        }
 
       await fetchLocations();
       handleCloseDialog();
@@ -179,10 +167,7 @@ const LocationManagementPage: React.FC = () => {
 
     try {
       // Fetch removal preview
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/admin/locations/${location.id}/removal-preview`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await api.get(`/admin/locations/${location.id}/removal-preview`);
 
       if (response.data.success) {
         setRemovalPreview(response.data.data);
@@ -207,13 +192,13 @@ const LocationManagementPage: React.FC = () => {
 
     try {
       setSubmitting(true);
-      const url = forceUnassign
-        ? `${import.meta.env.VITE_API_URL}/admin/locations/${deletingLocation.id}?forceUnassign=true`
-        : `${import.meta.env.VITE_API_URL}/admin/locations/${deletingLocation.id}`;
-
-      await axios.delete(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      if (forceUnassign) {
+        await api.delete(`/admin/locations/${deletingLocation.id}`, {
+          params: { forceUnassign: true },
+        });
+      } else {
+        await api.delete(`/admin/locations/${deletingLocation.id}`);
+      }
 
       await fetchLocations();
       handleCloseDeleteDialog();
@@ -232,11 +217,7 @@ const LocationManagementPage: React.FC = () => {
 
     try {
       setSubmitting(true);
-      await axios.patch(
-        `${import.meta.env.VITE_API_URL}/admin/locations/${deletingLocation.id}/deactivate`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.patch(`/admin/locations/${deletingLocation.id}/deactivate`, {});
 
       await fetchLocations();
       handleCloseDeleteDialog();
@@ -265,11 +246,7 @@ const LocationManagementPage: React.FC = () => {
     try {
       setSubmitting(true);
       const endpoint = deactivatingLocation.isActive ? 'deactivate' : 'activate';
-      await axios.patch(
-        `${import.meta.env.VITE_API_URL}/admin/locations/${deactivatingLocation.id}/${endpoint}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.patch(`/admin/locations/${deactivatingLocation.id}/${endpoint}`, {});
 
       await fetchLocations();
       handleCloseDeactivateDialog();

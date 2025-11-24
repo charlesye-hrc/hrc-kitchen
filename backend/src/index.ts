@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import { errorHandler } from './middleware/errorHandler';
 import { logger } from './utils/logger';
 import apiRoutes from './routes';
+import { generalLimiter } from './middleware/rateLimiter';
 
 // Load environment variables
 dotenv.config();
@@ -138,3 +139,4 @@ app.listen(PORT, () => {
 });
 
 export default app;
+app.use(generalLimiter);
