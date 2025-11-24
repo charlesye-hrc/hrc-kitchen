@@ -18,6 +18,7 @@ export interface User {
     phone?: string;
     lastSelectedLocationId?: string | null;
 }
+export type UserRole = User['role'];
 export interface AuthResponse {
     user: User;
     token: string;

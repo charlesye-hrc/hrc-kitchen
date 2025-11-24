@@ -1,6 +1,11 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AdminLayout from './components/AdminLayout';
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
+import AcceptInvitationPage from './pages/AcceptInvitationPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import KitchenDashboard from './pages/KitchenDashboard';
 import ReportsPage from './pages/ReportsPage';
 import MenuManagementPage from './pages/MenuManagementPage';
@@ -124,6 +129,11 @@ const AppRoutes = () => {
 
       {/* Public Routes */}
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       {/* Protected Routes - Kitchen Dashboard - KITCHEN and ADMIN */}
       <Route
@@ -215,8 +225,17 @@ const LayoutWrapper = ({ children }: { children: ReactNode }) => {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
 
-  // Don't show layout on login page
-  if (location.pathname === '/login' || !isAuthenticated) {
+  const authPages = new Set([
+    '/login',
+    '/register',
+    '/verify-email',
+    '/accept-invitation',
+    '/forgot-password',
+    '/reset-password',
+  ]);
+
+  // Don't show layout on authentication-related pages
+  if (authPages.has(location.pathname) || !isAuthenticated) {
     return <>{children}</>;
   }
 

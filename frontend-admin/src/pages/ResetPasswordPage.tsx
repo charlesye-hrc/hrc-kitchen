@@ -8,6 +8,8 @@ const ResetPasswordPage = () => {
       loginPath="/login"
       forgotPasswordPath="/forgot-password"
       postResetRedirectPath="/login"
+      title="Reset Your Admin Password"
+      subtitle="Enter a new password to regain access"
     />
   );
 };

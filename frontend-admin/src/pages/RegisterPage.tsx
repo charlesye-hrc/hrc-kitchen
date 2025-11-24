@@ -8,11 +8,16 @@ const RegisterPage = () => {
     <SharedRegisterPage
       register={register}
       isAuthenticated={isAuthenticated}
-      authenticatedRedirectPath="/menu"
+      authenticatedRedirectPath="/kitchen"
       loginPath="/login"
       postRegisterRedirectPath="/login"
-      brandIcon="🍽️"
-      brandIconAriaLabel="Plate"
+      title="Request Access"
+      subtitle="Register for the management portal"
+      brandIcon="🏢"
+      brandIconAriaLabel="Management portal"
+      showDepartmentField={false}
+      showLocationField={false}
+      showPhoneField={false}
     />
   );
 };

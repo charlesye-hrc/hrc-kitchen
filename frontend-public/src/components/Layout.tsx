@@ -27,7 +27,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import CartDrawer from './CartDrawer';
-import { useLocationContext, LocationSelector } from '@hrc-kitchen/common';
+import { useLocationContext, LocationSelector, isManagementRole } from '@hrc-kitchen/common';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -49,7 +49,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const ADMIN_APP_URL = import.meta.env.VITE_ADMIN_APP_URL || 'http://localhost:5174';
 
   // Check if user has access to admin app
-  const hasAdminAccess = isAuthenticated && user?.hasAdminAccess && ['KITCHEN', 'ADMIN', 'FINANCE'].includes(user.role);
+  const hasAdminAccess = Boolean(isAuthenticated && user?.hasAdminAccess && isManagementRole(user.role));
 
   // Hide location selector on checkout page (location is managed within checkout)
   const isCheckoutPage = location.pathname === '/checkout';

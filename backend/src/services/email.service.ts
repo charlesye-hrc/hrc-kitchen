@@ -95,10 +95,13 @@ export class EmailService {
   static async sendPasswordResetEmail(
     email: string,
     fullName: string,
-    resetToken: string
+    resetToken: string,
+    app: 'public' | 'admin' = 'public'
   ): Promise<void> {
     const publicAppUrl = process.env.PUBLIC_APP_URL || 'http://localhost:5173';
-    const resetUrl = `${publicAppUrl}/reset-password?token=${resetToken}`;
+    const adminAppUrl = process.env.ADMIN_APP_URL || 'http://localhost:5174';
+    const baseUrl = app === 'admin' ? adminAppUrl : publicAppUrl;
+    const resetUrl = `${baseUrl}/reset-password?token=${resetToken}&app=${app}`;
 
     const data: PasswordResetEmailData = {
       to: email,

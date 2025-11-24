@@ -98,7 +98,7 @@ export class AuthController {
 
   static async forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { email } = req.body;
+      const { email, app } = req.body;
 
       if (!email) {
         throw new ApiError(400, 'Email is required');
@@ -108,7 +108,8 @@ export class AuthController {
 
       // Send password reset email if user exists
       if (result) {
-        await EmailService.sendPasswordResetEmail(email, result.fullName, result.resetToken);
+        const appContext = app === 'admin' ? 'admin' : 'public';
+        await EmailService.sendPasswordResetEmail(email, result.fullName, result.resetToken, appContext);
       }
 
       // Always return same message to prevent email enumeration
