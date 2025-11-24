@@ -10,6 +10,7 @@ export const useLocation = (options) => {
     const TOKEN_KEY = options?.tokenKey || 'token';
     const authMode = options?.authMode || 'token';
     const useCookies = authMode === 'cookie';
+    const refreshKey = options?.refreshKey ?? 0;
     const [locations, setLocations] = useState([]);
     const [selectedLocation, setSelectedLocation] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -93,11 +94,11 @@ export const useLocation = (options) => {
         finally {
             setIsLoading(false);
         }
-    }, [API_URL, TOKEN_KEY, options?.forceAllLocations, useCookies]);
+    }, [API_URL, TOKEN_KEY, options?.forceAllLocations, useCookies, refreshKey]);
     useEffect(() => {
         fetchLocations();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [API_URL, TOKEN_KEY, options?.forceAllLocations, useCookies]);
+    }, [API_URL, TOKEN_KEY, options?.forceAllLocations, useCookies, refreshKey]);
     const selectLocation = useCallback((locationId) => {
         const location = locations.find(loc => loc.id === locationId);
         if (location) {

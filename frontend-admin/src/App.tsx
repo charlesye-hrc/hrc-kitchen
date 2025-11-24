@@ -15,8 +15,7 @@ import UserLocationAssignmentPage from './pages/UserLocationAssignmentPage';
 import SystemSettingsPage from './pages/SystemSettingsPage';
 import InventoryDashboardPage from './pages/InventoryDashboardPage';
 import NotFoundPage from './pages/NotFoundPage';
-import { AuthProvider } from './contexts/AuthContext';
-import { useAuth } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LocationProvider } from '@hrc-kitchen/common';
 import { ReactNode, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -245,14 +244,25 @@ const LayoutWrapper = ({ children }: { children: ReactNode }) => {
   return <AdminLayout>{children}</AdminLayout>;
 };
 
+const AuthenticatedLocationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { user, isAuthenticated } = useAuth();
+  const refreshKey = isAuthenticated ? user?.id ?? 'auth' : 'guest';
+
+  return (
+    <LocationProvider apiUrl={API_URL} authMode="cookie" refreshKey={refreshKey}>
+      {children}
+    </LocationProvider>
+  );
+};
+
 function App() {
   return (
     <AuthProvider>
-      <LocationProvider apiUrl={API_URL} authMode="cookie">
+      <AuthenticatedLocationProvider>
         <LayoutWrapper>
           <AppRoutes />
         </LayoutWrapper>
-      </LocationProvider>
+      </AuthenticatedLocationProvider>
     </AuthProvider>
   );
 }

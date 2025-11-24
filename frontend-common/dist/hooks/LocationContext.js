@@ -2,8 +2,8 @@ import { jsx as _jsx } from "react/jsx-runtime";
 import { createContext, useContext } from 'react';
 import { useLocation } from './useLocation';
 const LocationContext = createContext(undefined);
-export const LocationProvider = ({ children, apiUrl, forceAllLocations, tokenKey, authMode, }) => {
-    const locationState = useLocation({ apiUrl, forceAllLocations, tokenKey, authMode });
+export const LocationProvider = ({ children, apiUrl, forceAllLocations, tokenKey, authMode, refreshKey, }) => {
+    const locationState = useLocation({ apiUrl, forceAllLocations, tokenKey, authMode, refreshKey });
     return (_jsx(LocationContext.Provider, { value: locationState, children: children }));
 };
 export const useLocationContext = () => {
