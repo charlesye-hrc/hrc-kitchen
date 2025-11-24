@@ -1,4 +1,5 @@
-import { CreateOrderDto, OrderWithDetails } from '../types/order.types';
+import { Prisma } from '@prisma/client';
+import { CreateOrderDto } from '../types/order.types';
 import { PaymentService } from './payment.service';
 import { ConfigService } from './config.service';
 import { SelectedVariation } from '../types/variation.types';
@@ -33,7 +34,7 @@ export class OrderService {
       userId,
       customerEmail: user.email,
       customerFullName: user.fullName,
-      customerDepartment: user.department
+      customerDepartment: user.department ?? undefined
     });
   }
 
@@ -68,7 +69,7 @@ export class OrderService {
       customerFullName?: string;
       customerDepartment?: string;
     }
-  ): Promise<{ order: any; clientSecret: string }> {
+  ): Promise<{ order: any; clientSecret: string; paymentIntentId: string }> {
     // Validate ordering window
     const windowStatus = await this.configService.isOrderingWindowActive();
     if (!windowStatus.active) {
@@ -207,15 +208,22 @@ export class OrderService {
         customizationsObj.specialRequests = item.specialRequests;
       }
 
+      const formattedSelectedVariations = selectedVariations
+        ? {
+            variations: selectedVariations,
+            totalModifier: variationModifier,
+          }
+        : null;
+
       return {
         menuItemId: item.menuItemId,
         quantity: item.quantity,
         priceAtPurchase: itemPrice, // Store final price per item (base + variations)
         customizations: Object.keys(customizationsObj).length > 0 ? customizationsObj : null,
-        selectedVariations: selectedVariations ? {
-          variations: selectedVariations,
-          totalModifier: variationModifier
-        } : null,
+        selectedVariations:
+          formattedSelectedVariations !== null
+            ? ((formattedSelectedVariations as unknown) as Prisma.InputJsonValue)
+            : Prisma.JsonNull,
         // Snapshot menu item data for historical preservation
         itemName: menuItem.name,
         itemDescription: menuItem.description,
@@ -323,7 +331,12 @@ export class OrderService {
             }
           }
 
-          return { order, clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id };
+          const clientSecret = paymentIntent.client_secret;
+          if (!clientSecret) {
+            throw new Error('Payment intent missing client secret');
+          }
+
+          return { order, clientSecret, paymentIntentId: paymentIntent.id };
         });
 
         // Update payment intent metadata with orderId after transaction completes

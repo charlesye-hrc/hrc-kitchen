@@ -9,6 +9,7 @@ const AcceptInvitationPage = () => {
     <SharedAcceptInvitationPage
       api={api}
       loginPath="/login"
+      adminLoginPath={adminLoginUrl}
       verifyInvitationPath="/invitations/verify"
       acceptInvitationPath="/invitations/accept"
       welcomeTitle="Welcome to HRC Kitchen!"

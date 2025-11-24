@@ -26,6 +26,7 @@ export interface InvitationInfo {
 export interface AcceptInvitationPageProps {
   api: AxiosInstance;
   loginPath?: string;
+  adminLoginPath?: string;
   verifyInvitationPath?: string;
   acceptInvitationPath?: string;
   redirectDelayMs?: number;
@@ -90,6 +91,7 @@ const sanitizePath = (path: string) => path.replace(/\/+$/, '');
 const AcceptInvitationPage = ({
   api,
   loginPath = '/login',
+  adminLoginPath,
   verifyInvitationPath = '/invitations/verify',
   acceptInvitationPath = '/invitations/accept',
   redirectDelayMs = 3000,
@@ -115,6 +117,7 @@ const AcceptInvitationPage = ({
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get('token');
+  const appContext = searchParams.get('app');
 
   const [status, setStatus] = useState<InvitationStatus>('loading');
   const [message, setMessage] = useState('');
@@ -132,6 +135,18 @@ const AcceptInvitationPage = ({
     if (getLoginPathForRole) {
       return getLoginPathForRole(role);
     }
+
+    if (role) {
+      const normalizedRole = role.toUpperCase();
+      if (['ADMIN', 'KITCHEN', 'FINANCE'].includes(normalizedRole) && adminLoginPath) {
+        return adminLoginPath;
+      }
+    }
+
+    if (appContext === 'admin' && adminLoginPath) {
+      return adminLoginPath;
+    }
+
     return loginPath;
   };
 

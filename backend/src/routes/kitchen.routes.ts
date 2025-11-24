@@ -38,7 +38,7 @@ async function verifyOrderLocationAccess(orderId: string, allowedLocationIds: st
     return false;
   }
 
-  return allowedLocationIds.includes(order.locationId);
+  return allowedLocationIds.includes(order.locationId ?? '');
 }
 
 // Helper function to verify order item belongs to user's locations
@@ -60,7 +60,7 @@ async function verifyOrderItemLocationAccess(orderItemId: string, allowedLocatio
     return false;
   }
 
-  return allowedLocationIds.includes(orderItem.order.locationId);
+  return allowedLocationIds.includes(orderItem.order.locationId ?? '');
 }
 
 // All routes require authentication, KITCHEN/ADMIN role, and domain validation
@@ -72,7 +72,7 @@ router.use(validateAdminDomain);
  * GET /api/v1/kitchen/orders
  * Get all orders with optional filters (kitchen staff only)
  */
-router.get('/orders', async (req: Request, res: Response) => {
+router.get('/orders', async (req: Request, res: Response): Promise<void> => {
   try {
     const { date, fulfillmentStatus, menuItemId, locationId } = req.query;
 
@@ -88,12 +88,14 @@ router.get('/orders', async (req: Request, res: Response) => {
       success: true,
       data: orders
     });
+    return;
   } catch (error: any) {
     console.error('Error fetching kitchen orders:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to fetch orders'
     });
+    return;
   }
 });
 
@@ -101,7 +103,7 @@ router.get('/orders', async (req: Request, res: Response) => {
  * GET /api/v1/kitchen/summary
  * Get order summary grouped by menu item (kitchen staff only)
  */
-router.get('/summary', async (req: Request, res: Response) => {
+router.get('/summary', async (req: Request, res: Response): Promise<void> => {
   try {
     const { date, locationId } = req.query;
 
@@ -114,12 +116,14 @@ router.get('/summary', async (req: Request, res: Response) => {
       success: true,
       data: summary
     });
+    return;
   } catch (error: any) {
     console.error('Error fetching order summary:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to fetch order summary'
     });
+    return;
   }
 });
 
@@ -127,24 +131,26 @@ router.get('/summary', async (req: Request, res: Response) => {
  * PATCH /api/v1/kitchen/orders/:id/status
  * Update order fulfillment status (kitchen staff only) - marks all items
  */
-router.patch('/orders/:id/status', async (req: AuthRequest, res: Response) => {
+router.patch('/orders/:id/status', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
     if (!status) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Status is required'
       });
+      return;
     }
 
     const validStatuses: OrderStatus[] = ['PLACED', 'FULFILLED'];
     if (!validStatuses.includes(status)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
       });
+      return;
     }
 
     // Verify user has access to this order's location
@@ -152,10 +158,11 @@ router.patch('/orders/:id/status', async (req: AuthRequest, res: Response) => {
     const hasAccess = await verifyOrderLocationAccess(id, userLocationIds);
 
     if (!hasAccess) {
-      return res.status(403).json({
+      res.status(403).json({
         success: false,
         message: 'Not authorized to update orders at this location'
       });
+      return;
     }
 
     const updatedOrder = await kitchenService.updateOrderStatus(id, status);
@@ -165,6 +172,7 @@ router.patch('/orders/:id/status', async (req: AuthRequest, res: Response) => {
       data: updatedOrder,
       message: `Order status updated to ${status}`
     });
+    return;
   } catch (error: any) {
     console.error('Error updating order status:', error);
     const statusCode = error.message.includes('not found') ? 404 : 400;
@@ -172,6 +180,7 @@ router.patch('/orders/:id/status', async (req: AuthRequest, res: Response) => {
       success: false,
       message: error.message || 'Failed to update order status'
     });
+    return;
   }
 });
 
@@ -179,24 +188,26 @@ router.patch('/orders/:id/status', async (req: AuthRequest, res: Response) => {
  * PATCH /api/v1/kitchen/order-items/:id/status
  * Update individual order item fulfillment status (kitchen staff only)
  */
-router.patch('/order-items/:id/status', async (req: AuthRequest, res: Response) => {
+router.patch('/order-items/:id/status', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
     if (!status) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Status is required'
       });
+      return;
     }
 
     const validStatuses: OrderStatus[] = ['PLACED', 'FULFILLED'];
     if (!validStatuses.includes(status)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
       });
+      return;
     }
 
     // Verify user has access to this order item's location
@@ -204,10 +215,11 @@ router.patch('/order-items/:id/status', async (req: AuthRequest, res: Response) 
     const hasAccess = await verifyOrderItemLocationAccess(id, userLocationIds);
 
     if (!hasAccess) {
-      return res.status(403).json({
+      res.status(403).json({
         success: false,
         message: 'Not authorized to update order items at this location'
       });
+      return;
     }
 
     const updatedItem = await kitchenService.updateOrderItemStatus(id, status);
@@ -217,6 +229,7 @@ router.patch('/order-items/:id/status', async (req: AuthRequest, res: Response) 
       data: updatedItem,
       message: `Order item status updated to ${status}`
     });
+    return;
   } catch (error: any) {
     console.error('Error updating order item status:', error);
     const statusCode = error.message.includes('not found') ? 404 : 400;
@@ -231,7 +244,7 @@ router.patch('/order-items/:id/status', async (req: AuthRequest, res: Response) 
  * GET /api/v1/kitchen/stats
  * Get daily statistics for kitchen dashboard (kitchen staff only)
  */
-router.get('/stats', async (req: Request, res: Response) => {
+router.get('/stats', async (req: Request, res: Response): Promise<void> => {
   try {
     const { date, locationId } = req.query;
 
@@ -244,12 +257,14 @@ router.get('/stats', async (req: Request, res: Response) => {
       success: true,
       data: stats
     });
+    return;
   } catch (error: any) {
     console.error('Error fetching daily stats:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to fetch statistics'
     });
+    return;
   }
 });
 
@@ -257,7 +272,7 @@ router.get('/stats', async (req: Request, res: Response) => {
  * GET /api/v1/kitchen/print
  * Get printable HTML for batch summary (kitchen staff only)
  */
-router.get('/print', async (req: Request, res: Response) => {
+router.get('/print', async (req: Request, res: Response): Promise<void> => {
   try {
     const { date, locationId } = req.query;
 
@@ -268,12 +283,14 @@ router.get('/print', async (req: Request, res: Response) => {
 
     res.setHeader('Content-Type', 'text/html');
     res.send(html);
+    return;
   } catch (error: any) {
     console.error('Error generating printable summary:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to generate printable summary'
     });
+    return;
   }
 });
 

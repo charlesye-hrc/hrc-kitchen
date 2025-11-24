@@ -10,6 +10,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 1200, // Suppress warnings for large chunks until we implement code-splitting
+  },
   server: {
     host: '0.0.0.0', // Listen on all network interfaces (safe for dev - allows local network + ngrok)
     port: 5174, // Internal management app port

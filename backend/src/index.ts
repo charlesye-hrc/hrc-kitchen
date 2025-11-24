@@ -22,7 +22,7 @@ app.use(helmet({
 // CORS configuration
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
-const allowedOrigins = isDevelopment
+const allowedOrigins: (string | RegExp | undefined)[] = isDevelopment
   ? [
       // Development origins - Public Ordering App
       'http://localhost:5173',
@@ -53,12 +53,14 @@ app.use(cors({
     if (!origin) return callback(null, true);
 
     // Check if origin matches allowed patterns
-    const isAllowed = allowedOrigins.some(allowed => {
+    const isAllowed = allowedOrigins.some((allowed) => {
+      if (!allowed) {
+        return false;
+      }
       if (typeof allowed === 'string') {
         return origin === allowed;
-      } else {
-        return allowed.test(origin);
       }
+      return allowed.test(origin);
     });
 
     if (isAllowed) {
@@ -72,7 +74,7 @@ app.use(cors({
 }));
 
 // Add cache-control header
-app.use((req, res, next) => {
+app.use((_req, res, next) => {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   next();
@@ -88,7 +90,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('combined', { stream: { write: (message) => logger.info(message.trim()) } }));
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.status(200).json({
     status: 'ok',
     timestamp: new Date().toISOString(),

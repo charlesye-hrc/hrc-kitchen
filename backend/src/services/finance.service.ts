@@ -148,7 +148,7 @@ export class FinanceService {
       paymentStatus: order.paymentStatus,
       fulfillmentStatus: order.fulfillmentStatus,
       items: order.orderItems.map(item => ({
-        menuItemName: item.menuItem.name,
+        menuItemName: item.menuItem?.name || item.itemName || 'Unknown Item',
         quantity: item.quantity,
         priceAtPurchase: Number(item.priceAtPurchase),
       })),
@@ -188,7 +188,7 @@ export class FinanceService {
     const reportMap = new Map<string, MenuItemSalesReport>();
 
     orderItems.forEach(item => {
-      const menuItemName = item.menuItem.name;
+      const menuItemName = item.menuItem?.name || item.itemName || 'Unknown Item';
 
       if (!reportMap.has(menuItemName)) {
         reportMap.set(menuItemName, {

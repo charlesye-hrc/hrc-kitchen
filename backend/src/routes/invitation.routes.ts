@@ -1,8 +1,10 @@
-import express from 'express';
+import express, { Response, NextFunction, Request } from 'express';
+import { UserRole } from '@prisma/client';
 import { UserInvitationService } from '../services/userInvitation.service';
 import { EmailService } from '../services/email.service';
-import { authenticate } from '../middleware/auth';
+import { authenticate, AuthRequest } from '../middleware/auth';
 import { ApiError } from '../middleware/errorHandler';
+import { authLimiter } from '../middleware/rateLimiter';
 
 const router = express.Router();
 
@@ -11,9 +13,16 @@ const router = express.Router();
  * Admin invites a new user
  * Protected route - requires ADMIN role
  */
-router.post('/', authenticate, async (req, res, next) => {
+router.post('/', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { email, fullName, role, department, phone, locationIds } = req.body;
+    const { email, fullName, role, department, phone, locationIds } = req.body as {
+      email: string;
+      fullName: string;
+      role: UserRole;
+      department?: string;
+      phone?: string;
+      locationIds?: string[];
+    };
     console.log(`🔔 POST /invitations - Received invitation request for ${email} with role ${role}`);
 
     // Verify admin role
@@ -23,6 +32,7 @@ router.post('/', authenticate, async (req, res, next) => {
     }
 
     console.log(`✓ Admin verified: ${req.user!.email}`);
+    const inviterName = req.user?.email ?? 'Admin User';
 
     // Invite user
     const { user, invitationToken } = await UserInvitationService.inviteUser({
@@ -40,7 +50,7 @@ router.post('/', authenticate, async (req, res, next) => {
       await EmailService.sendInvitationEmail(
         user.email,
         user.fullName,
-        req.user!.fullName,
+        inviterName,
         role,
         invitationToken
       );
@@ -71,7 +81,7 @@ router.post('/', authenticate, async (req, res, next) => {
  * Get list of pending invitations
  * Protected route - requires ADMIN role
  */
-router.get('/pending', authenticate, async (req, res, next) => {
+router.get('/pending', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     if (req.user!.role !== 'ADMIN') {
       throw new ApiError(403, 'Only admins can view pending invitations');
@@ -92,7 +102,7 @@ router.get('/pending', authenticate, async (req, res, next) => {
  * Resend invitation email
  * Protected route - requires ADMIN role
  */
-router.post('/:userId/resend', authenticate, async (req, res, next) => {
+router.post('/:userId/resend', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     if (req.user!.role !== 'ADMIN') {
       throw new ApiError(403, 'Only admins can resend invitations');
@@ -113,10 +123,11 @@ router.post('/:userId/resend', authenticate, async (req, res, next) => {
     }
 
     // Send invitation email
+    const inviterName = req.user?.email ?? 'Admin User';
     await EmailService.sendInvitationEmail(
       user.email,
       user.fullName,
-      req.user!.fullName,
+      inviterName,
       user.role,
       invitationToken
     );
@@ -134,7 +145,7 @@ router.post('/:userId/resend', authenticate, async (req, res, next) => {
  * Cancel/delete pending invitation
  * Protected route - requires ADMIN role
  */
-router.delete('/:userId', authenticate, async (req, res, next) => {
+router.delete('/:userId', authenticate, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     if (req.user!.role !== 'ADMIN') {
       throw new ApiError(403, 'Only admins can cancel invitations');
@@ -156,7 +167,7 @@ router.delete('/:userId', authenticate, async (req, res, next) => {
  * GET /api/v1/invitations/verify/:token
  * Verify invitation token (public endpoint)
  */
-router.get('/verify/:token', async (req, res, next) => {
+router.get('/verify/:token', authLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { token } = req.params;
 
@@ -179,7 +190,7 @@ router.get('/verify/:token', async (req, res, next) => {
  * POST /api/v1/invitations/accept
  * Accept invitation and complete user setup (public endpoint)
  */
-router.post('/accept', async (req, res, next) => {
+router.post('/accept', authLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { invitationToken, password } = req.body;
 

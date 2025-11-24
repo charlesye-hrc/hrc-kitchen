@@ -7,7 +7,7 @@ export class LocationController {
    * GET /api/v1/locations
    * Get all active locations (public endpoint)
    */
-  async getAllLocations(req: AuthRequest, res: Response) {
+  async getAllLocations(_req: AuthRequest, res: Response): Promise<void> {
     try {
       const locations = await locationService.getAllLocations();
 
@@ -15,12 +15,14 @@ export class LocationController {
         success: true,
         data: locations,
       });
+      return;
     } catch (error) {
       console.error('Error fetching locations:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch locations',
       });
+      return;
     }
   }
 
@@ -34,22 +36,25 @@ export class LocationController {
       const location = await locationService.getLocationById(id);
 
       if (!location) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           message: 'Location not found',
         });
+        return;
       }
 
       res.json({
         success: true,
         data: location,
       });
+      return;
     } catch (error) {
       console.error('Error fetching location:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch location',
       });
+      return;
     }
   }
 
@@ -68,12 +73,14 @@ export class LocationController {
         success: true,
         data: locations,
       });
+      return;
     } catch (error) {
       console.error('Error fetching user accessible locations:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch accessible locations',
       });
+      return;
     }
   }
 
@@ -90,12 +97,14 @@ export class LocationController {
         success: true,
         data: location,
       });
+      return;
     } catch (error) {
       console.error('Error fetching user last location:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch last selected location',
       });
+      return;
     }
   }
 
@@ -110,32 +119,36 @@ export class LocationController {
       const { locationId } = req.body;
 
       if (!locationId) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'locationId is required',
         });
+        return;
       }
 
       const result = await locationService.updateUserLastLocation(userId, locationId, userRole);
 
       if (!result.success) {
         const statusCode = result.error?.includes('Not authorized') ? 403 : 400;
-        return res.status(statusCode).json({
+        res.status(statusCode).json({
           success: false,
           message: result.error || 'Failed to update last selected location',
         });
+        return;
       }
 
       res.json({
         success: true,
         message: 'Last selected location updated successfully',
       });
+      return;
     } catch (error) {
       console.error('Error updating user last location:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to update last selected location',
       });
+      return;
     }
   }
 
@@ -152,12 +165,14 @@ export class LocationController {
         success: true,
         data: menuItems,
       });
+      return;
     } catch (error) {
       console.error('Error fetching location menu items:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch menu items',
       });
+      return;
     }
   }
 
@@ -167,7 +182,7 @@ export class LocationController {
    * GET /api/v1/admin/locations
    * Get all locations including inactive (Admin only)
    */
-  async getAdminLocations(req: AuthRequest, res: Response) {
+  async getAdminLocations(_req: AuthRequest, res: Response): Promise<void> {
     try {
       const locations = await locationService.getAllLocationsForAdmin();
 
@@ -175,12 +190,14 @@ export class LocationController {
         success: true,
         data: locations,
       });
+      return;
     } catch (error) {
       console.error('Error fetching admin locations:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch locations',
       });
+      return;
     }
   }
 
@@ -193,10 +210,11 @@ export class LocationController {
       const { name, address, phone, isActive = true } = req.body;
 
       if (!name) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Location name is required',
         });
+        return;
       }
 
       const location = await locationService.createLocation({
@@ -211,12 +229,14 @@ export class LocationController {
         data: location,
         message: 'Location created successfully',
       });
+      return;
     } catch (error) {
       console.error('Error creating location:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to create location',
       });
+      return;
     }
   }
 
@@ -232,10 +252,11 @@ export class LocationController {
       const location = await locationService.updateLocation(id, updateData);
 
       if (!location) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           message: 'Location not found',
         });
+        return;
       }
 
       res.json({
@@ -243,12 +264,14 @@ export class LocationController {
         data: location,
         message: 'Location updated successfully',
       });
+      return;
     } catch (error) {
       console.error('Error updating location:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to update location',
       });
+      return;
     }
   }
 
@@ -265,12 +288,14 @@ export class LocationController {
         success: true,
         data: preview,
       });
+      return;
     } catch (error: any) {
       console.error('Error getting removal preview:', error);
       res.status(404).json({
         success: false,
         message: error.message || 'Failed to get removal preview',
       });
+      return;
     }
   }
 
@@ -298,12 +323,14 @@ export class LocationController {
         data: result,
         message: 'Location deleted successfully',
       });
+      return;
     } catch (error: any) {
       console.error('Error deleting location:', error);
       res.status(400).json({
         success: false,
         message: error.message || 'Failed to delete location',
       });
+      return;
     }
   }
 
@@ -322,12 +349,14 @@ export class LocationController {
         data: location,
         message: 'Location deactivated successfully',
       });
+      return;
     } catch (error: any) {
       console.error('Error deactivating location:', error);
       res.status(500).json({
         success: false,
         message: error.message || 'Failed to deactivate location',
       });
+      return;
     }
   }
 
@@ -345,12 +374,14 @@ export class LocationController {
         data: location,
         message: 'Location activated successfully',
       });
+      return;
     } catch (error: any) {
       console.error('Error activating location:', error);
       res.status(500).json({
         success: false,
         message: error.message || 'Failed to activate location',
       });
+      return;
     }
   }
 
@@ -367,12 +398,14 @@ export class LocationController {
         success: true,
         data: locations,
       });
+      return;
     } catch (error) {
       console.error('Error fetching user assigned locations:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch assigned locations',
       });
+      return;
     }
   }
 
@@ -386,10 +419,11 @@ export class LocationController {
       const { locationIds } = req.body;
 
       if (!Array.isArray(locationIds)) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'locationIds must be an array',
         });
+        return;
       }
 
       const locations = await locationService.assignLocationsToUser(userId, locationIds);
@@ -399,12 +433,14 @@ export class LocationController {
         data: locations,
         message: 'User locations updated successfully',
       });
+      return;
     } catch (error) {
       console.error('Error assigning locations to user:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to assign locations',
       });
+      return;
     }
   }
 
@@ -421,12 +457,14 @@ export class LocationController {
         success: true,
         data: locations,
       });
+      return;
     } catch (error) {
       console.error('Error fetching menu item locations:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch menu item locations',
       });
+      return;
     }
   }
 
@@ -440,10 +478,11 @@ export class LocationController {
       const { locationIds } = req.body;
 
       if (!Array.isArray(locationIds)) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'locationIds must be an array',
         });
+        return;
       }
 
       const locations = await locationService.assignMenuItemToLocations(menuItemId, locationIds);
@@ -453,12 +492,14 @@ export class LocationController {
         data: locations,
         message: 'Menu item locations updated successfully',
       });
+      return;
     } catch (error) {
       console.error('Error assigning menu item to locations:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to assign menu item locations',
       });
+      return;
     }
   }
 }

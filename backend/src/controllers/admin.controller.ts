@@ -2,14 +2,14 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import adminService from '../services/admin.service';
 import UploadService from '../services/upload.service';
-import { Weekday, Category, UserRole, VariationGroupType } from '@prisma/client';
+import { Weekday, MenuCategory, UserRole, VariationGroupType } from '@prisma/client';
 
 export class AdminController {
   /**
    * POST /api/v1/admin/menu/items
    * Create a new menu item
    */
-  async createMenuItem(req: AuthRequest, res: Response) {
+  async createMenuItem(req: AuthRequest, res: Response): Promise<void> {
     try {
       const {
         name,
@@ -19,26 +19,25 @@ export class AdminController {
         weekdays,
         imageUrl,
         dietaryTags,
-        isActive = true,
       } = req.body;
 
       // Validation
       if (!name || !price || !category || !weekdays || !Array.isArray(weekdays) || weekdays.length === 0) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Missing required fields: name, price, category, weekdays (must be non-empty array)',
         });
+        return;
       }
 
       const item = await adminService.createMenuItem({
         name,
         description: description || '',
         price: parseFloat(price),
-        category: category as Category,
+        category: category as MenuCategory,
         weekdays: weekdays as Weekday[],
         imageUrl,
         dietaryTags: dietaryTags || [],
-        isActive,
       });
 
       res.status(201).json({
@@ -46,12 +45,14 @@ export class AdminController {
         data: item,
         message: 'Menu item created successfully',
       });
+      return;
     } catch (error) {
       console.error('Error creating menu item:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to create menu item',
       });
+      return;
     }
   }
 
@@ -59,10 +60,10 @@ export class AdminController {
    * PUT /api/v1/admin/menu/items/:id
    * Update a menu item
    */
-  async updateMenuItem(req: AuthRequest, res: Response) {
+  async updateMenuItem(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const updateData = req.body;
+      const { isActive: _deprecatedIsActive, ...updateData } = req.body || {};
 
       // Convert price to float if provided
       if (updateData.price) {
@@ -72,10 +73,11 @@ export class AdminController {
       const item = await adminService.updateMenuItem(id, updateData);
 
       if (!item) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           message: 'Menu item not found',
         });
+        return;
       }
 
       res.json({
@@ -83,12 +85,14 @@ export class AdminController {
         data: item,
         message: 'Menu item updated successfully',
       });
+      return;
     } catch (error) {
       console.error('Error updating menu item:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to update menu item',
       });
+      return;
     }
   }
 
@@ -96,7 +100,7 @@ export class AdminController {
    * DELETE /api/v1/admin/menu/items/:id
    * Delete/deactivate a menu item
    */
-  async deleteMenuItem(req: AuthRequest, res: Response) {
+  async deleteMenuItem(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
 
@@ -107,12 +111,14 @@ export class AdminController {
         success: true,
         message: 'Menu item deleted successfully',
       });
+      return;
     } catch (error) {
       console.error('Error deleting menu item:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to delete menu item',
       });
+      return;
     }
   }
 
@@ -120,16 +126,17 @@ export class AdminController {
    * POST /api/v1/admin/menu/items/:id/customizations
    * Add a customization option to a menu item
    */
-  async addCustomization(req: AuthRequest, res: Response) {
+  async addCustomization(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { name } = req.body;
 
       if (!name) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Customization name is required',
         });
+        return;
       }
 
       const customization = await adminService.addCustomization(id, name);
@@ -139,12 +146,14 @@ export class AdminController {
         data: customization,
         message: 'Customization added successfully',
       });
+      return;
     } catch (error) {
       console.error('Error adding customization:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to add customization',
       });
+      return;
     }
   }
 
@@ -152,7 +161,7 @@ export class AdminController {
    * DELETE /api/v1/admin/menu/customizations/:id
    * Remove a customization option
    */
-  async deleteCustomization(req: AuthRequest, res: Response) {
+  async deleteCustomization(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
 
@@ -162,12 +171,14 @@ export class AdminController {
         success: true,
         message: 'Customization deleted successfully',
       });
+      return;
     } catch (error) {
       console.error('Error deleting customization:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to delete customization',
       });
+      return;
     }
   }
 
@@ -175,7 +186,7 @@ export class AdminController {
    * GET /api/v1/admin/users
    * Get all users with pagination and filtering
    */
-  async getUsers(req: AuthRequest, res: Response) {
+  async getUsers(req: AuthRequest, res: Response): Promise<void> {
     try {
       const {
         page = '1',
@@ -207,12 +218,14 @@ export class AdminController {
           totalPages: Math.ceil(result.total / parseInt(limit as string)),
         },
       });
+      return;
     } catch (error) {
       console.error('Error fetching users:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch users',
       });
+      return;
     }
   }
 
@@ -220,57 +233,62 @@ export class AdminController {
    * PATCH /api/v1/admin/users/:id/role
    * Update user role
    */
-  async updateUserRole(req: AuthRequest, res: Response) {
+  async updateUserRole(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { role } = req.body;
 
       if (!role || !['STAFF', 'KITCHEN', 'FINANCE', 'ADMIN'].includes(role)) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Invalid role. Must be STAFF, KITCHEN, FINANCE, or ADMIN',
         });
+        return;
       }
 
       // Prevent self-demotion
       if (id === req.user?.id && role !== 'ADMIN') {
-        return res.status(403).json({
+        res.status(403).json({
           success: false,
           message: 'Cannot demote yourself',
         });
+        return;
       }
 
       // Check email domain restriction for KITCHEN, FINANCE, and ADMIN roles
       if (role === 'KITCHEN' || role === 'FINANCE' || role === 'ADMIN') {
         const user = await adminService.getUserById(id);
 
-        if (!user) {
-          return res.status(404).json({
-            success: false,
-            message: 'User not found',
-          });
-        }
+      if (!user) {
+        res.status(404).json({
+          success: false,
+          message: 'User not found',
+        });
+        return;
+      }
 
         // Get restricted domain from config
         const config = await adminService.getConfig();
         const allowedDomain = config.restricted_role_domain || '@huonregionalcare.org.au';
 
         if (!user.email.toLowerCase().endsWith(allowedDomain.toLowerCase())) {
-          return res.status(403).json({
+          res.status(403).json({
             success: false,
             message: `Only users with ${allowedDomain} email addresses can be assigned KITCHEN, FINANCE, or ADMIN roles`,
             code: 'INVALID_EMAIL_DOMAIN',
           });
+          return;
         }
       }
 
       const user = await adminService.updateUserRole(id, role as UserRole);
 
       if (!user) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           message: 'User not found',
         });
+        return;
       }
 
       res.json({
@@ -278,12 +296,14 @@ export class AdminController {
         data: user,
         message: 'User role updated successfully',
       });
+      return;
     } catch (error) {
       console.error('Error updating user role:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to update user role',
       });
+      return;
     }
   }
 
@@ -291,33 +311,36 @@ export class AdminController {
    * PATCH /api/v1/admin/users/:id/status
    * Activate/deactivate user
    */
-  async updateUserStatus(req: AuthRequest, res: Response) {
+  async updateUserStatus(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { isActive } = req.body;
 
       if (typeof isActive !== 'boolean') {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'isActive must be a boolean',
         });
+        return;
       }
 
       // Prevent self-deactivation
       if (id === req.user?.id && !isActive) {
-        return res.status(403).json({
+        res.status(403).json({
           success: false,
           message: 'Cannot deactivate yourself',
         });
+        return;
       }
 
       const user = await adminService.updateUserStatus(id, isActive);
 
       if (!user) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           message: 'User not found',
         });
+        return;
       }
 
       res.json({
@@ -325,12 +348,14 @@ export class AdminController {
         data: user,
         message: `User ${isActive ? 'activated' : 'deactivated'} successfully`,
       });
+      return;
     } catch (error) {
       console.error('Error updating user status:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to update user status',
       });
+      return;
     }
   }
 
@@ -338,37 +363,41 @@ export class AdminController {
    * DELETE /api/v1/admin/users/:id
    * Delete a user
    */
-  async deleteUser(req: AuthRequest, res: Response) {
+  async deleteUser(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
 
       // Prevent self-deletion
       if (id === req.user?.id) {
-        return res.status(403).json({
+        res.status(403).json({
           success: false,
           message: 'Cannot delete yourself',
         });
+        return;
       }
 
       const success = await adminService.deleteUser(id);
 
       if (!success) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           message: 'User not found or failed to delete',
         });
+        return;
       }
 
       res.json({
         success: true,
         message: 'User deleted successfully',
       });
+      return;
     } catch (error) {
       console.error('Error deleting user:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to delete user',
       });
+      return;
     }
   }
 
@@ -376,7 +405,7 @@ export class AdminController {
    * GET /api/v1/admin/config
    * Get all system configuration
    */
-  async getConfig(req: AuthRequest, res: Response) {
+  async getConfig(_req: AuthRequest, res: Response): Promise<void> {
     try {
       const config = await adminService.getConfig();
 
@@ -384,12 +413,14 @@ export class AdminController {
         success: true,
         data: config,
       });
+      return;
     } catch (error) {
       console.error('Error fetching config:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch system configuration',
       });
+      return;
     }
   }
 
@@ -397,7 +428,7 @@ export class AdminController {
    * PUT /api/v1/admin/config
    * Update system configuration
    */
-  async updateConfig(req: AuthRequest, res: Response) {
+  async updateConfig(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { orderingWindowStart, orderingWindowEnd, restrictedRoleDomain } = req.body;
 
@@ -407,10 +438,11 @@ export class AdminController {
         const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
 
         if (!timeRegex.test(orderingWindowStart) || !timeRegex.test(orderingWindowEnd)) {
-          return res.status(400).json({
+          res.status(400).json({
             success: false,
             message: 'Invalid time format. Use HH:MM (e.g., 08:00)',
           });
+          return;
         }
 
         // Validate end time is after start time
@@ -420,20 +452,22 @@ export class AdminController {
         const endMinutes = endHour * 60 + endMin;
 
         if (endMinutes <= startMinutes) {
-          return res.status(400).json({
+          res.status(400).json({
             success: false,
             message: 'End time must be after start time',
           });
+          return;
         }
       }
 
       // Validate restricted domain format (optional)
       if (restrictedRoleDomain !== undefined && restrictedRoleDomain !== '') {
         if (!restrictedRoleDomain.startsWith('@')) {
-          return res.status(400).json({
+          res.status(400).json({
             success: false,
             message: 'Restricted domain must start with @ (e.g., @example.com)',
           });
+          return;
         }
       }
 
@@ -448,12 +482,14 @@ export class AdminController {
         data: config,
         message: 'System configuration updated successfully',
       });
+      return;
     } catch (error) {
       console.error('Error updating config:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to update system configuration',
       });
+      return;
     }
   }
 
@@ -461,7 +497,7 @@ export class AdminController {
    * POST /api/v1/admin/upload/signature
    * Generate signed upload signature for Cloudinary
    */
-  async getUploadSignature(req: AuthRequest, res: Response) {
+  async getUploadSignature(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { folder = 'menu-items' } = req.body;
 
@@ -471,12 +507,14 @@ export class AdminController {
         success: true,
         data: signature,
       });
+      return;
     } catch (error) {
       console.error('Error generating upload signature:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to generate upload signature',
       });
+      return;
     }
   }
 
@@ -484,15 +522,16 @@ export class AdminController {
    * POST /api/v1/admin/upload/image
    * Upload image to Cloudinary (server-side)
    */
-  async uploadImage(req: AuthRequest, res: Response) {
+  async uploadImage(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { imageData, folder = 'menu-items' } = req.body;
 
       if (!imageData) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Image data is required',
         });
+        return;
       }
 
       const imageUrl = await UploadService.uploadImage(imageData, folder);
@@ -502,12 +541,14 @@ export class AdminController {
         data: { url: imageUrl },
         message: 'Image uploaded successfully',
       });
+      return;
     } catch (error) {
       console.error('Error uploading image:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to upload image',
       });
+      return;
     }
   }
 
@@ -517,16 +558,17 @@ export class AdminController {
    * POST /api/v1/admin/menu/items/:id/variation-groups
    * Create a variation group for a menu item
    */
-  async createVariationGroup(req: AuthRequest, res: Response) {
+  async createVariationGroup(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id: menuItemId } = req.params;
       const { name, type, required, displayOrder } = req.body;
 
       if (!name || !type) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Missing required fields: name, type',
         });
+        return;
       }
 
       const group = await adminService.createVariationGroup({
@@ -542,12 +584,14 @@ export class AdminController {
         data: group,
         message: 'Variation group created successfully',
       });
+      return;
     } catch (error) {
       console.error('Error creating variation group:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to create variation group',
       });
+      return;
     }
   }
 
@@ -555,7 +599,7 @@ export class AdminController {
    * PUT /api/v1/admin/variation-groups/:id
    * Update a variation group
    */
-  async updateVariationGroup(req: AuthRequest, res: Response) {
+  async updateVariationGroup(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { name, type, required, displayOrder } = req.body;
@@ -568,10 +612,11 @@ export class AdminController {
       });
 
       if (!group) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           message: 'Variation group not found',
         });
+        return;
       }
 
       res.json({
@@ -579,12 +624,14 @@ export class AdminController {
         data: group,
         message: 'Variation group updated successfully',
       });
+      return;
     } catch (error) {
       console.error('Error updating variation group:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to update variation group',
       });
+      return;
     }
   }
 
@@ -592,7 +639,7 @@ export class AdminController {
    * DELETE /api/v1/admin/variation-groups/:id
    * Delete a variation group
    */
-  async deleteVariationGroup(req: AuthRequest, res: Response) {
+  async deleteVariationGroup(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
 
@@ -602,12 +649,14 @@ export class AdminController {
         success: true,
         message: 'Variation group deleted successfully',
       });
+      return;
     } catch (error) {
       console.error('Error deleting variation group:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to delete variation group',
       });
+      return;
     }
   }
 
@@ -615,7 +664,7 @@ export class AdminController {
    * GET /api/v1/admin/menu/items/:id/variation-groups
    * Get all variation groups for a menu item
    */
-  async getVariationGroups(req: AuthRequest, res: Response) {
+  async getVariationGroups(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id: menuItemId } = req.params;
 
@@ -625,12 +674,14 @@ export class AdminController {
         success: true,
         data: groups,
       });
+      return;
     } catch (error) {
       console.error('Error fetching variation groups:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch variation groups',
       });
+      return;
     }
   }
 
@@ -640,16 +691,17 @@ export class AdminController {
    * POST /api/v1/admin/variation-groups/:id/options
    * Create a variation option
    */
-  async createVariationOption(req: AuthRequest, res: Response) {
+  async createVariationOption(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id: variationGroupId } = req.params;
       const { name, priceModifier, isDefault, displayOrder } = req.body;
 
       if (!name) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Option name is required',
         });
+        return;
       }
 
       const option = await adminService.createVariationOption({
@@ -665,12 +717,14 @@ export class AdminController {
         data: option,
         message: 'Variation option created successfully',
       });
+      return;
     } catch (error) {
       console.error('Error creating variation option:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to create variation option',
       });
+      return;
     }
   }
 
@@ -678,7 +732,7 @@ export class AdminController {
    * PUT /api/v1/admin/variation-options/:id
    * Update a variation option
    */
-  async updateVariationOption(req: AuthRequest, res: Response) {
+  async updateVariationOption(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       const { name, priceModifier, isDefault, displayOrder } = req.body;
@@ -691,10 +745,11 @@ export class AdminController {
       });
 
       if (!option) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           message: 'Variation option not found',
         });
+        return;
       }
 
       res.json({
@@ -702,12 +757,14 @@ export class AdminController {
         data: option,
         message: 'Variation option updated successfully',
       });
+      return;
     } catch (error) {
       console.error('Error updating variation option:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to update variation option',
       });
+      return;
     }
   }
 
@@ -715,7 +772,7 @@ export class AdminController {
    * DELETE /api/v1/admin/variation-options/:id
    * Delete a variation option
    */
-  async deleteVariationOption(req: AuthRequest, res: Response) {
+  async deleteVariationOption(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
 
@@ -725,12 +782,14 @@ export class AdminController {
         success: true,
         message: 'Variation option deleted successfully',
       });
+      return;
     } catch (error) {
       console.error('Error deleting variation option:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to delete variation option',
       });
+      return;
     }
   }
 
@@ -738,7 +797,7 @@ export class AdminController {
    * GET /api/v1/admin/variation-groups/:id/options
    * Get all options for a variation group
    */
-  async getVariationOptions(req: AuthRequest, res: Response) {
+  async getVariationOptions(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { id: groupId } = req.params;
 
@@ -748,12 +807,14 @@ export class AdminController {
         success: true,
         data: options,
       });
+      return;
     } catch (error) {
       console.error('Error fetching variation options:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch variation options',
       });
+      return;
     }
   }
 }

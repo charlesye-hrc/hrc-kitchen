@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { AuthRequest } from '../middleware/auth';
 import { OrderService } from '../services/order.service';
 import { CreateOrderDto } from '../types/order.types';
 import { AuthService } from '../services/auth.service';
@@ -13,7 +14,7 @@ export class OrderController {
     this.orderService = new OrderService();
   }
 
-  createOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  createOrder = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!req.user) {
         throw new ApiError(401, 'Authentication required');
@@ -28,12 +29,13 @@ export class OrderController {
         success: true,
         data: result
       });
+      return;
     } catch (error) {
       next(error);
     }
   };
 
-  getOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  getOrder = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!req.user) {
         throw new ApiError(401, 'Authentication required');
@@ -52,12 +54,13 @@ export class OrderController {
         success: true,
         data: order
       });
+      return;
     } catch (error) {
       next(error);
     }
   };
 
-  getUserOrders = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  getUserOrders = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       if (!req.user) {
         throw new ApiError(401, 'Authentication required');
@@ -93,6 +96,7 @@ export class OrderController {
           limit: pagination.limit
         }
       });
+      return;
     } catch (error) {
       console.error('Error fetching user orders:', error);
       console.error('Error details:', error instanceof Error ? error.message : error);
@@ -101,10 +105,11 @@ export class OrderController {
         success: false,
         message: error instanceof Error ? error.message : 'Failed to fetch orders'
       });
+      return;
     }
   };
 
-  getLastOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  getLastOrder = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!req.user) {
         throw new ApiError(401, 'Authentication required');
@@ -125,6 +130,7 @@ export class OrderController {
         success: true,
         data: lastOrder
       });
+      return;
     } catch (error) {
       next(error);
     }
@@ -167,12 +173,14 @@ export class OrderController {
           accessToken: result.accessToken
         }
       });
+      return;
     } catch (error) {
       console.error('Error creating guest order:', error);
       res.status(500).json({
         success: false,
         message: error instanceof Error ? error.message : 'Failed to create order'
       });
+      return;
     }
   };
 
@@ -216,12 +224,14 @@ export class OrderController {
         success: true,
         data: order
       });
+      return;
     } catch (error) {
       console.error('Error fetching guest order:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch order'
       });
+      return;
     }
   };
 }

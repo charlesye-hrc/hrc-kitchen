@@ -37,7 +37,8 @@ export class UserInvitationService {
     }
 
     // For privileged roles, validate domain
-    if ([UserRole.ADMIN, UserRole.KITCHEN, UserRole.FINANCE].includes(data.role)) {
+    const privilegedRoles: UserRole[] = [UserRole.ADMIN, UserRole.KITCHEN, UserRole.FINANCE];
+    if (privilegedRoles.includes(data.role as UserRole)) {
       const hasAccess = await hasAdminDomainAccess(data.email);
       if (!hasAccess) {
         const config = await prisma.systemConfig.findUnique({
@@ -143,7 +144,6 @@ export class UserInvitationService {
 
     // Import bcrypt here to avoid circular dependency
     const bcrypt = await import('bcrypt');
-    const { AuthService } = await import('./auth.service');
 
     // Validate password strength using AuthService's private method
     // We'll need to expose this or duplicate the validation

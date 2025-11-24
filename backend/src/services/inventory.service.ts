@@ -16,16 +16,6 @@ interface InventoryUpdateData {
   isAvailable?: boolean;
 }
 
-interface InventoryHistoryData {
-  changeType: InventoryChangeType;
-  quantity: number;
-  previousQty: number;
-  newQty: number;
-  userId?: string;
-  orderId?: string;
-  reason?: string;
-}
-
 export class InventoryService {
   /**
    * Get inventory for a specific menu item at a location

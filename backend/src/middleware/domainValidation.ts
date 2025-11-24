@@ -11,7 +11,7 @@ import prisma from '../lib/prisma';
  */
 export const validateAdminDomain = async (
   req: AuthRequest,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {

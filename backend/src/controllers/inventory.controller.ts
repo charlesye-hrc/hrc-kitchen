@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
+import { AuthRequest } from '../middleware/auth';
 import { inventoryService } from '../services/inventory.service';
 import { InventoryChangeType } from '@prisma/client';
 
 /**
  * Get inventory for a specific location (Kitchen Staff)
  */
-export const getInventoryByLocation = async (req: Request, res: Response) => {
+export const getInventoryByLocation = async (req: Request, res: Response): Promise<void> => {
   try {
     const { locationId } = req.params;
 
@@ -17,6 +18,7 @@ export const getInventoryByLocation = async (req: Request, res: Response) => {
       success: true,
       data: inventories,
     });
+    return;
   } catch (error: any) {
     console.error('Error fetching inventory by location:', error);
     res.status(500).json({
@@ -24,13 +26,14 @@ export const getInventoryByLocation = async (req: Request, res: Response) => {
       message: 'Failed to fetch inventory',
       error: error.message,
     });
+    return;
   }
 };
 
 /**
  * Get all inventory across all locations (Admin only)
  */
-export const getAllInventory = async (req: Request, res: Response) => {
+export const getAllInventory = async (_req: Request, res: Response): Promise<void> => {
   try {
     const inventories = await inventoryService.getAllInventory();
 
@@ -38,6 +41,7 @@ export const getAllInventory = async (req: Request, res: Response) => {
       success: true,
       data: inventories,
     });
+    return;
   } catch (error: any) {
     console.error('Error fetching all inventory:', error);
     res.status(500).json({
@@ -45,13 +49,14 @@ export const getAllInventory = async (req: Request, res: Response) => {
       message: 'Failed to fetch inventory',
       error: error.message,
     });
+    return;
   }
 };
 
 /**
  * Get inventory for a specific menu item at a location
  */
-export const getInventoryByMenuItem = async (req: Request, res: Response) => {
+export const getInventoryByMenuItem = async (req: Request, res: Response): Promise<void> => {
   try {
     const { menuItemId, locationId } = req.params;
 
@@ -61,16 +66,18 @@ export const getInventoryByMenuItem = async (req: Request, res: Response) => {
     );
 
     if (!inventory) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: 'Inventory not found',
       });
+      return;
     }
 
     res.json({
       success: true,
       data: inventory,
     });
+    return;
   } catch (error: any) {
     console.error('Error fetching inventory:', error);
     res.status(500).json({
@@ -78,13 +85,14 @@ export const getInventoryByMenuItem = async (req: Request, res: Response) => {
       message: 'Failed to fetch inventory',
       error: error.message,
     });
+    return;
   }
 };
 
 /**
  * Get low stock items for a location
  */
-export const getLowStockItems = async (req: Request, res: Response) => {
+export const getLowStockItems = async (req: Request, res: Response): Promise<void> => {
   try {
     const { locationId } = req.params;
 
@@ -94,6 +102,7 @@ export const getLowStockItems = async (req: Request, res: Response) => {
       success: true,
       data: lowStockItems,
     });
+    return;
   } catch (error: any) {
     console.error('Error fetching low stock items:', error);
     res.status(500).json({
@@ -101,23 +110,25 @@ export const getLowStockItems = async (req: Request, res: Response) => {
       message: 'Failed to fetch low stock items',
       error: error.message,
     });
+    return;
   }
 };
 
 /**
  * Update inventory for a menu item at a location (Kitchen Staff)
  */
-export const updateInventory = async (req: Request, res: Response) => {
+export const updateInventory = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { menuItemId, locationId } = req.params;
     const { stockQuantity, lowStockThreshold, isAvailable, reason } = req.body;
     const userId = req.user?.id;
 
     if (stockQuantity === undefined) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'stockQuantity is required',
       });
+      return;
     }
 
     const updatedInventory = await inventoryService.updateInventory(
@@ -138,6 +149,7 @@ export const updateInventory = async (req: Request, res: Response) => {
       message: 'Inventory updated successfully',
       data: updatedInventory,
     });
+    return;
   } catch (error: any) {
     console.error('Error updating inventory:', error);
     res.status(500).json({
@@ -145,23 +157,25 @@ export const updateInventory = async (req: Request, res: Response) => {
       message: 'Failed to update inventory',
       error: error.message,
     });
+    return;
   }
 };
 
 /**
  * Restock inventory (Kitchen Staff)
  */
-export const restockInventory = async (req: Request, res: Response) => {
+export const restockInventory = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { menuItemId, locationId } = req.params;
     const { quantity, reason } = req.body;
     const userId = req.user?.id;
 
     if (!quantity || quantity <= 0) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Valid quantity is required',
       });
+      return;
     }
 
     // Get current inventory
@@ -189,6 +203,7 @@ export const restockInventory = async (req: Request, res: Response) => {
       message: 'Inventory restocked successfully',
       data: updatedInventory,
     });
+    return;
   } catch (error: any) {
     console.error('Error restocking inventory:', error);
     res.status(500).json({
@@ -196,22 +211,24 @@ export const restockInventory = async (req: Request, res: Response) => {
       message: 'Failed to restock inventory',
       error: error.message,
     });
+    return;
   }
 };
 
 /**
  * Bulk update inventory (Admin only)
  */
-export const bulkUpdateInventory = async (req: Request, res: Response) => {
+export const bulkUpdateInventory = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { updates, reason } = req.body;
     const userId = req.user?.id;
 
     if (!Array.isArray(updates) || updates.length === 0) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Updates array is required',
       });
+      return;
     }
 
     const results = await inventoryService.bulkUpdateInventory(
@@ -225,6 +242,7 @@ export const bulkUpdateInventory = async (req: Request, res: Response) => {
       message: `${results.length} inventory records updated successfully`,
       data: results,
     });
+    return;
   } catch (error: any) {
     console.error('Error bulk updating inventory:', error);
     res.status(500).json({
@@ -232,21 +250,23 @@ export const bulkUpdateInventory = async (req: Request, res: Response) => {
       message: 'Failed to bulk update inventory',
       error: error.message,
     });
+    return;
   }
 };
 
 /**
  * Check inventory availability for cart items
  */
-export const checkAvailability = async (req: Request, res: Response) => {
+export const checkAvailability = async (req: Request, res: Response): Promise<void> => {
   try {
     const { items } = req.body;
 
     if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Items array is required',
       });
+      return;
     }
 
     const results = await inventoryService.checkBulkAvailability(items);
@@ -260,6 +280,7 @@ export const checkAvailability = async (req: Request, res: Response) => {
       results,
       unavailableItems,
     });
+    return;
   } catch (error: any) {
     console.error('Error checking availability:', error);
     res.status(500).json({
@@ -267,13 +288,14 @@ export const checkAvailability = async (req: Request, res: Response) => {
       message: 'Failed to check availability',
       error: error.message,
     });
+    return;
   }
 };
 
 /**
  * Get inventory history
  */
-export const getInventoryHistory = async (req: Request, res: Response) => {
+export const getInventoryHistory = async (req: Request, res: Response): Promise<void> => {
   try {
     const { locationId, menuItemId } = req.query;
     const limit = parseInt(req.query.limit as string) || 100;
@@ -288,6 +310,7 @@ export const getInventoryHistory = async (req: Request, res: Response) => {
       success: true,
       data: history,
     });
+    return;
   } catch (error: any) {
     console.error('Error fetching inventory history:', error);
     res.status(500).json({
@@ -295,22 +318,24 @@ export const getInventoryHistory = async (req: Request, res: Response) => {
       message: 'Failed to fetch inventory history',
       error: error.message,
     });
+    return;
   }
 };
 
 /**
  * Toggle inventory tracking for a menu item (Admin only)
  */
-export const toggleInventoryTracking = async (req: Request, res: Response) => {
+export const toggleInventoryTracking = async (req: Request, res: Response): Promise<void> => {
   try {
     const { menuItemId } = req.params;
     const { trackInventory } = req.body;
 
     if (trackInventory === undefined) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'trackInventory is required',
       });
+      return;
     }
 
     const menuItem = await inventoryService.toggleInventoryTracking(
@@ -323,6 +348,7 @@ export const toggleInventoryTracking = async (req: Request, res: Response) => {
       message: `Inventory tracking ${trackInventory ? 'enabled' : 'disabled'} for menu item`,
       data: menuItem,
     });
+    return;
   } catch (error: any) {
     console.error('Error toggling inventory tracking:', error);
     res.status(500).json({
@@ -330,13 +356,14 @@ export const toggleInventoryTracking = async (req: Request, res: Response) => {
       message: 'Failed to toggle inventory tracking',
       error: error.message,
     });
+    return;
   }
 };
 
 /**
  * Initialize inventory for a menu item (Admin only)
  */
-export const initializeInventory = async (req: Request, res: Response) => {
+export const initializeInventory = async (req: Request, res: Response): Promise<void> => {
   try {
     const { menuItemId } = req.params;
 
@@ -348,6 +375,7 @@ export const initializeInventory = async (req: Request, res: Response) => {
       message: `Inventory initialized for ${inventories.length} locations`,
       data: inventories,
     });
+    return;
   } catch (error: any) {
     console.error('Error initializing inventory:', error);
     res.status(500).json({
@@ -355,5 +383,6 @@ export const initializeInventory = async (req: Request, res: Response) => {
       message: 'Failed to initialize inventory',
       error: error.message,
     });
+    return;
   }
 };

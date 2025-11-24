@@ -146,7 +146,7 @@ export class KitchenService {
           continue;
         }
 
-        const key = item.menuItemId;
+        const key = item.menuItemId ?? `deleted-${item.id}`;
 
         if (!summary[key]) {
           summary[key] = {
@@ -571,7 +571,10 @@ export class KitchenService {
       ordersByStatus: {
         PLACED: 0,
         PARTIALLY_FULFILLED: 0,
-        FULFILLED: 0
+        FULFILLED: 0,
+        PREPARING: 0,
+        READY: 0,
+        COMPLETED: 0
       },
       ordersByPayment: {
         PENDING: 0,

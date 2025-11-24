@@ -10,10 +10,25 @@ export const generalLimiter = rateLimit({
 
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // 20 attempts per 15 minutes
+  max: 200, // Allow more shared-IP traffic while still capping abuse
   message: 'Too many authentication attempts, please try again later',
   standardHeaders: true,
   legacyHeaders: false,
+});
+
+export const accountLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Per-account attempts
+  message: 'Too many attempts for this account, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const email = req.body?.email;
+    if (typeof email === 'string' && email.trim().length > 0) {
+      return email.trim().toLowerCase();
+    }
+    return req.ip ?? 'unknown';
+  },
 });
 
 export const paymentLimiter = rateLimit({

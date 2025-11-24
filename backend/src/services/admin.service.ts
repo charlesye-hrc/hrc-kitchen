@@ -1,4 +1,4 @@
-import { Weekday, MenuCategory, UserRole, VariationGroupType } from '@prisma/client';
+import { Weekday, MenuCategory, UserRole } from '@prisma/client';
 import prisma from '../lib/prisma';
 import {
   CreateVariationGroupInput,
@@ -26,7 +26,6 @@ interface UpdateMenuItemData {
   imageUrl?: string;
   dietaryTags?: string[];
   trackInventory?: boolean;
-  isActive?: boolean;
 }
 
 interface UserFilters {
@@ -86,7 +85,6 @@ export class AdminService {
           ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
           ...(data.dietaryTags !== undefined && { dietaryTags: data.dietaryTags }),
           ...(data.trackInventory !== undefined && { trackInventory: data.trackInventory }),
-          ...(data.isActive !== undefined && { isActive: data.isActive }),
         },
         include: {
           customizations: true,
@@ -123,7 +121,7 @@ export class AdminService {
     const customization = await prisma.menuItemCustomization.create({
       data: {
         menuItemId,
-        name,
+        customizationName: name,
       },
     });
 

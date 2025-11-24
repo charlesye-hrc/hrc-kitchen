@@ -53,12 +53,7 @@ export interface SummaryReport {
   totalOrders: number;
   totalRevenue: number;
   averageOrderValue: number;
-  ordersByStatus: {
-    PLACED: number;
-    PREPARING: number;
-    READY: number;
-    COMPLETED: number;
-  };
+  ordersByStatus: Record<OrderStatus, number>;
   ordersByPayment: {
     PENDING: number;
     COMPLETED: number;
@@ -302,7 +297,14 @@ export class ReportService {
           totalOrders: 0,
           totalRevenue: 0,
           averageOrderValue: 0,
-          ordersByStatus: { PLACED: 0, PREPARING: 0, READY: 0, COMPLETED: 0 },
+            ordersByStatus: {
+              PLACED: 0,
+              PARTIALLY_FULFILLED: 0,
+              FULFILLED: 0,
+              PREPARING: 0,
+              READY: 0,
+              COMPLETED: 0,
+            },
           ordersByPayment: { PENDING: 0, COMPLETED: 0, FAILED: 0, REFUNDED: 0 },
           dateRange: { startDate: dateRange.startDate, endDate: dateRange.endDate }
         };
@@ -330,11 +332,13 @@ export class ReportService {
 
     const averageOrderValue = completedOrderCount > 0 ? totalRevenue / completedOrderCount : 0;
 
-    const ordersByStatus = {
+    const ordersByStatus: Record<OrderStatus, number> = {
       PLACED: 0,
+      PARTIALLY_FULFILLED: 0,
+      FULFILLED: 0,
       PREPARING: 0,
       READY: 0,
-      COMPLETED: 0
+      COMPLETED: 0,
     };
 
     const ordersByPayment = {

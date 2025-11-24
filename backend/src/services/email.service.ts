@@ -1,4 +1,5 @@
 import sgMail from '@sendgrid/mail';
+import { UserRole } from '@prisma/client';
 import { ApiError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 import {
@@ -166,11 +167,15 @@ export class EmailService {
     email: string,
     fullName: string,
     inviterName: string,
-    role: string,
+    role: UserRole,
     invitationToken: string
   ): Promise<void> {
     const publicAppUrl = process.env.PUBLIC_APP_URL || 'http://localhost:5173';
-    const invitationUrl = `${publicAppUrl}/accept-invitation?token=${invitationToken}`;
+    const adminAppUrl = process.env.ADMIN_APP_URL || 'http://localhost:5174';
+    const privilegedRoles: UserRole[] = ['ADMIN', 'KITCHEN', 'FINANCE'];
+    const appTarget = privilegedRoles.includes(role) ? 'admin' : 'public';
+    const baseUrl = appTarget === 'admin' ? adminAppUrl : publicAppUrl;
+    const invitationUrl = `${baseUrl}/accept-invitation?token=${invitationToken}&app=${appTarget}`;
 
     const data: InvitationEmailData = {
       to: email,

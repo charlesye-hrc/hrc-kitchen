@@ -13,12 +13,13 @@ import inventoryRoutes from './inventory.routes';
 const router = Router();
 
 // Health check for API
-router.get('/health', (req, res) => {
+router.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
     message: 'API is running',
     version: process.env.API_VERSION || 'v1',
   });
+  return;
 });
 
 // Route modules

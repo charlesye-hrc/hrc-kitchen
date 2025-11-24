@@ -330,11 +330,8 @@ const MenuPage: React.FC = () => {
         }
       }
 
-      // Clear current cart
+      // Clear current cart before adding last order items
       clearCart();
-
-      // Set cart location to the CURRENT selected location (not the last order's location)
-      setCartLocation(selectedLocation.id);
 
       // Add all items from last order to cart (only available ones)
       let successCount = 0;
@@ -407,6 +404,8 @@ const MenuPage: React.FC = () => {
       }
 
       if (successCount > 0) {
+        // Set cart location now that cart has items again
+        setCartLocation(selectedLocation.id);
         // Navigate to checkout
         navigate('/checkout');
       } else {

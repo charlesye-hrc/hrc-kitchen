@@ -8,14 +8,14 @@ export class MenuController {
    * Get today's menu items
    * Optional query param: locationId
    */
-  async getTodaysMenu(req: Request, res: Response) {
+  async getTodaysMenu(req: Request, res: Response): Promise<void> {
     try {
       const locationId = req.query.locationId as string | undefined;
       const result = await menuService.getTodaysMenu(locationId);
       const orderingWindow = await configService.isOrderingWindowActive();
 
       if (result.items.length === 0) {
-        return res.status(200).json({
+        res.status(200).json({
           success: true,
           data: {
             items: [],
@@ -24,6 +24,7 @@ export class MenuController {
           },
           message: result.message,
         });
+        return;
       }
 
       res.json({
@@ -34,12 +35,14 @@ export class MenuController {
           orderingWindow,
         },
       });
+      return;
     } catch (error) {
       console.error('Error fetching today\'s menu:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch menu',
       });
+      return;
     }
   }
 
@@ -47,7 +50,7 @@ export class MenuController {
    * GET /api/v1/menu/week
    * Get full weekly menu (admin only)
    */
-  async getWeeklyMenu(req: Request, res: Response) {
+  async getWeeklyMenu(_req: Request, res: Response): Promise<void> {
     try {
       const weeklyMenu = await menuService.getWeeklyMenu();
 
@@ -55,12 +58,14 @@ export class MenuController {
         success: true,
         data: weeklyMenu,
       });
+      return;
     } catch (error) {
       console.error('Error fetching weekly menu:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch weekly menu',
       });
+      return;
     }
   }
 
@@ -68,29 +73,32 @@ export class MenuController {
    * GET /api/v1/menu/items/:id
    * Get single menu item by ID
    */
-  async getMenuItem(req: Request, res: Response) {
+  async getMenuItem(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
 
       const item = await menuService.getMenuItem(id);
 
       if (!item) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           message: 'Menu item not found',
         });
+        return;
       }
 
       res.json({
         success: true,
         data: item,
       });
+      return;
     } catch (error) {
       console.error('Error fetching menu item:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch menu item',
       });
+      return;
     }
   }
 
@@ -99,7 +107,7 @@ export class MenuController {
    * Get all menu items with optional filters
    * Query params: weekday, category, trackInventory, locationId
    */
-  async getAllMenuItems(req: Request, res: Response) {
+  async getAllMenuItems(req: Request, res: Response): Promise<void> {
     try {
       const { weekday, category, trackInventory, locationId } = req.query;
 
@@ -127,12 +135,14 @@ export class MenuController {
         success: true,
         data: items,
       });
+      return;
     } catch (error) {
       console.error('Error fetching all menu items:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch menu items',
       });
+      return;
     }
   }
 }

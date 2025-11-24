@@ -9,18 +9,19 @@ export async function checkOrderingWindow(
   req: Request,
   res: Response,
   next: NextFunction
-) {
+): Promise<void> {
   try {
     const windowStatus = await configService.isOrderingWindowActive();
 
     if (!windowStatus.active) {
-      return res.status(403).json({
+      res.status(403).json({
         success: false,
         message: windowStatus.message || 'Ordering window is closed',
         data: {
           orderingWindow: windowStatus.window,
         },
       });
+      return;
     }
 
     // Attach window info to request for potential use in controllers
@@ -33,6 +34,7 @@ export async function checkOrderingWindow(
       success: false,
       message: 'Failed to check ordering window',
     });
+    return;
   }
 }
 
@@ -42,9 +44,9 @@ export async function checkOrderingWindow(
  */
 export async function getOrderingWindowStatus(
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
-) {
+): Promise<void> {
   try {
     const windowStatus = await configService.isOrderingWindowActive();
     (req as any).orderingWindowStatus = windowStatus;

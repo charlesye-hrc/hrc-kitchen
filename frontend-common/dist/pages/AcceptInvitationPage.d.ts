@@ -7,6 +7,7 @@ export interface InvitationInfo {
 export interface AcceptInvitationPageProps {
     api: AxiosInstance;
     loginPath?: string;
+    adminLoginPath?: string;
     verifyInvitationPath?: string;
     acceptInvitationPath?: string;
     redirectDelayMs?: number;
@@ -29,6 +30,6 @@ export interface AcceptInvitationPageProps {
     onAcceptSuccess?: () => void;
     getLoginPathForRole?: (role?: string | null) => string;
 }
-declare const AcceptInvitationPage: ({ api, loginPath, verifyInvitationPath, acceptInvitationPath, redirectDelayMs, disableSuccessRedirect, verifyingTitle, verifyingSubtitle, welcomeTitle, welcomeSubtitle, successTitle, successMessage, successRedirectMessage, errorTitle, errorSubtitle, passwordRequirementsTitle, passwordRequirements, roleLabels, ctaLabel, goToLoginButtonLabel, validatePassword, onAcceptSuccess, getLoginPathForRole, }: AcceptInvitationPageProps) => import("react/jsx-runtime").JSX.Element;
+declare const AcceptInvitationPage: ({ api, loginPath, adminLoginPath, verifyInvitationPath, acceptInvitationPath, redirectDelayMs, disableSuccessRedirect, verifyingTitle, verifyingSubtitle, welcomeTitle, welcomeSubtitle, successTitle, successMessage, successRedirectMessage, errorTitle, errorSubtitle, passwordRequirementsTitle, passwordRequirements, roleLabels, ctaLabel, goToLoginButtonLabel, validatePassword, onAcceptSuccess, getLoginPathForRole, }: AcceptInvitationPageProps) => import("react/jsx-runtime").JSX.Element;
 export default AcceptInvitationPage;
 //# sourceMappingURL=AcceptInvitationPage.d.ts.map

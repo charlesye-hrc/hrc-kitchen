@@ -1,8 +1,6 @@
 import { Router } from 'express';
 import locationController from '../controllers/location.controller';
-import { authenticate, authorize } from '../middleware/auth';
-import { validateAdminDomain } from '../middleware/domainValidation';
-import { UserRole } from '@prisma/client';
+import { authenticate } from '../middleware/auth';
 
 const router = Router();
 

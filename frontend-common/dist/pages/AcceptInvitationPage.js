@@ -38,10 +38,11 @@ const defaultValidatePassword = (pwd) => {
     return null;
 };
 const sanitizePath = (path) => path.replace(/\/+$/, '');
-const AcceptInvitationPage = ({ api, loginPath = '/login', verifyInvitationPath = '/invitations/verify', acceptInvitationPath = '/invitations/accept', redirectDelayMs = 3000, disableSuccessRedirect = false, verifyingTitle = 'Verifying Invitation', verifyingSubtitle = 'Please wait while we verify your invitation...', welcomeTitle = 'Welcome to HRC Kitchen!', welcomeSubtitle = 'Complete your account setup to get started', successTitle = 'Account Setup Complete!', successMessage = 'Your account has been set up successfully!', successRedirectMessage = 'Redirecting to login page...', errorTitle = 'Invalid Invitation', errorSubtitle = 'Please contact your administrator for a new invitation link.', passwordRequirementsTitle = 'Password Requirements:', passwordRequirements = DEFAULT_PASSWORD_REQUIREMENTS, roleLabels = DEFAULT_ROLE_LABELS, ctaLabel = 'Complete Setup', goToLoginButtonLabel = 'Go to Login', validatePassword = defaultValidatePassword, onAcceptSuccess, getLoginPathForRole, }) => {
+const AcceptInvitationPage = ({ api, loginPath = '/login', adminLoginPath, verifyInvitationPath = '/invitations/verify', acceptInvitationPath = '/invitations/accept', redirectDelayMs = 3000, disableSuccessRedirect = false, verifyingTitle = 'Verifying Invitation', verifyingSubtitle = 'Please wait while we verify your invitation...', welcomeTitle = 'Welcome to HRC Kitchen!', welcomeSubtitle = 'Complete your account setup to get started', successTitle = 'Account Setup Complete!', successMessage = 'Your account has been set up successfully!', successRedirectMessage = 'Redirecting to login page...', errorTitle = 'Invalid Invitation', errorSubtitle = 'Please contact your administrator for a new invitation link.', passwordRequirementsTitle = 'Password Requirements:', passwordRequirements = DEFAULT_PASSWORD_REQUIREMENTS, roleLabels = DEFAULT_ROLE_LABELS, ctaLabel = 'Complete Setup', goToLoginButtonLabel = 'Go to Login', validatePassword = defaultValidatePassword, onAcceptSuccess, getLoginPathForRole, }) => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const token = searchParams.get('token');
+    const appContext = searchParams.get('app');
     const [status, setStatus] = useState('loading');
     const [message, setMessage] = useState('');
     const [invitationInfo, setInvitationInfo] = useState(null);
@@ -56,6 +57,15 @@ const AcceptInvitationPage = ({ api, loginPath = '/login', verifyInvitationPath 
     const resolveLoginPath = (role) => {
         if (getLoginPathForRole) {
             return getLoginPathForRole(role);
+        }
+        if (role) {
+            const normalizedRole = role.toUpperCase();
+            if (['ADMIN', 'KITCHEN', 'FINANCE'].includes(normalizedRole) && adminLoginPath) {
+                return adminLoginPath;
+            }
+        }
+        if (appContext === 'admin' && adminLoginPath) {
+            return adminLoginPath;
         }
         return loginPath;
     };

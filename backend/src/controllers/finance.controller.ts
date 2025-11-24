@@ -9,7 +9,7 @@ export class FinanceController {
    * GET /api/v1/finance/reports/daily-revenue
    * Get daily revenue report
    */
-  async getDailyRevenueReport(req: AuthRequest, res: Response) {
+  async getDailyRevenueReport(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { startDate, endDate, locationId } = req.query;
 
@@ -31,18 +31,21 @@ export class FinanceController {
         success: true,
         data: report,
       });
+      return;
     } catch (error) {
       if (error instanceof ApiError) {
-        return res.status(error.statusCode).json({
+        res.status(error.statusCode).json({
           success: false,
           message: error.message,
         });
+        return;
       }
       console.error('Error generating daily revenue report:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to generate daily revenue report',
       });
+      return;
     }
   }
 
@@ -50,7 +53,7 @@ export class FinanceController {
    * GET /api/v1/finance/reports/order-details
    * Get detailed order report
    */
-  async getOrderDetailsReport(req: AuthRequest, res: Response) {
+  async getOrderDetailsReport(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { startDate, endDate, locationId } = req.query;
 
@@ -72,18 +75,21 @@ export class FinanceController {
         success: true,
         data: report,
       });
+      return;
     } catch (error) {
       if (error instanceof ApiError) {
-        return res.status(error.statusCode).json({
+        res.status(error.statusCode).json({
           success: false,
           message: error.message,
         });
+        return;
       }
       console.error('Error generating order details report:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to generate order details report',
       });
+      return;
     }
   }
 
@@ -91,7 +97,7 @@ export class FinanceController {
    * GET /api/v1/finance/reports/menu-item-sales
    * Get menu item sales report
    */
-  async getMenuItemSalesReport(req: AuthRequest, res: Response) {
+  async getMenuItemSalesReport(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { startDate, endDate, locationId } = req.query;
 
@@ -113,18 +119,21 @@ export class FinanceController {
         success: true,
         data: report,
       });
+      return;
     } catch (error) {
       if (error instanceof ApiError) {
-        return res.status(error.statusCode).json({
+        res.status(error.statusCode).json({
           success: false,
           message: error.message,
         });
+        return;
       }
       console.error('Error generating menu item sales report:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to generate menu item sales report',
       });
+      return;
     }
   }
 
@@ -132,7 +141,7 @@ export class FinanceController {
    * GET /api/v1/finance/reports/summary
    * Get summary statistics
    */
-  async getSummaryStatistics(req: AuthRequest, res: Response) {
+  async getSummaryStatistics(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { startDate, endDate, locationId } = req.query;
 
@@ -154,18 +163,21 @@ export class FinanceController {
         success: true,
         data: stats,
       });
+      return;
     } catch (error) {
       if (error instanceof ApiError) {
-        return res.status(error.statusCode).json({
+        res.status(error.statusCode).json({
           success: false,
           message: error.message,
         });
+        return;
       }
       console.error('Error generating summary statistics:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to generate summary statistics',
       });
+      return;
     }
   }
 }
