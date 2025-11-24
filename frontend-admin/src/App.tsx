@@ -128,7 +128,10 @@ const AppRoutes = () => {
       <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
 
       {/* Public Routes */}
-      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/login"
+        element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <LoginPage />}
+      />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
