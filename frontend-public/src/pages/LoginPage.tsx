@@ -289,6 +289,14 @@ const LoginPage = () => {
               Create Account
             </Link>
           </Typography>
+          <Button
+            variant="text"
+            sx={{ mt: 1.5, textTransform: 'none', fontWeight: 600 }}
+            component={Link}
+            to="/menu"
+          >
+            Continue as Guest
+          </Button>
         </Box>
       </Paper>
     </Box>
