@@ -244,13 +244,24 @@ const LayoutWrapper = ({ children }: { children: ReactNode }) => {
   return <AdminLayout>{children}</AdminLayout>;
 };
 
-const AuthenticatedLocationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { user, isAuthenticated } = useAuth();
-  const refreshKey = isAuthenticated ? user?.id ?? 'auth' : 'guest';
+const AppContent = () => {
+  const { isAuthenticated, user } = useAuth();
+
+  const content = (
+    <LayoutWrapper>
+      <AppRoutes />
+    </LayoutWrapper>
+  );
+
+  if (!isAuthenticated) {
+    return content;
+  }
+
+  const refreshKey = user?.id ?? 'auth';
 
   return (
     <LocationProvider apiUrl={API_URL} authMode="cookie" refreshKey={refreshKey}>
-      {children}
+      {content}
     </LocationProvider>
   );
 };
@@ -258,11 +269,7 @@ const AuthenticatedLocationProvider: React.FC<{ children: ReactNode }> = ({ chil
 function App() {
   return (
     <AuthProvider>
-      <AuthenticatedLocationProvider>
-        <LayoutWrapper>
-          <AppRoutes />
-        </LayoutWrapper>
-      </AuthenticatedLocationProvider>
+      <AppContent />
     </AuthProvider>
   );
 }

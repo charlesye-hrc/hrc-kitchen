@@ -12,7 +12,11 @@ interface User {
 interface AuthContextType {
   user: User | null;
   hasAdminAccess: boolean;
-  loginWithPassword: (email: string, password: string) => Promise<{ requiresOtp: boolean }>;
+  loginWithPassword: (
+    email: string,
+    password: string,
+    options?: { skipCaptcha?: boolean }
+  ) => Promise<{ requiresOtp: boolean }>;
   verifyOtp: (email: string, code: string) => Promise<{ user: User; hasAdminAccess: boolean }>;
   logout: () => void;
   register: (data: RegisterData) => Promise<void>;
@@ -82,14 +86,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [API_URL]);
 
-  const loginWithPassword = async (email: string, password: string): Promise<{ requiresOtp: boolean }> => {
+  const loginWithPassword = async (
+    email: string,
+    password: string,
+    options?: { skipCaptcha?: boolean }
+  ): Promise<{ requiresOtp: boolean }> => {
     try {
+      const captchaToken = options?.skipCaptcha ? undefined : await getCaptchaToken('admin_login');
       const response = await axios.post(
         `${API_URL}/auth/login`,
         {
           email,
           password,
-          captchaToken: await getCaptchaToken('admin_login'),
+          skipCaptcha: Boolean(options?.skipCaptcha),
+          ...(captchaToken ? { captchaToken } : {}),
         },
         {
           withCredentials: true,

@@ -68,7 +68,7 @@ const LoginPage = () => {
 
     try {
       // Re-submit password to get new OTP
-      await loginWithPassword(email, password);
+      await loginWithPassword(email, password, { skipCaptcha: true });
       setSuccess('A new verification code has been sent to your email.');
       setOtpCode('');
     } catch (err: any) {

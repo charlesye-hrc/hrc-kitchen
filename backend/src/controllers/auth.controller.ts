@@ -59,9 +59,26 @@ export class AuthController {
 
   static async login(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      await AuthController.verifyCaptcha(req);
-
       const { email, password } = req.body;
+      const shouldSkipCaptcha = Boolean(req.body.skipCaptcha);
+
+      if (!shouldSkipCaptcha) {
+        await AuthController.verifyCaptcha(req);
+      } else {
+        const pendingOtpUser = await prisma.user.findUnique({
+          where: { email },
+          select: { otpCode: true, otpExpiresAt: true },
+        });
+
+        const hasPendingOtp =
+          Boolean(pendingOtpUser?.otpCode) &&
+          Boolean(pendingOtpUser?.otpExpiresAt) &&
+          pendingOtpUser!.otpExpiresAt! > new Date();
+
+        if (!hasPendingOtp) {
+          await AuthController.verifyCaptcha(req);
+        }
+      }
 
       if (!email || !password) {
         throw new ApiError(400, 'Email and password are required');

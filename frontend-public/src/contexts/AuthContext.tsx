@@ -12,7 +12,11 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  loginWithPassword: (email: string, password: string) => Promise<{ requiresOtp: boolean }>;
+  loginWithPassword: (
+    email: string,
+    password: string,
+    options?: { skipCaptcha?: boolean }
+  ) => Promise<{ requiresOtp: boolean }>;
   verifyOtp: (email: string, code: string) => Promise<void>;
   logout: () => void;
   register: (data: RegisterData) => Promise<void>;
@@ -66,13 +70,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
-  const loginWithPassword = async (email: string, password: string): Promise<{ requiresOtp: boolean }> => {
+  const loginWithPassword = async (
+    email: string,
+    password: string,
+    options?: { skipCaptcha?: boolean }
+  ): Promise<{ requiresOtp: boolean }> => {
     try {
-      const captchaToken = await getCaptchaToken('public_login');
+      const captchaToken = options?.skipCaptcha ? undefined : await getCaptchaToken('public_login');
       const response = await axios.post(`${API_URL}/auth/login`, {
         email,
         password,
-        captchaToken,
+        skipCaptcha: Boolean(options?.skipCaptcha),
+        ...(captchaToken ? { captchaToken } : {}),
       });
 
       // New flow: login endpoint always returns requiresOtp: true
