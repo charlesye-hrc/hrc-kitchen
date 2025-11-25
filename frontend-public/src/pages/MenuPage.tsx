@@ -32,6 +32,7 @@ import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import VariationSelector from '../components/VariationSelector';
 import { useLocationContext, LocationSelector } from '@hrc-kitchen/common';
+import { useCartUI } from '../contexts/CartUIContext';
 
 const MenuPage: React.FC = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -55,6 +56,7 @@ const MenuPage: React.FC = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { setHideActionBar } = useCartUI();
 
   useEffect(() => {
     if (selectedLocation) {
@@ -67,6 +69,11 @@ const MenuPage: React.FC = () => {
       fetchLastOrder();
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    setHideActionBar(Boolean(selectedItem));
+    return () => setHideActionBar(false);
+  }, [selectedItem, setHideActionBar]);
 
   const fetchLastOrder = async () => {
     try {
@@ -939,7 +946,13 @@ const MenuPage: React.FC = () => {
             </Box>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+        <DialogActions
+          sx={{
+            px: 3,
+            pb: 3,
+            gap: 1,
+          }}
+        >
           <Button onClick={() => setSelectedItem(null)} variant="outlined" sx={{ minWidth: 100 }}>
             Cancel
           </Button>

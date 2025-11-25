@@ -124,6 +124,19 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose, orderingWindow }
               <Typography color="text.secondary" variant="body2">
                 Add items from the menu to get started
               </Typography>
+              <Button
+                variant="contained"
+                onClick={onClose}
+                sx={{
+                  mt: 2,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: 2,
+                  px: 3,
+                }}
+              >
+                Back to Menu
+              </Button>
             </Box>
           ) : (
             <List sx={{ p: 0 }}>
@@ -340,6 +353,17 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ open, onClose, orderingWindow }
                   }}
                 >
                   Proceed to Checkout
+                </Button>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  color="primary"
+                  onClick={onClose}
+                  sx={{
+                    py: 1.25,
+                  }}
+                >
+                  Continue Shopping
                 </Button>
                 <Button
                   fullWidth

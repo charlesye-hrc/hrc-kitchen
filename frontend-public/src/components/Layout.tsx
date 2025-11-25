@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -15,7 +15,8 @@ import {
   useTheme,
   useMediaQuery,
   Grid,
-  Badge,
+  Paper,
+  Slide,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
@@ -27,15 +28,17 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import CartDrawer from './CartDrawer';
+import CartActionBar from './CartActionBar';
+import { CartUIProvider, useCartUI } from '../contexts/CartUIContext';
 import { useLocationContext, LocationSelector, isManagementRole } from '@hrc-kitchen/common';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const LayoutContent: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout, isAuthenticated } = useAuth();
-  const { getCartItemCount } = useCart();
+  const { getCartItemCount, getCartTotal } = useCart();
   const { locations, selectedLocation, selectLocation, isLoading: locationsLoading } = useLocationContext();
   const navigate = useNavigate();
   const location = useLocation();
@@ -43,7 +46,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
+  const [desktopCartPrompt, setDesktopCartPrompt] = useState(false);
+  const [cartButtonPulse, setCartButtonPulse] = useState(false);
+  const cartCountRef = useRef(getCartItemCount());
+  const promptTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pulseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentYear = new Date().getFullYear();
+  const { hideActionBar } = useCartUI();
+  const cartItemCount = getCartItemCount();
+  const cartTotal = getCartTotal();
 
   // Get admin app URL from environment
   const ADMIN_APP_URL = import.meta.env.VITE_ADMIN_APP_URL || 'http://localhost:5174';
@@ -53,6 +64,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   // Hide location selector on checkout page (location is managed within checkout)
   const isCheckoutPage = location.pathname === '/checkout';
+  const isMenuPage = location.pathname === '/menu';
 
   const handleLogout = () => {
     logout();
@@ -60,9 +72,57 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     setDrawerOpen(false);
   };
 
+  const handleOpenCartDrawer = () => {
+    setDesktopCartPrompt(false);
+    setCartButtonPulse(false);
+    setCartDrawerOpen(true);
+  };
+
+  const handleCloseCartDrawer = () => {
+    setCartDrawerOpen(false);
+  };
+
   const handleNavClick = () => {
     setDrawerOpen(false);
   };
+
+  useEffect(() => {
+    const cartCountIncreased = cartItemCount > cartCountRef.current;
+    const shouldShowPersistentMenuPrompt =
+      !isMobile && !isCheckoutPage && isMenuPage && cartItemCount > 0 && !cartDrawerOpen;
+
+    if (cartDrawerOpen || isMobile || cartItemCount === 0 || isCheckoutPage) {
+      setDesktopCartPrompt(false);
+      setCartButtonPulse(false);
+    } else if (shouldShowPersistentMenuPrompt) {
+      setDesktopCartPrompt(true);
+      if (cartCountIncreased) {
+        setCartButtonPulse(true);
+        pulseTimeoutRef.current = setTimeout(() => setCartButtonPulse(false), 450);
+      }
+    } else if (!isMobile && !isCheckoutPage && cartCountIncreased) {
+      setDesktopCartPrompt(true);
+      setCartButtonPulse(true);
+      promptTimeoutRef.current = setTimeout(() => setDesktopCartPrompt(false), 3500);
+      pulseTimeoutRef.current = setTimeout(() => setCartButtonPulse(false), 450);
+    } else {
+      setDesktopCartPrompt(false);
+      setCartButtonPulse(false);
+    }
+
+    cartCountRef.current = cartItemCount;
+
+    return () => {
+      if (promptTimeoutRef.current) {
+        clearTimeout(promptTimeoutRef.current);
+        promptTimeoutRef.current = null;
+      }
+      if (pulseTimeoutRef.current) {
+        clearTimeout(pulseTimeoutRef.current);
+        pulseTimeoutRef.current = null;
+      }
+    };
+  }, [cartItemCount, isMobile, isCheckoutPage, isMenuPage, cartDrawerOpen]);
 
   const primaryLinks = [
     { label: 'Menu', path: '/menu' },
@@ -99,7 +159,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <List sx={{ py: 2 }}>
         <ListItemButton
           onClick={() => {
-            setCartDrawerOpen(true);
+            handleOpenCartDrawer();
             setDrawerOpen(false);
           }}
           sx={{
@@ -304,41 +364,49 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   />
                 </Box>
               )}
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => setCartDrawerOpen(true)}
-                startIcon={<ShoppingCartIcon />}
-                sx={{
-                  textTransform: 'none',
-                  fontWeight: 700,
-                  borderRadius: 999,
-                  px: 2.5,
-                  boxShadow: '0 12px 24px rgba(45,95,63,0.2)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 1,
-                }}
-              >
-                View Cart
-                <Box
+              <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleOpenCartDrawer}
+                  startIcon={<ShoppingCartIcon />}
                   sx={{
-                    minWidth: 22,
-                    height: 22,
-                    borderRadius: '50%',
-                    bgcolor: 'secondary.main',
-                    color: 'secondary.contrastText',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    borderRadius: 999,
+                    px: 2.5,
+                    boxShadow: '0 12px 24px rgba(45,95,63,0.2)',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    px: 0.75,
+                    gap: 1,
+                    animation: cartButtonPulse ? 'cartButtonPulse 0.45s ease' : 'none',
+                    '@keyframes cartButtonPulse': {
+                      '0%': { transform: 'scale(1)' },
+                      '40%': { transform: 'scale(1.05)' },
+                      '100%': { transform: 'scale(1)' },
+                    },
                   }}
                 >
-                  {getCartItemCount()}
-                </Box>
-              </Button>
+                  View Cart
+                  <Box
+                    sx={{
+                      minWidth: 22,
+                      height: 22,
+                      borderRadius: '50%',
+                      bgcolor: 'secondary.main',
+                      color: 'secondary.contrastText',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      px: 0.75,
+                    }}
+                  >
+                    {cartItemCount}
+                  </Box>
+                </Button>
+              </Box>
               {isAuthenticated ? (
                 <>
                   <Box
@@ -580,9 +648,77 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </Box>
       </Box>
     </Box>
-    <CartDrawer open={cartDrawerOpen} onClose={() => setCartDrawerOpen(false)} />
+    {!isMobile && !isCheckoutPage && (
+      <Slide direction="up" in={desktopCartPrompt} mountOnEnter unmountOnExit>
+        <Paper
+          elevation={18}
+          sx={{
+            position: 'fixed',
+            bottom: 32,
+            right: 32,
+            px: 3,
+            py: 2.5,
+            borderRadius: 3,
+            background: 'linear-gradient(135deg, #1F3C2C 0%, #2D5F3F 100%)',
+            color: 'common.white',
+            minWidth: 320,
+            boxShadow: '0 25px 60px rgba(15,31,22,0.45)',
+            zIndex: (theme) => theme.zIndex.snackbar + 2,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box
+              sx={{
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <ShoppingCartIcon />
+            </Box>
+            <Box sx={{ flexGrow: 1 }}>
+              <Typography variant="subtitle2" sx={{ textTransform: 'uppercase', letterSpacing: 1, opacity: 0.8 }}>
+                Cart updated
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                ${cartTotal.toFixed(2)} | {cartItemCount} item{cartItemCount === 1 ? '' : 's'}
+              </Typography>
+            </Box>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={handleOpenCartDrawer}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 700,
+                borderRadius: 2,
+                boxShadow: '0 8px 16px rgba(0,0,0,0.25)',
+              }}
+            >
+              Review Cart
+            </Button>
+          </Box>
+        </Paper>
+      </Slide>
+    )}
+    <CartDrawer open={cartDrawerOpen} onClose={handleCloseCartDrawer} />
+    <CartActionBar
+      onOpenCart={handleOpenCartDrawer}
+      isCartOpen={cartDrawerOpen}
+      forceHidden={hideActionBar || isCheckoutPage}
+    />
     </>
   );
 };
+
+const Layout: React.FC<LayoutProps> = ({ children }) => (
+  <CartUIProvider>
+    <LayoutContent>{children}</LayoutContent>
+  </CartUIProvider>
+);
 
 export default Layout;
