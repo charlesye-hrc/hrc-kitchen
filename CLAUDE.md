@@ -21,6 +21,7 @@
 ### Key Features
 - Self-service ordering with guest checkout
 - **Repeat last order** (authenticated users, validates availability)
+- **Cross-app navigation**: Seamless switching between public and admin apps (role-based)
 - Multi-location support with location-based menu filtering
 - Weekend menu support (Monday-Sunday)
 - Domain-restricted management access
@@ -81,9 +82,17 @@ npm run db:seed      # Seed test data
 ### Authentication & Security
 - **Mandatory MFA**: Password + OTP (email-based, 10-min expiry, cryptographically secure)
 - **JWT tokens**: 7-day validity, automatic re-auth required
+- **HttpOnly cookies**: Admin app uses secure httpOnly cookies (production: strict SameSite)
+- **reCAPTCHA v3**: Bot protection on email-triggering endpoints (login, OTP, password reset)
 - **Domain validation**: Configurable via Admin UI (`restricted_role_domain`)
 - **Role-based access**: STAFF, KITCHEN, ADMIN, FINANCE
+- **Guest order tokens**: Time-limited HMAC-signed tokens (5-min expiry) for guest checkout
 - **Separate token storage**: `public_token` vs `admin_token` in localStorage
+- **Rate limiting**: Multi-tier (IP, account, payment intent, admin operations)
+  - Account-based: 15 attempts/15min per email
+  - Payment: 10 requests/min per IP, 5 confirmations/5min per intent
+  - Admin writes: 30 operations/5min
+  - Inventory: 20 updates/2min
 
 ### Multi-Location Support
 - **Location Assignment by Role**:
@@ -163,6 +172,8 @@ npm run db:seed      # Seed test data
 **Backend** (`.env`):
 - `DATABASE_URL` - Neon PostgreSQL
 - `JWT_SECRET` - Authentication
+- `GUEST_ORDER_TOKEN_SECRET` - Guest checkout tokens (optional, defaults to JWT_SECRET)
+- `RECAPTCHA_SECRET_KEY` - Google reCAPTCHA server key
 - `STRIPE_SECRET_KEY` - Stripe API
 - `SENDGRID_API_KEY` - Email service
 - `EMAIL_FROM` - Sender email
@@ -172,7 +183,10 @@ npm run db:seed      # Seed test data
 
 **Frontend-Public/Admin** (`.env`):
 - `VITE_API_URL` - Backend API endpoint
+- `VITE_RECAPTCHA_SITE_KEY` - Google reCAPTCHA client key
 - `VITE_STRIPE_PUBLISHABLE_KEY` - Stripe public key (public app only)
+- `VITE_PUBLIC_APP_URL` - Public app URL (for cross-app navigation)
+- `VITE_ADMIN_APP_URL` - Admin app URL (for cross-app navigation)
 
 ---
 
@@ -229,13 +243,14 @@ npm run db:seed      # Seed test data
 - Domain restrictions configured in database (Admin UI)
 - CORS environment-aware (dev: localhost, prod: restricted)
 - Stripe test mode in dev (test card: `4242 4242 4242 4242`)
-- JWT tokens in localStorage
+- JWT tokens in localStorage (public app), httpOnly cookies (admin app)
+- reCAPTCHA required for production email-triggering actions
 - HTTPS required for Apple Pay/Google Pay on desktop
 
 ---
 
-**Last Updated**: 2025-11-23
-**Document Version**: 2.7 (Repeat Order Feature)
-**Line Count**: ~241 lines ✅
+**Last Updated**: 2025-11-26
+**Document Version**: 2.8 (Security Hardening & Cross-App Navigation)
+**Line Count**: 256 lines ✅
 
 [Maintenance Guidelines](DOCUMENTATION_GUIDELINES.md) | [Archive](docs/05-archive/README.md) | [Code Review](docs/02-development/CODE_REVIEW_REPORT.md)
