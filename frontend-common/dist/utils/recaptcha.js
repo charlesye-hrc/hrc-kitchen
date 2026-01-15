@@ -1,8 +1,10 @@
 let recaptchaScriptPromise = null;
 const loadRecaptchaScript = (siteKey) => {
-    if (window.grecaptcha) {
+    var _a;
+    if ((_a = window.grecaptcha) === null || _a === void 0 ? void 0 : _a.enterprise) {
         return new Promise((resolve) => {
-            window.grecaptcha.ready(() => resolve());
+            var _a;
+            (_a = window.grecaptcha) === null || _a === void 0 ? void 0 : _a.enterprise.ready(() => resolve());
         });
     }
     if (recaptchaScriptPromise) {
@@ -10,15 +12,16 @@ const loadRecaptchaScript = (siteKey) => {
     }
     recaptchaScriptPromise = new Promise((resolve, reject) => {
         const script = document.createElement('script');
-        script.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
+        script.src = `https://www.google.com/recaptcha/enterprise.js?render=${siteKey}`;
         script.async = true;
         script.defer = true;
         script.onload = () => {
-            if (!window.grecaptcha) {
+            var _a, _b;
+            if (!((_a = window.grecaptcha) === null || _a === void 0 ? void 0 : _a.enterprise)) {
                 reject(new Error('reCAPTCHA failed to initialize'));
                 return;
             }
-            window.grecaptcha.ready(() => resolve());
+            (_b = window.grecaptcha) === null || _b === void 0 ? void 0 : _b.enterprise.ready(() => resolve());
         };
         script.onerror = () => reject(new Error('Failed to load reCAPTCHA script'));
         document.head.appendChild(script);
@@ -26,9 +29,10 @@ const loadRecaptchaScript = (siteKey) => {
     return recaptchaScriptPromise;
 };
 export const executeRecaptcha = async (siteKey, action) => {
+    var _a, _b;
     await loadRecaptchaScript(siteKey);
-    if (!window.grecaptcha) {
-        throw new Error('reCAPTCHA is not available');
+    if (!((_a = window.grecaptcha) === null || _a === void 0 ? void 0 : _a.enterprise)) {
+        throw new Error('reCAPTCHA Enterprise is not available');
     }
-    return window.grecaptcha.execute(siteKey, { action });
+    return (_b = window.grecaptcha) === null || _b === void 0 ? void 0 : _b.enterprise.execute(siteKey, { action });
 };

@@ -9,14 +9,16 @@ import { CaptchaService } from '../services/captcha.service';
 import { hasAdminDomainAccess } from '../middleware/domainValidation';
 
 export class AuthController {
-  private static async verifyCaptcha(req: Request): Promise<void> {
+  private static async verifyCaptcha(req: Request, expectedActions?: string[]): Promise<void> {
     const { captchaToken } = req.body;
 
     if (!captchaToken) {
       throw new ApiError(400, 'Captcha token is required');
     }
 
-    const captchaValid = await CaptchaService.verify(captchaToken, req.ip);
+    const captchaValid = await CaptchaService.verify(captchaToken, req.ip, {
+      expectedAction: expectedActions,
+    });
     if (!captchaValid) {
       throw new ApiError(400, 'Captcha verification failed');
     }
@@ -24,7 +26,7 @@ export class AuthController {
 
   static async register(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      await AuthController.verifyCaptcha(req);
+      await AuthController.verifyCaptcha(req, ['public_register', 'admin_register']);
 
       const { email, password, fullName, department, location, phone } = req.body;
 
@@ -63,7 +65,7 @@ export class AuthController {
       const shouldSkipCaptcha = Boolean(req.body.skipCaptcha);
 
       if (!shouldSkipCaptcha) {
-        await AuthController.verifyCaptcha(req);
+        await AuthController.verifyCaptcha(req, ['public_login', 'admin_login']);
       } else {
         const pendingOtpUser = await prisma.user.findUnique({
           where: { email },
@@ -76,7 +78,7 @@ export class AuthController {
           pendingOtpUser!.otpExpiresAt! > new Date();
 
         if (!hasPendingOtp) {
-          await AuthController.verifyCaptcha(req);
+          await AuthController.verifyCaptcha(req, ['public_login', 'admin_login']);
         }
       }
 
@@ -136,7 +138,10 @@ export class AuthController {
 
   static async forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      await AuthController.verifyCaptcha(req);
+      const appContext = req.body.app === 'admin' ? 'admin' : 'public';
+      await AuthController.verifyCaptcha(req, [
+        appContext === 'admin' ? 'admin_forgot_password' : 'public_forgot_password',
+      ]);
 
       const { email, app } = req.body;
 

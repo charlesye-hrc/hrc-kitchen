@@ -150,7 +150,8 @@ export class OrderController {
         return;
       }
 
-      if (!process.env.RECAPTCHA_SECRET_KEY) {
+      const captchaConfigured = process.env.RECAPTCHA_PROJECT_ID && process.env.RECAPTCHA_SITE_KEY;
+      if (!captchaConfigured) {
         res.status(500).json({
           success: false,
           message: 'Captcha verification is not configured on the server',
@@ -158,7 +159,7 @@ export class OrderController {
         return;
       }
 
-      const captchaValid = await CaptchaService.verify(captchaToken, req.ip);
+      const captchaValid = await CaptchaService.verify(captchaToken, req.ip, { expectedAction: 'guest_checkout' });
       if (!captchaValid) {
         res.status(400).json({
           success: false,

@@ -1,55 +1,66 @@
-import https from 'https';
+import { RecaptchaEnterpriseServiceClient } from '@google-cloud/recaptcha-enterprise';
 
 export class CaptchaService {
-  private static get secret(): string | null {
-    return process.env.RECAPTCHA_SECRET_KEY || null;
+  private static client = new RecaptchaEnterpriseServiceClient();
+
+  private static get projectId(): string {
+    const projectId = process.env.RECAPTCHA_PROJECT_ID;
+    if (!projectId) {
+      throw new Error('RECAPTCHA_PROJECT_ID is not configured');
+    }
+    return projectId;
   }
 
-  static async verify(token: string, remoteIp?: string): Promise<boolean> {
-    const secret = this.secret;
-    if (!secret) {
-      throw new Error('RECAPTCHA_SECRET_KEY is not configured');
+  private static get siteKey(): string {
+    const siteKey = process.env.RECAPTCHA_SITE_KEY;
+    if (!siteKey) {
+      throw new Error('RECAPTCHA_SITE_KEY is not configured');
     }
+    return siteKey;
+  }
 
-    const postData = new URLSearchParams({
-      secret,
-      response: token,
-    });
+  private static get minScore(): number {
+    const value = process.env.RECAPTCHA_MIN_SCORE;
+    const parsed = value ? Number(value) : 0.3;
+    return Number.isFinite(parsed) ? parsed : 0.3;
+  }
 
-    if (remoteIp) {
-      postData.append('remoteip', remoteIp);
-    }
+  static async verify(
+    token: string,
+    userIpAddress?: string,
+    options?: { expectedAction?: string | string[] }
+  ): Promise<boolean> {
+    const projectPath = this.client.projectPath(this.projectId);
+    const expectedActions = options?.expectedAction
+      ? Array.isArray(options.expectedAction)
+        ? options.expectedAction
+        : [options.expectedAction]
+      : undefined;
 
-    return new Promise<boolean>((resolve, reject) => {
-      const request = https.request(
-        {
-          hostname: 'www.google.com',
-          path: '/recaptcha/api/siteverify',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Content-Length': Buffer.byteLength(postData.toString()),
-          },
+    const [assessment] = await this.client.createAssessment({
+      parent: projectPath,
+      assessment: {
+        event: {
+          token,
+          siteKey: this.siteKey,
+          userIpAddress,
+          // Only set expectedAction when we have a single value to avoid mismatches
+          expectedAction: expectedActions && expectedActions.length === 1 ? expectedActions[0] : undefined,
         },
-        (res) => {
-          let data = '';
-          res.on('data', chunk => {
-            data += chunk;
-          });
-          res.on('end', () => {
-            try {
-              const result = JSON.parse(data);
-              resolve(Boolean(result.success));
-            } catch (error) {
-              reject(error);
-            }
-          });
-        }
-      );
-
-      request.on('error', reject);
-      request.write(postData.toString());
-      request.end();
+      },
     });
+
+    const tokenProperties = assessment.tokenProperties;
+
+    if (!tokenProperties?.valid) {
+      return false;
+    }
+
+    if (expectedActions && tokenProperties.action && !expectedActions.includes(tokenProperties.action)) {
+      return false;
+    }
+
+    const score = assessment.riskAnalysis?.score ?? 0;
+    return score >= this.minScore;
   }
 }
