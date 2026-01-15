@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Container,
   Paper,
@@ -69,6 +69,17 @@ const CheckoutForm: React.FC = () => {
   // Payment Request Button (Apple Pay / Google Pay)
   const [paymentRequest, setPaymentRequest] = useState<PaymentRequest | null>(null);
   const [canMakePayment, setCanMakePayment] = useState(false);
+  const paymentRequestRef = useRef<PaymentRequest | null>(null);
+  const latestCheckoutState = useRef({
+    items,
+    deliveryNotes,
+    cartLocationId,
+    guestFirstName,
+    guestLastName,
+    guestEmail,
+    isAuthenticated,
+    loading,
+  });
 
   const cartTotal = getCartTotal();
   const apiBaseUrl = import.meta.env.VITE_API_URL || '/api/v1';
@@ -184,11 +195,30 @@ const CheckoutForm: React.FC = () => {
     }
   };
 
+  // Keep latest state for the payment request handler without recreating the request object
+  useEffect(() => {
+    latestCheckoutState.current = {
+      items,
+      deliveryNotes,
+      cartLocationId,
+      guestFirstName,
+      guestLastName,
+      guestEmail,
+      isAuthenticated,
+      loading,
+    };
+  }, [items, deliveryNotes, cartLocationId, guestFirstName, guestLastName, guestEmail, isAuthenticated, loading]);
+
   // Initialize Payment Request Button for Apple Pay / Google Pay
   useEffect(() => {
     if (!stripe) {
       return;
     }
+
+    // Reset the existing payment request when auth mode changes
+    setPaymentRequest(null);
+    setCanMakePayment(false);
+    paymentRequestRef.current = null;
 
     const pr = stripe.paymentRequest({
       country: 'AU',
@@ -200,6 +230,8 @@ const CheckoutForm: React.FC = () => {
       requestPayerName: !isAuthenticated,
       requestPayerEmail: !isAuthenticated,
     });
+
+    paymentRequestRef.current = pr;
 
     // Check if browser supports Apple Pay or Google Pay
     pr.canMakePayment().then((result) => {
@@ -213,9 +245,20 @@ const CheckoutForm: React.FC = () => {
     });
 
     // Handle payment method
-    pr.on('paymentmethod', async (event) => {
+    const handlePaymentMethod = async (event: any) => {
+      const {
+        items: currentItems,
+        deliveryNotes: currentDeliveryNotes,
+        cartLocationId: currentCartLocationId,
+        guestFirstName: currentGuestFirstName,
+        guestLastName: currentGuestLastName,
+        guestEmail: currentGuestEmail,
+        isAuthenticated: currentIsAuthenticated,
+        loading: currentLoading,
+      } = latestCheckoutState.current;
+
       // Prevent double-processing
-      if (loading) {
+      if (currentLoading) {
         event.complete('fail');
         return;
       }
@@ -224,13 +267,13 @@ const CheckoutForm: React.FC = () => {
 
       try {
         // For guest checkout, extract payer info from payment request
-        const payerEmail = event.payerEmail || guestEmail;
+        const payerEmail = event.payerEmail || currentGuestEmail;
         const payerName = event.payerName || '';
         const [firstName, ...lastNameParts] = payerName.split(' ');
         const lastName = lastNameParts.join(' ');
 
         // Validate guest info for payment request
-        if (!isAuthenticated) {
+        if (!currentIsAuthenticated) {
           if (!payerEmail || !firstName) {
             event.complete('fail');
             setError('Payment method must provide name and email for guest checkout');
@@ -240,7 +283,7 @@ const CheckoutForm: React.FC = () => {
         }
 
         // Validate locationId
-        if (!cartLocationId) {
+        if (!currentCartLocationId) {
           event.complete('fail');
           setError('Please select a location before placing an order');
           setLoading(false);
@@ -249,22 +292,22 @@ const CheckoutForm: React.FC = () => {
 
         // Create order and get payment intent
         const orderData = {
-          items: items.map(item => ({
+          items: currentItems.map(item => ({
             menuItemId: item.menuItem.id,
             quantity: item.quantity,
             customizations: item.customizations.join(', '),
             specialRequests: item.specialRequests,
             selectedVariations: item.selectedVariations || [],
           })),
-          deliveryNotes: deliveryNotes || undefined,
-          locationId: cartLocationId,
+          deliveryNotes: currentDeliveryNotes || undefined,
+          locationId: currentCartLocationId,
         };
 
         let response;
         let guestTokenPayload: GuestOrderSecurityToken | undefined;
-        const authConfig = isAuthenticated ? { withCredentials: true } : undefined;
+        const authConfig = currentIsAuthenticated ? { withCredentials: true } : undefined;
 
-        if (isAuthenticated) {
+        if (currentIsAuthenticated) {
           // Authenticated order
           response = await axios.post(
             `${import.meta.env.VITE_API_URL}/orders`,
@@ -287,7 +330,7 @@ const CheckoutForm: React.FC = () => {
             ...orderData,
             guestInfo: {
               firstName: firstName || guestFirstName,
-              lastName: lastName || guestLastName,
+              lastName: lastName || currentGuestLastName,
               email: payerEmail,
             },
             guestToken: guestTokenPayload,
@@ -316,7 +359,7 @@ const CheckoutForm: React.FC = () => {
             await axios.post(
               `${import.meta.env.VITE_API_URL}/payment/confirm`,
               { paymentIntentId: paymentIntent.id, clientSecret },
-              isAuthenticated ? { withCredentials: true } : undefined
+              currentIsAuthenticated ? { withCredentials: true } : undefined
             );
             console.log('[Checkout] Payment status confirmed with backend');
           } catch (confirmErr) {
@@ -329,9 +372,9 @@ const CheckoutForm: React.FC = () => {
           setGuestTokenExpiry(null);
           navigate(`/order-confirmation/${order.id}`, {
             state: {
-              isGuest: !isAuthenticated,
+              isGuest: !currentIsAuthenticated,
               guestEmail: payerEmail,
-              guestName: payerName || `${guestFirstName} ${guestLastName}`,
+              guestName: payerName || `${currentGuestFirstName} ${currentGuestLastName}`,
               accessToken: accessToken // Pass token for guest order retrieval
             }
           });
@@ -353,8 +396,26 @@ const CheckoutForm: React.FC = () => {
       } finally {
         setLoading(false);
       }
-    });
-  }, [stripe, cartTotal, isAuthenticated, items, deliveryNotes, navigate, clearCart, guestFirstName, guestLastName, guestEmail, ensureGuestSecurityToken]);
+    };
+
+    pr.on('paymentmethod', handlePaymentMethod);
+
+    return () => {
+      pr.off('paymentmethod', handlePaymentMethod);
+    };
+  }, [stripe, isAuthenticated, cartTotal, ensureGuestSecurityToken, clearCart, navigate]);
+
+  // Keep the payment request total in sync without recreating the element
+  useEffect(() => {
+    if (paymentRequestRef.current) {
+      paymentRequestRef.current.update({
+        total: {
+          label: 'HRC Kitchen Order',
+          amount: Math.round(cartTotal * 100),
+        },
+      });
+    }
+  }, [cartTotal]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
