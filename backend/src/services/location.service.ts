@@ -6,6 +6,8 @@ interface CreateLocationData {
   address?: string;
   phone?: string;
   isActive: boolean;
+  themePrimary?: string;
+  themeSecondary?: string;
 }
 
 interface UpdateLocationData {
@@ -13,9 +15,24 @@ interface UpdateLocationData {
   address?: string;
   phone?: string;
   isActive?: boolean;
+  themePrimary?: string;
+  themeSecondary?: string;
 }
 
 export class LocationService {
+  private static readonly DEFAULT_THEME_PRIMARY = '#2D5F3F';
+  private static readonly DEFAULT_THEME_SECONDARY = '#D4A574';
+
+  private normalizeHexColor(input?: string, fallback = '#000000'): string {
+    if (!input) {
+      return fallback;
+    }
+    const trimmed = input.trim();
+    const hex = trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+    const isValid = /^#[0-9a-fA-F]{6}$/.test(hex);
+    return isValid ? hex.toUpperCase() : fallback;
+  }
+
   private normalizePublicCode(input: string): string {
     return input
       .toLowerCase()
@@ -80,11 +97,15 @@ export class LocationService {
    */
   async createLocation(data: CreateLocationData) {
     const publicCode = await this.generateUniquePublicCode(data.name);
+    const themePrimary = this.normalizeHexColor(data.themePrimary, LocationService.DEFAULT_THEME_PRIMARY);
+    const themeSecondary = this.normalizeHexColor(data.themeSecondary, LocationService.DEFAULT_THEME_SECONDARY);
 
     const location = await prisma.location.create({
       data: {
         name: data.name,
         publicCode,
+        themePrimary,
+        themeSecondary,
         address: data.address || null,
         phone: data.phone || null,
         isActive: data.isActive,
@@ -105,10 +126,17 @@ export class LocationService {
           ...(data.address !== undefined && { address: data.address }),
           ...(data.phone !== undefined && { phone: data.phone }),
           ...(data.isActive !== undefined && { isActive: data.isActive }),
+          ...(data.themePrimary !== undefined && {
+            themePrimary: this.normalizeHexColor(data.themePrimary, LocationService.DEFAULT_THEME_PRIMARY),
+          }),
+          ...(data.themeSecondary !== undefined && {
+            themeSecondary: this.normalizeHexColor(data.themeSecondary, LocationService.DEFAULT_THEME_SECONDARY),
+          }),
         },
       });
       return location;
     } catch (error) {
+      console.error('LocationService.updateLocation failed:', error, { locationId, data });
       return null;
     }
   }

@@ -2,6 +2,13 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import locationService from '../services/location.service';
 
+const isHexColor = (value?: string): boolean => {
+  if (!value || typeof value !== 'string') {
+    return false;
+  }
+  return /^#[0-9a-fA-F]{6}$/.test(value.trim());
+};
+
 export class LocationController {
   /**
    * GET /api/v1/locations
@@ -207,7 +214,7 @@ export class LocationController {
    */
   async createLocation(req: AuthRequest, res: Response) {
     try {
-      const { name, address, phone, isActive = true } = req.body;
+      const { name, address, phone, isActive = true, themePrimary, themeSecondary } = req.body;
 
       if (!name) {
         res.status(400).json({
@@ -217,11 +224,29 @@ export class LocationController {
         return;
       }
 
+      if (themePrimary !== undefined && (typeof themePrimary !== 'string' || !isHexColor(themePrimary))) {
+        res.status(400).json({
+          success: false,
+          message: 'themePrimary must be a valid hex color like #2D5F3F',
+        });
+        return;
+      }
+
+      if (themeSecondary !== undefined && (typeof themeSecondary !== 'string' || !isHexColor(themeSecondary))) {
+        res.status(400).json({
+          success: false,
+          message: 'themeSecondary must be a valid hex color like #D4A574',
+        });
+        return;
+      }
+
       const location = await locationService.createLocation({
         name,
         address,
         phone,
         isActive,
+        themePrimary,
+        themeSecondary,
       });
 
       res.status(201).json({
@@ -231,7 +256,7 @@ export class LocationController {
       });
       return;
     } catch (error) {
-      console.error('Error creating location:', error);
+      console.error('Error creating location:', error, { body: req.body });
       res.status(500).json({
         success: false,
         message: 'Failed to create location',
@@ -247,7 +272,29 @@ export class LocationController {
   async updateLocation(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
-      const updateData = req.body;
+      const updateData = req.body || {};
+
+      if (
+        updateData.themePrimary !== undefined &&
+        (typeof updateData.themePrimary !== 'string' || !isHexColor(updateData.themePrimary))
+      ) {
+        res.status(400).json({
+          success: false,
+          message: 'themePrimary must be a valid hex color like #2D5F3F',
+        });
+        return;
+      }
+
+      if (
+        updateData.themeSecondary !== undefined &&
+        (typeof updateData.themeSecondary !== 'string' || !isHexColor(updateData.themeSecondary))
+      ) {
+        res.status(400).json({
+          success: false,
+          message: 'themeSecondary must be a valid hex color like #D4A574',
+        });
+        return;
+      }
 
       const location = await locationService.updateLocation(id, updateData);
 
@@ -266,10 +313,14 @@ export class LocationController {
       });
       return;
     } catch (error) {
-      console.error('Error updating location:', error);
+      console.error('Error updating location:', error, { body: req.body, locationId: req.params.id });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({
         success: false,
-        message: 'Failed to update location',
+        message:
+          process.env.NODE_ENV === 'development'
+            ? `Failed to update location: ${errorMessage}`
+            : 'Failed to update location',
       });
       return;
     }

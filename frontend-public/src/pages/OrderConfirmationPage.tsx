@@ -227,7 +227,7 @@ const OrderConfirmationPage: React.FC = () => {
             left: 0,
             right: 0,
             height: 6,
-            background: 'linear-gradient(90deg, #2D5F3F 0%, #4A8862 100%)',
+            background: (theme) => `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
           }
         }}
       >

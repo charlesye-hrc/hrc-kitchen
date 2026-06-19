@@ -2,6 +2,8 @@ export interface Location {
     id: string;
     name: string;
     publicCode: string;
+    themePrimary: string;
+    themeSecondary: string;
     address?: string | null;
     phone?: string | null;
     isActive: boolean;

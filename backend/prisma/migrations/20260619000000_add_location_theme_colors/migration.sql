@@ -1,0 +1,3 @@
+ALTER TABLE "locations"
+ADD COLUMN "theme_primary" TEXT NOT NULL DEFAULT '#2D5F3F',
+ADD COLUMN "theme_secondary" TEXT NOT NULL DEFAULT '#D4A574';

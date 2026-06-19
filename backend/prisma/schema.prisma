@@ -183,6 +183,8 @@ model Location {
   id                    String             @id @default(uuid())
   name                  String             @unique
   publicCode            String             @unique @map("public_code")
+  themePrimary          String             @default("#2D5F3F") @map("theme_primary")
+  themeSecondary        String             @default("#D4A574") @map("theme_secondary")
   address               String?
   phone                 String?
   isActive              Boolean            @default(true) @map("is_active")

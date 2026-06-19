@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { CssBaseline, ThemeProvider } from '@mui/material';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -14,7 +15,8 @@ import NotFoundPage from './pages/NotFoundPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { LocationProvider, useLocationContext } from '@hrc-kitchen/common';
-import { ReactNode, useEffect, useRef } from 'react';
+import { ReactNode, useEffect, useMemo, useRef } from 'react';
+import { createAppTheme } from './theme';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
@@ -131,16 +133,35 @@ const LayoutWrapper = ({ children }: { children: ReactNode }) => {
   return <Layout>{children}</Layout>;
 };
 
+const DynamicThemeWrapper = ({ children }: { children: ReactNode }) => {
+  const { selectedLocation } = useLocationContext();
+  const theme = useMemo(() => {
+    return createAppTheme({
+      primary: selectedLocation?.themePrimary,
+      secondary: selectedLocation?.themeSecondary,
+    });
+  }, [selectedLocation?.themePrimary, selectedLocation?.themeSecondary]);
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      {children}
+    </ThemeProvider>
+  );
+};
+
 function App() {
   return (
     <AuthProvider>
       <LocationProvider apiUrl={API_URL} forceAllLocations={true}>
-        <LocationUrlSync />
-        <CartProvider>
-          <LayoutWrapper>
-            <AppRoutes />
-          </LayoutWrapper>
-        </CartProvider>
+        <DynamicThemeWrapper>
+          <LocationUrlSync />
+          <CartProvider>
+            <LayoutWrapper>
+              <AppRoutes />
+            </LayoutWrapper>
+          </CartProvider>
+        </DynamicThemeWrapper>
       </LocationProvider>
     </AuthProvider>
   );

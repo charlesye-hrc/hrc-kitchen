@@ -495,7 +495,7 @@ const MenuPage: React.FC = () => {
             sx={{
               borderRadius: 3,
               p: { xs: 2.5, md: 3 },
-              border: '1px solid rgba(45, 95, 63, 0.12)',
+              border: (theme) => `1px solid ${theme.palette.primary.main}1F`,
               backgroundColor: 'rgba(255,255,255,0.92)',
             }}
           >
@@ -522,7 +522,7 @@ const MenuPage: React.FC = () => {
                     sx={{
                       mt: 1.5,
                       fontWeight: 600,
-                      backgroundColor: 'rgba(45,95,63,0.08)',
+                      backgroundColor: (theme) => `${theme.palette.primary.main}14`,
                       color: 'primary.main',
                     }}
                   />
@@ -557,13 +557,13 @@ const MenuPage: React.FC = () => {
                 p: { xs: 2, md: 2.5 },
                 border: '1.5px solid',
                 borderColor: 'primary.main',
-                backgroundColor: 'rgba(45, 95, 63, 0.04)',
+                backgroundColor: (theme) => `${theme.palette.primary.main}0A`,
                 cursor: 'pointer',
                 transition: 'all 0.25s ease',
                 '&:hover': {
-                  backgroundColor: 'rgba(45, 95, 63, 0.08)',
+                  backgroundColor: (theme) => `${theme.palette.primary.main}14`,
                   borderColor: 'primary.dark',
-                  boxShadow: '0 4px 12px rgba(45, 95, 63, 0.15)',
+                  boxShadow: (theme) => `0 4px 12px ${theme.palette.primary.main}26`,
                 },
               }}
               onClick={handleRepeatLastOrder}
@@ -729,7 +729,7 @@ const MenuPage: React.FC = () => {
                       left: 0,
                       width: 80,
                       height: 3,
-                      background: 'linear-gradient(90deg, #2D5F3F 0%, #4A8862 100%)',
+                      background: (theme) => `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
                       borderRadius: 2,
                     },
                   }}
@@ -747,7 +747,7 @@ const MenuPage: React.FC = () => {
                           position: 'relative',
                           overflow: 'hidden',
                           borderRadius: 3,
-                          border: '1px solid rgba(45, 95, 63, 0.1)',
+                          border: (theme) => `1px solid ${theme.palette.primary.main}1A`,
                           background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, #F8FAF8 100%)',
                           '&:hover': {
                             boxShadow: '0px 25px 45px rgba(0,0,0,0.08)',
@@ -801,7 +801,7 @@ const MenuPage: React.FC = () => {
                             size="small"
                             sx={{
                               alignSelf: 'flex-start',
-                              backgroundColor: 'rgba(45,95,63,0.08)',
+                              backgroundColor: (theme) => `${theme.palette.primary.main}14`,
                               fontWeight: 600,
                             }}
                           />
@@ -930,13 +930,13 @@ const MenuPage: React.FC = () => {
               sx={{
                 mt: 2,
                 p: 2.5,
-                background: 'linear-gradient(135deg, #2D5F3F 0%, #4A8862 100%)',
+                background: (theme) => `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
                 color: 'white',
                 borderRadius: 2,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                boxShadow: '0px 4px 12px rgba(45, 95, 63, 0.2)',
+                boxShadow: (theme) => `0px 4px 12px ${theme.palette.primary.main}33`,
               }}
             >
               <Typography variant="h6" sx={{ fontWeight: 600 }}>Total:</Typography>

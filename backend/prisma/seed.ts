@@ -113,6 +113,8 @@ async function main() {
     create: {
       name: 'Main Campus - Huonville',
       publicCode: 'huonville',
+      themePrimary: '#2D5F3F',
+      themeSecondary: '#D4A574',
       address: '123 Main Street, Huonville TAS 7109',
       phone: '03 6264 1234',
       isActive: true,
@@ -125,6 +127,8 @@ async function main() {
     create: {
       name: 'South Campus - Cygnet',
       publicCode: 'cygnet',
+      themePrimary: '#1F5A7A',
+      themeSecondary: '#7CC5E8',
       address: '45 Mary Street, Cygnet TAS 7112',
       phone: '03 6295 5678',
       isActive: true,
@@ -137,6 +141,8 @@ async function main() {
     create: {
       name: 'North Campus - Franklin',
       publicCode: 'franklin',
+      themePrimary: '#7A3E1F',
+      themeSecondary: '#E6A16A',
       address: '78 Huon Highway, Franklin TAS 7113',
       phone: '03 6266 9012',
       isActive: true,

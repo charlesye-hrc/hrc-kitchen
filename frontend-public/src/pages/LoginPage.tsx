@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { Box, Paper, TextField, Button, Typography, Alert } from '@mui/material';
+import { Box, Paper, TextField, Button, Typography, Alert, useTheme } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 
 const LoginPage = () => {
@@ -15,6 +15,7 @@ const LoginPage = () => {
   const { loginWithPassword, verifyOtp, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
 
   // Get the redirect path from location state (e.g., from checkout page)
   const from = (location.state as any)?.from || '/menu';
@@ -103,7 +104,7 @@ const LoginPage = () => {
             left: 0,
             right: 0,
             height: 4,
-            background: 'linear-gradient(90deg, #2D5F3F 0%, #4A8862 100%)',
+            background: (theme) => `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
           }
         }}
       >
@@ -198,7 +199,7 @@ const LoginPage = () => {
                 to="/forgot-password"
                 style={{
                   textDecoration: 'none',
-                  color: '#2D5F3F',
+                  color: theme.palette.primary.main,
                   fontSize: '0.875rem',
                   fontWeight: 500,
                 }}
@@ -282,7 +283,7 @@ const LoginPage = () => {
               to="/register"
               style={{
                 textDecoration: 'none',
-                color: '#2D5F3F',
+                color: theme.palette.primary.main,
                 fontWeight: 600,
               }}
             >

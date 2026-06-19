@@ -51,7 +51,8 @@ const CartActionBar: React.FC<CartActionBarProps> = ({ onOpenCart, isCartOpen = 
             px: 2.5,
             py: 1.5,
             backdropFilter: 'blur(8px)',
-            background: 'linear-gradient(135deg, rgba(45,95,63,0.92), rgba(74,136,98,0.95))',
+            background: (t) =>
+              `linear-gradient(135deg, ${t.palette.primary.main}EB, ${t.palette.primary.light}F2)`,
             color: 'common.white',
             zIndex: (t) => t.zIndex.snackbar + 1,
           }}
