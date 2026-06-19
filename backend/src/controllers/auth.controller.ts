@@ -12,6 +12,11 @@ export class AuthController {
   private static async verifyCaptcha(req: Request, expectedActions?: string[]): Promise<void> {
     const { captchaToken } = req.body;
 
+    // Dev-only bypass: allows local testing without requiring frontend captcha token.
+    if (CaptchaService.isBypassEnabledInDev()) {
+      return;
+    }
+
     if (!captchaToken) {
       throw new ApiError(400, 'Captcha token is required');
     }

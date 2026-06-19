@@ -16,6 +16,34 @@ interface UpdateLocationData {
 }
 
 export class LocationService {
+  private normalizePublicCode(input: string): string {
+    return input
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  private async generateUniquePublicCode(name: string): Promise<string> {
+    const fallback = `location-${Date.now()}`;
+    const baseCode = this.normalizePublicCode(name) || fallback;
+    let candidateCode = baseCode;
+    let suffix = 2;
+
+    while (true) {
+      const existing = await prisma.location.findUnique({
+        where: { publicCode: candidateCode },
+        select: { id: true },
+      });
+
+      if (!existing) {
+        return candidateCode;
+      }
+
+      candidateCode = `${baseCode}-${suffix}`;
+      suffix += 1;
+    }
+  }
+
   /**
    * Get all locations
    */
@@ -51,9 +79,12 @@ export class LocationService {
    * Create a new location (Admin only)
    */
   async createLocation(data: CreateLocationData) {
+    const publicCode = await this.generateUniquePublicCode(data.name);
+
     const location = await prisma.location.create({
       data: {
         name: data.name,
+        publicCode,
         address: data.address || null,
         phone: data.phone || null,
         isActive: data.isActive,

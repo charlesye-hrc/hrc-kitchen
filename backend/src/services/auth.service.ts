@@ -1,11 +1,16 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import path from 'path';
+import dotenv from 'dotenv';
 import { User, UserRole } from '@prisma/client';
 import { ApiError } from '../middleware/errorHandler';
 import prisma from '../lib/prisma';
 import { hasAdminDomainAccess } from '../middleware/domainValidation';
 import { logger } from '../utils/logger';
+
+// Ensure environment variables are available even when process is started from repo root.
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 export interface RegisterDTO {
   email: string;

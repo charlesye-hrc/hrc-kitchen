@@ -2,6 +2,18 @@ import { RecaptchaEnterpriseServiceClient } from '@google-cloud/recaptcha-enterp
 
 export class CaptchaService {
   private static client = new RecaptchaEnterpriseServiceClient();
+  private static bypassLogged = false;
+
+  private static get shouldBypassInDev(): boolean {
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const bypassValue = (process.env.RECAPTCHA_BYPASS_IN_DEV || '').toLowerCase().trim();
+    const bypassEnabled = bypassValue === 'true' || bypassValue === '1' || bypassValue === 'yes';
+    return isDevelopment && bypassEnabled;
+  }
+
+  static isBypassEnabledInDev(): boolean {
+    return this.shouldBypassInDev;
+  }
 
   private static get projectId(): string {
     const projectId = process.env.RECAPTCHA_PROJECT_ID;
@@ -30,6 +42,14 @@ export class CaptchaService {
     userIpAddress?: string,
     options?: { expectedAction?: string | string[] }
   ): Promise<boolean> {
+    if (this.shouldBypassInDev) {
+      if (!this.bypassLogged) {
+        console.warn('[CaptchaService] RECAPTCHA_BYPASS_IN_DEV is enabled in development. Skipping captcha verification.');
+        this.bypassLogged = true;
+      }
+      return true;
+    }
+
     const projectPath = this.client.projectPath(this.projectId);
     const expectedActions = options?.expectedAction
       ? Array.isArray(options.expectedAction)

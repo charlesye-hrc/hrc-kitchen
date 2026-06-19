@@ -370,7 +370,14 @@ const CheckoutForm: React.FC = () => {
           clearCart();
           setGuestSecurityToken(null);
           setGuestTokenExpiry(null);
-          navigate(`/order-confirmation/${order.id}`, {
+          const confirmationSearch =
+            !currentIsAuthenticated && accessToken
+              ? `?token=${encodeURIComponent(accessToken)}`
+              : '';
+          navigate({
+            pathname: `/order-confirmation/${order.id}`,
+            search: confirmationSearch,
+          }, {
             state: {
               isGuest: !currentIsAuthenticated,
               guestEmail: payerEmail,
@@ -539,7 +546,14 @@ const CheckoutForm: React.FC = () => {
         clearCart();
         setGuestSecurityToken(null);
         setGuestTokenExpiry(null);
-        navigate(`/order-confirmation/${order.id}`, {
+        const confirmationSearch =
+          !isAuthenticated && accessToken
+            ? `?token=${encodeURIComponent(accessToken)}`
+            : '';
+        navigate({
+          pathname: `/order-confirmation/${order.id}`,
+          search: confirmationSearch,
+        }, {
           state: {
             isGuest: !isAuthenticated,
             guestEmail: guestEmail || undefined,
@@ -907,6 +921,7 @@ const CheckoutForm: React.FC = () => {
           <Box sx={{ mb: 3, p: 2, border: '1px solid #ccc', borderRadius: 1 }}>
             <CardElement
               options={{
+                hidePostalCode: true,
                 style: {
                   base: {
                     fontSize: '16px',

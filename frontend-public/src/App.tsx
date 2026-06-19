@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -13,8 +13,8 @@ import OrdersPage from './pages/OrdersPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
-import { LocationProvider } from '@hrc-kitchen/common';
-import { ReactNode } from 'react';
+import { LocationProvider, useLocationContext } from '@hrc-kitchen/common';
+import { ReactNode, useEffect, useRef } from 'react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
@@ -28,10 +28,12 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
  */
 
 const AppRoutes = () => {
+  const location = useLocation();
+
   return (
     <Routes>
       {/* Redirect root to menu */}
-      <Route path="/" element={<Navigate to="/menu" replace />} />
+      <Route path="/" element={<Navigate to={{ pathname: '/menu', search: location.search }} replace />} />
 
       {/* Public Routes */}
       <Route path="/menu" element={<MenuPage />} />
@@ -51,6 +53,61 @@ const AppRoutes = () => {
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
+};
+
+const LocationUrlSync = () => {
+  const { locations, selectedLocation, selectLocation, isLoading } = useLocationContext();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const hasInitializedFromUrl = useRef(false);
+
+  useEffect(() => {
+    if (isLoading || locations.length === 0) {
+      return;
+    }
+
+    const searchParams = new URLSearchParams(location.search);
+    const locParam = searchParams.get('loc');
+    const matchedLocation = locParam
+      ? locations.find((loc) => loc.publicCode === locParam)
+      : undefined;
+
+    // On first load, honor URL param as source of truth (for QR deep links).
+    if (!hasInitializedFromUrl.current) {
+      hasInitializedFromUrl.current = true;
+
+      if (matchedLocation && selectedLocation?.id !== matchedLocation.id) {
+        selectLocation(matchedLocation.id);
+        return;
+      }
+    }
+
+    if (!selectedLocation?.publicCode) {
+      return;
+    }
+
+    if (locParam !== selectedLocation.publicCode) {
+      searchParams.set('loc', selectedLocation.publicCode);
+      navigate(
+        {
+          pathname: location.pathname,
+          search: `?${searchParams.toString()}`,
+        },
+        { replace: true, state: location.state }
+      );
+    }
+  }, [
+    isLoading,
+    locations,
+    selectedLocation?.id,
+    selectedLocation?.publicCode,
+    location.pathname,
+    location.search,
+    navigate,
+    selectLocation,
+  ]);
+
+  return null;
 };
 
 const LayoutWrapper = ({ children }: { children: ReactNode }) => {
@@ -78,6 +135,7 @@ function App() {
   return (
     <AuthProvider>
       <LocationProvider apiUrl={API_URL} forceAllLocations={true}>
+        <LocationUrlSync />
         <CartProvider>
           <LayoutWrapper>
             <AppRoutes />

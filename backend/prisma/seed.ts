@@ -112,6 +112,7 @@ async function main() {
     update: {},
     create: {
       name: 'Main Campus - Huonville',
+      publicCode: 'huonville',
       address: '123 Main Street, Huonville TAS 7109',
       phone: '03 6264 1234',
       isActive: true,
@@ -123,6 +124,7 @@ async function main() {
     update: {},
     create: {
       name: 'South Campus - Cygnet',
+      publicCode: 'cygnet',
       address: '45 Mary Street, Cygnet TAS 7112',
       phone: '03 6295 5678',
       isActive: true,
@@ -134,6 +136,7 @@ async function main() {
     update: {},
     create: {
       name: 'North Campus - Franklin',
+      publicCode: 'franklin',
       address: '78 Huon Highway, Franklin TAS 7113',
       phone: '03 6266 9012',
       isActive: true,

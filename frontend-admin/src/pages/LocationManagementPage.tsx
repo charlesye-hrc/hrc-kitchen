@@ -35,6 +35,7 @@ import api from '../services/api';
 interface Location {
   id: string;
   name: string;
+  publicCode: string;
   address: string | null;
   phone: string | null;
   isActive: boolean;
@@ -296,6 +297,7 @@ const LocationManagementPage: React.FC = () => {
           <TableHead>
             <TableRow>
               <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, width: 'auto' }}>Name</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, display: { xs: 'none', md: 'table-cell' }, width: 'auto' }}>Public Code</TableCell>
               <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, display: { xs: 'none', sm: 'table-cell' }, width: 'auto' }}>Address</TableCell>
               <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, display: { xs: 'none', md: 'table-cell' }, width: 'auto' }}>Phone</TableCell>
               <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, width: 'auto' }}>Status</TableCell>
@@ -305,7 +307,7 @@ const LocationManagementPage: React.FC = () => {
           <TableBody>
             {locations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
                   <Typography color="text.secondary">
                     No locations found. Click "Add Location" to create one.
                   </Typography>
@@ -315,6 +317,9 @@ const LocationManagementPage: React.FC = () => {
               locations.map((location) => (
                 <TableRow key={location.id} hover>
                   <TableCell sx={{ fontWeight: 500, px: { xs: 1, sm: 2 } }}>{location.name}</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, px: { xs: 1, sm: 2 }, fontFamily: 'monospace' }}>
+                    {location.publicCode}
+                  </TableCell>
                   <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, px: { xs: 1, sm: 2 } }}>{location.address || '-'}</TableCell>
                   <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, px: { xs: 1, sm: 2 } }}>{location.phone || '-'}</TableCell>
                   <TableCell sx={{ px: { xs: 1, sm: 2 } }}>

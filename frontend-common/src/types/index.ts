@@ -2,6 +2,7 @@
 export interface Location {
   id: string;
   name: string;
+  publicCode: string;
   address?: string | null;
   phone?: string | null;
   isActive: boolean;

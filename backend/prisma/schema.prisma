@@ -182,6 +182,7 @@ model SystemConfig {
 model Location {
   id                    String             @id @default(uuid())
   name                  String             @unique
+  publicCode            String             @unique @map("public_code")
   address               String?
   phone                 String?
   isActive              Boolean            @default(true) @map("is_active")
