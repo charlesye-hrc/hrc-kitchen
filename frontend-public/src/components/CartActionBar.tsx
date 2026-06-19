@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Box, Button, Paper, Slide, Typography, useMediaQuery, useTheme } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import { useCart } from '../contexts/CartContext';
 
@@ -51,8 +52,9 @@ const CartActionBar: React.FC<CartActionBarProps> = ({ onOpenCart, isCartOpen = 
             px: 2.5,
             py: 1.5,
             backdropFilter: 'blur(8px)',
+            backgroundColor: (t) => alpha(t.palette.primary.main, 0.94),
             background: (t) =>
-              `linear-gradient(135deg, ${t.palette.primary.main}EB, ${t.palette.primary.light}F2)`,
+              `linear-gradient(135deg, ${alpha(t.palette.primary.dark, 0.95)} 0%, ${alpha(t.palette.primary.main, 0.92)} 100%)`,
             color: 'common.white',
             zIndex: (t) => t.zIndex.snackbar + 1,
           }}
@@ -87,7 +89,7 @@ const CartActionBar: React.FC<CartActionBarProps> = ({ onOpenCart, isCartOpen = 
                 borderRadius: 2,
                 px: 2.5,
                 py: 1,
-                minWidth: 150,
+                minWidth: 170,
                 animation: animatePulse ? 'cartPulse 0.45s ease' : 'none',
                 '@keyframes cartPulse': {
                   '0%': { transform: 'scale(1)' },
@@ -96,7 +98,7 @@ const CartActionBar: React.FC<CartActionBarProps> = ({ onOpenCart, isCartOpen = 
                 },
               }}
             >
-              View Cart
+              View Cart ({cartItemCount})
             </Button>
           </Box>
         </Paper>
