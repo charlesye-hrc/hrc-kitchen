@@ -54,4 +54,11 @@ router.get('/:id', locationController.getLocationById);
  */
 router.get('/:id/menu-items', locationController.getLocationMenuItems);
 
+/**
+ * @route   GET /api/v1/locations/:id/menu-pdfs
+ * @desc    Get uploaded PDF menus for a specific location
+ * @access  Public
+ */
+router.get('/:id/menu-pdfs', locationController.getLocationMenuPdfs);
+
 export default router;

@@ -8,6 +8,10 @@ cloudinary.config({
 });
 
 export class UploadService {
+  private static extractPublicIdFromResult(result: any): string {
+    return result.public_id;
+  }
+
   /**
    * Generate a signed upload URL for direct upload from the frontend
    * This is more secure than uploading through the backend
@@ -40,6 +44,14 @@ export class UploadService {
     imageData: string,
     folder: string = 'menu-items'
   ): Promise<string> {
+    const result = await this.uploadImageAsset(imageData, folder);
+    return result.url;
+  }
+
+  static async uploadImageAsset(
+    imageData: string,
+    folder: string = 'menu-items'
+  ): Promise<{ url: string; publicId: string }> {
     try {
       const result = await cloudinary.uploader.upload(imageData, {
         folder,
@@ -51,10 +63,34 @@ export class UploadService {
         ],
       });
 
-      return result.secure_url;
+      return {
+        url: result.secure_url,
+        publicId: this.extractPublicIdFromResult(result),
+      };
     } catch (error) {
       console.error('Error uploading to Cloudinary:', error);
       throw new Error('Failed to upload image');
+    }
+  }
+
+  static async uploadPdf(
+    fileData: string,
+    folder: string = 'location-menu-pdfs'
+  ): Promise<{ url: string; publicId: string }> {
+    try {
+      const result = await cloudinary.uploader.upload(fileData, {
+        folder,
+        resource_type: 'raw',
+        format: 'pdf',
+      });
+
+      return {
+        url: result.secure_url,
+        publicId: this.extractPublicIdFromResult(result),
+      };
+    } catch (error) {
+      console.error('Error uploading PDF to Cloudinary:', error);
+      throw new Error('Failed to upload PDF');
     }
   }
 
@@ -72,6 +108,14 @@ export class UploadService {
     } catch (error) {
       console.error('Error deleting from Cloudinary:', error);
       // Don't throw - deletion failure shouldn't block the operation
+    }
+  }
+
+  static async deleteByPublicId(publicId: string, resourceType: 'image' | 'raw' = 'image'): Promise<void> {
+    try {
+      await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+    } catch (error) {
+      console.error('Error deleting from Cloudinary by public ID:', error);
     }
   }
 

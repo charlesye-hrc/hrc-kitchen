@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma';
 import { UserRole } from '@prisma/client';
+import UploadService from './upload.service';
 
 interface CreateLocationData {
   name: string;
@@ -17,6 +18,11 @@ interface UpdateLocationData {
   isActive?: boolean;
   themePrimary?: string;
   themeSecondary?: string;
+}
+
+interface CreateLocationMenuPdfData {
+  title: string;
+  fileData: string;
 }
 
 export class LocationService {
@@ -325,6 +331,134 @@ export class LocationService {
     } catch (error) {
       throw new Error('Failed to activate location');
     }
+  }
+
+  /**
+   * Get location-scoped PDF menus for public app.
+   * Only active locations are exposed publicly.
+   */
+  async getPublicMenuPdfsByLocation(locationId: string) {
+    const location = await prisma.location.findFirst({
+      where: {
+        id: locationId,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+
+    if (!location) {
+      return null;
+    }
+
+    return prisma.locationMenuPdf.findMany({
+      where: { locationId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        fileUrl: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  /**
+   * Get all location PDF menus for admin app.
+   */
+  async getMenuPdfsByLocation(locationId: string) {
+    return prisma.locationMenuPdf.findMany({
+      where: { locationId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        locationId: true,
+        title: true,
+        fileUrl: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  /**
+   * Check whether a user can access a specific location.
+   * - ADMIN: any existing location
+   * - Others: must be assigned to the location
+   */
+  async canUserAccessLocation(userId: string, userRole: UserRole, locationId: string): Promise<boolean> {
+    if (userRole === UserRole.ADMIN) {
+      const location = await prisma.location.findUnique({
+        where: { id: locationId },
+        select: { id: true },
+      });
+      return Boolean(location);
+    }
+
+    const assignment = await prisma.userLocation.findFirst({
+      where: {
+        userId,
+        locationId,
+      },
+      select: { id: true },
+    });
+
+    return Boolean(assignment);
+  }
+
+  /**
+   * Upload and create a location PDF menu entry.
+   */
+  async createLocationMenuPdf(locationId: string, data: CreateLocationMenuPdfData) {
+    const location = await prisma.location.findUnique({
+      where: { id: locationId },
+      select: { id: true },
+    });
+
+    if (!location) {
+      throw new Error('Location not found');
+    }
+
+    const uploadResult = await UploadService.uploadPdf(data.fileData, `location-menu-pdfs/${locationId}`);
+
+    return prisma.locationMenuPdf.create({
+      data: {
+        locationId,
+        title: data.title.trim(),
+        fileUrl: uploadResult.url,
+        cloudinaryPublicId: uploadResult.publicId,
+      },
+      select: {
+        id: true,
+        locationId: true,
+        title: true,
+        fileUrl: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  /**
+   * Delete a location PDF menu entry and backing Cloudinary file.
+   */
+  async deleteLocationMenuPdf(locationId: string, pdfId: string) {
+    const existing = await prisma.locationMenuPdf.findFirst({
+      where: {
+        id: pdfId,
+        locationId,
+      },
+    });
+
+    if (!existing) {
+      return null;
+    }
+
+    await prisma.locationMenuPdf.delete({
+      where: { id: pdfId },
+    });
+
+    await UploadService.deleteByPublicId(existing.cloudinaryPublicId, 'raw');
+    return existing;
   }
 
   /**
