@@ -246,6 +246,7 @@ const CheckoutForm: React.FC = () => {
 
     // Handle payment method
     const handlePaymentMethod = async (event: any) => {
+      let paymentRequestCompleted = false;
       const {
         items: currentItems,
         deliveryNotes: currentDeliveryNotes,
@@ -351,14 +352,30 @@ const CheckoutForm: React.FC = () => {
           throw new Error(confirmError.message);
         }
 
-        if (paymentIntent?.status === 'succeeded') {
+        let finalPaymentIntent = paymentIntent;
+        if (paymentIntent?.status === 'requires_action') {
+          // Let Stripe handle any additional authentication step (e.g., 3DS) after wallet confirmation.
           event.complete('success');
+          paymentRequestCompleted = true;
+
+          const { error: actionError, paymentIntent: actionPaymentIntent } = await stripe.confirmCardPayment(clientSecret);
+          if (actionError) {
+            throw new Error(actionError.message || 'Additional payment authentication failed');
+          }
+          finalPaymentIntent = actionPaymentIntent;
+        }
+
+        if (finalPaymentIntent?.status === 'succeeded') {
+          if (!paymentRequestCompleted) {
+            event.complete('success');
+            paymentRequestCompleted = true;
+          }
 
           // Manually confirm payment status with backend (since webhooks may not fire in dev)
           try {
             await axios.post(
               `${import.meta.env.VITE_API_URL}/payment/confirm`,
-              { paymentIntentId: paymentIntent.id, clientSecret },
+              { paymentIntentId: finalPaymentIntent.id, clientSecret },
               currentIsAuthenticated ? { withCredentials: true } : undefined
             );
             console.log('[Checkout] Payment status confirmed with backend');
@@ -387,11 +404,14 @@ const CheckoutForm: React.FC = () => {
           });
         } else {
           event.complete('fail');
+          paymentRequestCompleted = true;
           throw new Error('Payment did not succeed');
         }
       } catch (err: any) {
         console.error('Payment Request error:', err);
-        event.complete('fail');
+        if (!paymentRequestCompleted) {
+          event.complete('fail');
+        }
 
         // Check if error is due to existing email
         if (err.response?.data?.code === 'EMAIL_EXISTS') {
