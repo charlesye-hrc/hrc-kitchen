@@ -61,10 +61,21 @@ export class AuthService {
   private static readonly RESET_TOKEN_EXPIRES = '1h';
   private static readonly GUEST_ORDER_TOKEN_EXPIRES = '30d';
 
+  private static normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
+  }
+
   static async register(data: RegisterDTO): Promise<{ user: User; verificationToken: string }> {
+    const normalizedEmail = this.normalizeEmail(data.email);
+
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: data.email },
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: 'insensitive',
+        },
+      },
     });
 
     if (existingUser) {
@@ -80,7 +91,7 @@ export class AuthService {
     // Create user
     const user = await prisma.user.create({
       data: {
-        email: data.email,
+        email: normalizedEmail,
         passwordHash,
         fullName: data.fullName,
         department: data.department,
@@ -95,7 +106,10 @@ export class AuthService {
     // Link any existing guest orders to this new user account
     const linkedOrders = await prisma.order.updateMany({
       where: {
-        guestEmail: data.email,
+        guestEmail: {
+          equals: normalizedEmail,
+          mode: 'insensitive',
+        },
         userId: null, // Only link orders that aren't already linked to a user
       },
       data: {
@@ -104,7 +118,7 @@ export class AuthService {
     });
 
     logger.info('Linked guest orders to new user account', {
-      email: data.email,
+      email: normalizedEmail,
       userId: user.id,
       count: linkedOrders.count,
     });
@@ -116,9 +130,16 @@ export class AuthService {
   }
 
   static async login(data: LoginDTO): Promise<LoginStepOneResponse> {
+    const normalizedEmail = this.normalizeEmail(data.email);
+
     // Find user
-    const user = await prisma.user.findUnique({
-      where: { email: data.email },
+    const user = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: 'insensitive',
+        },
+      },
     });
 
     if (!user) {
@@ -162,7 +183,7 @@ export class AuthService {
     });
 
     logger.info('Login step 1 successful - OTP generated', {
-      email: data.email,
+      email: normalizedEmail,
       userId: user.id,
     });
 
@@ -183,9 +204,15 @@ export class AuthService {
   static async requestPasswordReset(email: string): Promise<{ resetToken: string; fullName: string } | null> {
     const startTime = Date.now();
     const minDuration = 100; // Minimum response time in ms to prevent timing attacks
+    const normalizedEmail = this.normalizeEmail(email);
 
-    const user = await prisma.user.findUnique({
-      where: { email },
+    const user = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: 'insensitive',
+        },
+      },
     });
 
     let result: { resetToken: string; fullName: string } | null = null;
@@ -205,7 +232,7 @@ export class AuthService {
       });
 
       result = { resetToken, fullName: user.fullName };
-      logger.info('Password reset token generated', { email, userId: user.id });
+      logger.info('Password reset token generated', { email: normalizedEmail, userId: user.id });
     }
 
     // Ensure consistent response time to prevent email enumeration via timing
@@ -257,8 +284,14 @@ export class AuthService {
   static async getOtpCode(email: string): Promise<string | null> {
     // Helper method to retrieve OTP code for email sending
     // Used after login step 1 to get the OTP for email
-    const user = await prisma.user.findUnique({
-      where: { email },
+    const normalizedEmail = this.normalizeEmail(email);
+    const user = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: 'insensitive',
+        },
+      },
       select: { otpCode: true, otpExpiresAt: true },
     });
 
@@ -271,9 +304,16 @@ export class AuthService {
   }
 
   static async verifyOtp(email: string, otpCode: string): Promise<AuthResponse> {
+    const normalizedEmail = this.normalizeEmail(email);
+
     // Find user with this email and valid OTP
-    const user = await prisma.user.findUnique({
-      where: { email },
+    const user = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: 'insensitive',
+        },
+      },
       include: {
         userLocations: {
           include: {
@@ -464,3 +504,4 @@ export class AuthService {
     }
   }
 }
+

@@ -67,15 +67,23 @@ export class AuthController {
   static async login(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { email, password } = req.body;
+      const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
       const shouldSkipCaptcha = Boolean(req.body.skipCaptcha);
 
       if (!shouldSkipCaptcha) {
         await AuthController.verifyCaptcha(req, ['public_login', 'admin_login']);
       } else {
-        const pendingOtpUser = await prisma.user.findUnique({
-          where: { email },
-          select: { otpCode: true, otpExpiresAt: true },
-        });
+        const pendingOtpUser = normalizedEmail
+          ? await prisma.user.findFirst({
+              where: {
+                email: {
+                  equals: normalizedEmail,
+                  mode: 'insensitive',
+                },
+              },
+              select: { otpCode: true, otpExpiresAt: true },
+            })
+          : null;
 
         const hasPendingOtp =
           Boolean(pendingOtpUser?.otpCode) &&
@@ -91,18 +99,23 @@ export class AuthController {
         throw new ApiError(400, 'Email and password are required');
       }
 
-      const result = await AuthService.login({ email, password });
+      const result = await AuthService.login({ email: normalizedEmail, password });
 
       // Get user info and OTP code to send email
-      const user = await prisma.user.findUnique({
-        where: { email },
+      const user = await prisma.user.findFirst({
+        where: {
+          email: {
+            equals: normalizedEmail,
+            mode: 'insensitive',
+          },
+        },
         select: { fullName: true },
       });
 
-      const otpCode = await AuthService.getOtpCode(email);
+      const otpCode = await AuthService.getOtpCode(normalizedEmail);
 
       if (user && otpCode) {
-        await EmailService.sendOtpEmail(email, user.fullName, otpCode);
+        await EmailService.sendOtpEmail(normalizedEmail, user.fullName, otpCode);
       }
 
       res.json(result);
@@ -149,17 +162,18 @@ export class AuthController {
       ]);
 
       const { email, app } = req.body;
+      const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
 
       if (!email) {
         throw new ApiError(400, 'Email is required');
       }
 
-      const result = await AuthService.requestPasswordReset(email);
+      const result = await AuthService.requestPasswordReset(normalizedEmail);
 
       // Send password reset email if user exists
       if (result) {
         const appContext = app === 'admin' ? 'admin' : 'public';
-        await EmailService.sendPasswordResetEmail(email, result.fullName, result.resetToken, appContext);
+        await EmailService.sendPasswordResetEmail(normalizedEmail, result.fullName, result.resetToken, appContext);
       }
 
       // Always return same message to prevent email enumeration
@@ -210,12 +224,13 @@ export class AuthController {
   static async verifyOtp(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { email, code } = req.body;
+      const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
 
       if (!email || !code) {
         throw new ApiError(400, 'Email and verification code are required');
       }
 
-      const result = await AuthService.verifyOtp(email, code);
+      const result = await AuthService.verifyOtp(normalizedEmail, code);
 
       const cookieOptions = getAuthCookieOptions();
       res.cookie(AUTH_COOKIE_NAME, result.token, cookieOptions);
@@ -270,3 +285,4 @@ export class AuthController {
     }
   }
 }
+
