@@ -19,6 +19,31 @@ router.get('/reports/popular-items', authorize(UserRole.KITCHEN, UserRole.FINANC
 router.get('/reports/summary', authorize(UserRole.KITCHEN, UserRole.FINANCE, UserRole.ADMIN), reportController.getSummary);
 router.get('/reports/orders', authorize(UserRole.KITCHEN, UserRole.FINANCE, UserRole.ADMIN), reportController.getOrders);
 
+/**
+ * PDF Menu Routes - accessible by KITCHEN and ADMIN
+ */
+
+/**
+ * @route   GET /api/v1/admin/locations/:id/menu-pdfs
+ * @desc    Get all uploaded PDF menus for a location
+ * @access  Kitchen/Admin (location scoped)
+ */
+router.get('/locations/:id/menu-pdfs', authorize(UserRole.KITCHEN, UserRole.ADMIN), locationController.getAdminLocationMenuPdfs);
+
+/**
+ * @route   POST /api/v1/admin/locations/:id/menu-pdfs
+ * @desc    Upload a PDF menu file for a location
+ * @access  Kitchen/Admin (location scoped)
+ */
+router.post('/locations/:id/menu-pdfs', authorize(UserRole.KITCHEN, UserRole.ADMIN), adminWriteLimiter, locationController.uploadLocationMenuPdf);
+
+/**
+ * @route   DELETE /api/v1/admin/locations/:locationId/menu-pdfs/:pdfId
+ * @desc    Remove a location PDF menu file
+ * @access  Kitchen/Admin (location scoped)
+ */
+router.delete('/locations/:locationId/menu-pdfs/:pdfId', authorize(UserRole.KITCHEN, UserRole.ADMIN), adminWriteLimiter, locationController.deleteLocationMenuPdf);
+
 // All other admin routes require ADMIN role only
 router.use(authorize(UserRole.ADMIN));
 

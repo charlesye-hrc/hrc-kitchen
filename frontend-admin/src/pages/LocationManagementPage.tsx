@@ -35,6 +35,9 @@ import api from '../services/api';
 interface Location {
   id: string;
   name: string;
+  publicCode: string;
+  themePrimary: string;
+  themeSecondary: string;
   address: string | null;
   phone: string | null;
   isActive: boolean;
@@ -67,6 +70,8 @@ const LocationManagementPage: React.FC = () => {
     name: '',
     address: '',
     phone: '',
+    themePrimary: '#2D5F3F',
+    themeSecondary: '#D4A574',
     isActive: true,
   });
   const [formError, setFormError] = useState<string | null>(null);
@@ -99,6 +104,8 @@ const LocationManagementPage: React.FC = () => {
         name: location.name,
         address: location.address || '',
         phone: location.phone || '',
+        themePrimary: location.themePrimary || '#2D5F3F',
+        themeSecondary: location.themeSecondary || '#D4A574',
         isActive: location.isActive,
       });
     } else {
@@ -107,6 +114,8 @@ const LocationManagementPage: React.FC = () => {
         name: '',
         address: '',
         phone: '',
+        themePrimary: '#2D5F3F',
+        themeSecondary: '#D4A574',
         isActive: true,
       });
     }
@@ -121,6 +130,8 @@ const LocationManagementPage: React.FC = () => {
       name: '',
       address: '',
       phone: '',
+      themePrimary: '#2D5F3F',
+      themeSecondary: '#D4A574',
       isActive: true,
     });
     setFormError(null);
@@ -140,6 +151,8 @@ const LocationManagementPage: React.FC = () => {
         name: formData.name.trim(),
         address: formData.address.trim() || null,
         phone: formData.phone.trim() || null,
+        themePrimary: formData.themePrimary,
+        themeSecondary: formData.themeSecondary,
         isActive: formData.isActive,
       };
 
@@ -155,7 +168,12 @@ const LocationManagementPage: React.FC = () => {
       handleCloseDialog();
     } catch (err: any) {
       console.error('Error saving location:', err);
-      setFormError(err.response?.data?.message || 'Failed to save location');
+      setFormError(
+        err?.response?.data?.error?.message ||
+        err?.response?.data?.message ||
+        err?.message ||
+        'Failed to save location'
+      );
     } finally {
       setSubmitting(false);
     }
@@ -296,6 +314,8 @@ const LocationManagementPage: React.FC = () => {
           <TableHead>
             <TableRow>
               <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, width: 'auto' }}>Name</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, display: { xs: 'none', md: 'table-cell' }, width: 'auto' }}>Public Code</TableCell>
+              <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, display: { xs: 'none', lg: 'table-cell' }, width: 'auto' }}>Theme</TableCell>
               <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, display: { xs: 'none', sm: 'table-cell' }, width: 'auto' }}>Address</TableCell>
               <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, display: { xs: 'none', md: 'table-cell' }, width: 'auto' }}>Phone</TableCell>
               <TableCell sx={{ fontWeight: 600, px: { xs: 1, sm: 2 }, width: 'auto' }}>Status</TableCell>
@@ -305,7 +325,7 @@ const LocationManagementPage: React.FC = () => {
           <TableBody>
             {locations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                   <Typography color="text.secondary">
                     No locations found. Click "Add Location" to create one.
                   </Typography>
@@ -315,6 +335,21 @@ const LocationManagementPage: React.FC = () => {
               locations.map((location) => (
                 <TableRow key={location.id} hover>
                   <TableCell sx={{ fontWeight: 500, px: { xs: 1, sm: 2 } }}>{location.name}</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, px: { xs: 1, sm: 2 }, fontFamily: 'monospace' }}>
+                    {location.publicCode}
+                  </TableCell>
+                  <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' }, px: { xs: 1, sm: 2 } }}>
+                    <Box
+                      sx={{
+                        width: 44,
+                        height: 24,
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        background: `linear-gradient(135deg, ${location.themePrimary} 0%, ${location.themeSecondary} 100%)`,
+                      }}
+                    />
+                  </TableCell>
                   <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' }, px: { xs: 1, sm: 2 } }}>{location.address || '-'}</TableCell>
                   <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, px: { xs: 1, sm: 2 } }}>{location.phone || '-'}</TableCell>
                   <TableCell sx={{ px: { xs: 1, sm: 2 } }}>
@@ -411,6 +446,52 @@ const LocationManagementPage: React.FC = () => {
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
             sx={{ mb: 2 }}
           />
+
+          <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 500 }}>
+                Primary Theme Color
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <TextField
+                  size="small"
+                  fullWidth
+                  value={formData.themePrimary}
+                  onChange={(e) => setFormData({ ...formData, themePrimary: e.target.value })}
+                  placeholder="#2D5F3F"
+                />
+                <TextField
+                  type="color"
+                  size="small"
+                  value={formData.themePrimary}
+                  onChange={(e) => setFormData({ ...formData, themePrimary: e.target.value })}
+                  sx={{ width: 56 }}
+                />
+              </Box>
+            </Box>
+
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 500 }}>
+                Secondary Theme Color
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <TextField
+                  size="small"
+                  fullWidth
+                  value={formData.themeSecondary}
+                  onChange={(e) => setFormData({ ...formData, themeSecondary: e.target.value })}
+                  placeholder="#D4A574"
+                />
+                <TextField
+                  type="color"
+                  size="small"
+                  value={formData.themeSecondary}
+                  onChange={(e) => setFormData({ ...formData, themeSecondary: e.target.value })}
+                  sx={{ width: 56 }}
+                />
+              </Box>
+            </Box>
+          </Box>
 
           <FormControlLabel
             control={
@@ -578,6 +659,7 @@ const LocationManagementPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
     </AdminPageLayout>
   );
 };

@@ -1,11 +1,14 @@
 import prisma from '../lib/prisma';
 import { UserRole } from '@prisma/client';
+import UploadService from './upload.service';
 
 interface CreateLocationData {
   name: string;
   address?: string;
   phone?: string;
   isActive: boolean;
+  themePrimary?: string;
+  themeSecondary?: string;
 }
 
 interface UpdateLocationData {
@@ -13,9 +16,57 @@ interface UpdateLocationData {
   address?: string;
   phone?: string;
   isActive?: boolean;
+  themePrimary?: string;
+  themeSecondary?: string;
+}
+
+interface CreateLocationMenuPdfData {
+  title: string;
+  fileData: string;
 }
 
 export class LocationService {
+  private static readonly DEFAULT_THEME_PRIMARY = '#2D5F3F';
+  private static readonly DEFAULT_THEME_SECONDARY = '#D4A574';
+
+  private normalizeHexColor(input?: string, fallback = '#000000'): string {
+    if (!input) {
+      return fallback;
+    }
+    const trimmed = input.trim();
+    const hex = trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+    const isValid = /^#[0-9a-fA-F]{6}$/.test(hex);
+    return isValid ? hex.toUpperCase() : fallback;
+  }
+
+  private normalizePublicCode(input: string): string {
+    return input
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  private async generateUniquePublicCode(name: string): Promise<string> {
+    const fallback = `location-${Date.now()}`;
+    const baseCode = this.normalizePublicCode(name) || fallback;
+    let candidateCode = baseCode;
+    let suffix = 2;
+
+    while (true) {
+      const existing = await prisma.location.findUnique({
+        where: { publicCode: candidateCode },
+        select: { id: true },
+      });
+
+      if (!existing) {
+        return candidateCode;
+      }
+
+      candidateCode = `${baseCode}-${suffix}`;
+      suffix += 1;
+    }
+  }
+
   /**
    * Get all locations
    */
@@ -51,9 +102,16 @@ export class LocationService {
    * Create a new location (Admin only)
    */
   async createLocation(data: CreateLocationData) {
+    const publicCode = await this.generateUniquePublicCode(data.name);
+    const themePrimary = this.normalizeHexColor(data.themePrimary, LocationService.DEFAULT_THEME_PRIMARY);
+    const themeSecondary = this.normalizeHexColor(data.themeSecondary, LocationService.DEFAULT_THEME_SECONDARY);
+
     const location = await prisma.location.create({
       data: {
         name: data.name,
+        publicCode,
+        themePrimary,
+        themeSecondary,
         address: data.address || null,
         phone: data.phone || null,
         isActive: data.isActive,
@@ -74,10 +132,17 @@ export class LocationService {
           ...(data.address !== undefined && { address: data.address }),
           ...(data.phone !== undefined && { phone: data.phone }),
           ...(data.isActive !== undefined && { isActive: data.isActive }),
+          ...(data.themePrimary !== undefined && {
+            themePrimary: this.normalizeHexColor(data.themePrimary, LocationService.DEFAULT_THEME_PRIMARY),
+          }),
+          ...(data.themeSecondary !== undefined && {
+            themeSecondary: this.normalizeHexColor(data.themeSecondary, LocationService.DEFAULT_THEME_SECONDARY),
+          }),
         },
       });
       return location;
     } catch (error) {
+      console.error('LocationService.updateLocation failed:', error, { locationId, data });
       return null;
     }
   }
@@ -266,6 +331,134 @@ export class LocationService {
     } catch (error) {
       throw new Error('Failed to activate location');
     }
+  }
+
+  /**
+   * Get location-scoped PDF menus for public app.
+   * Only active locations are exposed publicly.
+   */
+  async getPublicMenuPdfsByLocation(locationId: string) {
+    const location = await prisma.location.findFirst({
+      where: {
+        id: locationId,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+
+    if (!location) {
+      return null;
+    }
+
+    return prisma.locationMenuPdf.findMany({
+      where: { locationId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        fileUrl: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  /**
+   * Get all location PDF menus for admin app.
+   */
+  async getMenuPdfsByLocation(locationId: string) {
+    return prisma.locationMenuPdf.findMany({
+      where: { locationId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        locationId: true,
+        title: true,
+        fileUrl: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  /**
+   * Check whether a user can access a specific location.
+   * - ADMIN: any existing location
+   * - Others: must be assigned to the location
+   */
+  async canUserAccessLocation(userId: string, userRole: UserRole, locationId: string): Promise<boolean> {
+    if (userRole === UserRole.ADMIN) {
+      const location = await prisma.location.findUnique({
+        where: { id: locationId },
+        select: { id: true },
+      });
+      return Boolean(location);
+    }
+
+    const assignment = await prisma.userLocation.findFirst({
+      where: {
+        userId,
+        locationId,
+      },
+      select: { id: true },
+    });
+
+    return Boolean(assignment);
+  }
+
+  /**
+   * Upload and create a location PDF menu entry.
+   */
+  async createLocationMenuPdf(locationId: string, data: CreateLocationMenuPdfData) {
+    const location = await prisma.location.findUnique({
+      where: { id: locationId },
+      select: { id: true },
+    });
+
+    if (!location) {
+      throw new Error('Location not found');
+    }
+
+    const uploadResult = await UploadService.uploadPdf(data.fileData, `location-menu-pdfs/${locationId}`);
+
+    return prisma.locationMenuPdf.create({
+      data: {
+        locationId,
+        title: data.title.trim(),
+        fileUrl: uploadResult.url,
+        cloudinaryPublicId: uploadResult.publicId,
+      },
+      select: {
+        id: true,
+        locationId: true,
+        title: true,
+        fileUrl: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  /**
+   * Delete a location PDF menu entry and backing Cloudinary file.
+   */
+  async deleteLocationMenuPdf(locationId: string, pdfId: string) {
+    const existing = await prisma.locationMenuPdf.findFirst({
+      where: {
+        id: pdfId,
+        locationId,
+      },
+    });
+
+    if (!existing) {
+      return null;
+    }
+
+    await prisma.locationMenuPdf.delete({
+      where: { id: pdfId },
+    });
+
+    await UploadService.deleteByPublicId(existing.cloudinaryPublicId, 'raw');
+    return existing;
   }
 
   /**

@@ -26,6 +26,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import PeopleIcon from '@mui/icons-material/People';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
@@ -100,6 +101,12 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       label: 'Locations',
       icon: <LocationOnIcon />,
       roles: ['ADMIN'],
+    },
+    {
+      path: '/pdf-menus',
+      label: 'PDF Menus',
+      icon: <PictureAsPdfIcon />,
+      roles: ['KITCHEN', 'ADMIN'],
     },
     {
       path: '/users',

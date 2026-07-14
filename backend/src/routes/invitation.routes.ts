@@ -8,6 +8,8 @@ import { authLimiter } from '../middleware/rateLimiter';
 
 const router = express.Router();
 
+const INVITABLE_ROLES: UserRole[] = [UserRole.KITCHEN, UserRole.FINANCE, UserRole.ADMIN];
+
 /**
  * POST /api/v1/invitations
  * Admin invites a new user
@@ -24,6 +26,10 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next: Nex
       locationIds?: string[];
     };
     console.log(`🔔 POST /invitations - Received invitation request for ${email} with role ${role}`);
+
+    if (!INVITABLE_ROLES.includes(role)) {
+      throw new ApiError(400, 'Staff users cannot be invited. Please ask staff to self-register.');
+    }
 
     // Verify admin role
     if (req.user!.role !== 'ADMIN') {
@@ -208,3 +214,4 @@ router.post('/accept', authLimiter, async (req: Request, res: Response, next: Ne
 });
 
 export default router;
+

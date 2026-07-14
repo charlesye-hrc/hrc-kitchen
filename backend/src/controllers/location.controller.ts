@@ -1,6 +1,14 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import locationService from '../services/location.service';
+import { UserRole } from '@prisma/client';
+
+const isHexColor = (value?: string): boolean => {
+  if (!value || typeof value !== 'string') {
+    return false;
+  }
+  return /^#[0-9a-fA-F]{6}$/.test(value.trim());
+};
 
 export class LocationController {
   /**
@@ -207,7 +215,7 @@ export class LocationController {
    */
   async createLocation(req: AuthRequest, res: Response) {
     try {
-      const { name, address, phone, isActive = true } = req.body;
+      const { name, address, phone, isActive = true, themePrimary, themeSecondary } = req.body;
 
       if (!name) {
         res.status(400).json({
@@ -217,11 +225,29 @@ export class LocationController {
         return;
       }
 
+      if (themePrimary !== undefined && (typeof themePrimary !== 'string' || !isHexColor(themePrimary))) {
+        res.status(400).json({
+          success: false,
+          message: 'themePrimary must be a valid hex color like #2D5F3F',
+        });
+        return;
+      }
+
+      if (themeSecondary !== undefined && (typeof themeSecondary !== 'string' || !isHexColor(themeSecondary))) {
+        res.status(400).json({
+          success: false,
+          message: 'themeSecondary must be a valid hex color like #D4A574',
+        });
+        return;
+      }
+
       const location = await locationService.createLocation({
         name,
         address,
         phone,
         isActive,
+        themePrimary,
+        themeSecondary,
       });
 
       res.status(201).json({
@@ -231,7 +257,7 @@ export class LocationController {
       });
       return;
     } catch (error) {
-      console.error('Error creating location:', error);
+      console.error('Error creating location:', error, { body: req.body });
       res.status(500).json({
         success: false,
         message: 'Failed to create location',
@@ -247,7 +273,29 @@ export class LocationController {
   async updateLocation(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
-      const updateData = req.body;
+      const updateData = req.body || {};
+
+      if (
+        updateData.themePrimary !== undefined &&
+        (typeof updateData.themePrimary !== 'string' || !isHexColor(updateData.themePrimary))
+      ) {
+        res.status(400).json({
+          success: false,
+          message: 'themePrimary must be a valid hex color like #2D5F3F',
+        });
+        return;
+      }
+
+      if (
+        updateData.themeSecondary !== undefined &&
+        (typeof updateData.themeSecondary !== 'string' || !isHexColor(updateData.themeSecondary))
+      ) {
+        res.status(400).json({
+          success: false,
+          message: 'themeSecondary must be a valid hex color like #D4A574',
+        });
+        return;
+      }
 
       const location = await locationService.updateLocation(id, updateData);
 
@@ -266,10 +314,46 @@ export class LocationController {
       });
       return;
     } catch (error) {
-      console.error('Error updating location:', error);
+      console.error('Error updating location:', error, { body: req.body, locationId: req.params.id });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({
         success: false,
-        message: 'Failed to update location',
+        message:
+          process.env.NODE_ENV === 'development'
+            ? `Failed to update location: ${errorMessage}`
+            : 'Failed to update location',
+      });
+      return;
+    }
+  }
+
+  /**
+   * GET /api/v1/locations/:id/menu-pdfs
+   * Get publicly visible PDF menus for a location
+   */
+  async getLocationMenuPdfs(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const pdfs = await locationService.getPublicMenuPdfsByLocation(id);
+
+      if (pdfs === null) {
+        res.status(404).json({
+          success: false,
+          message: 'Location not found',
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: pdfs,
+      });
+      return;
+    } catch (error) {
+      console.error('Error fetching location menu PDFs:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch location menu PDFs',
       });
       return;
     }
@@ -380,6 +464,173 @@ export class LocationController {
       res.status(500).json({
         success: false,
         message: error.message || 'Failed to activate location',
+      });
+      return;
+    }
+  }
+
+  /**
+   * GET /api/v1/admin/locations/:id/menu-pdfs
+   * Get all menu PDFs for a location (Admin only)
+   */
+  async getAdminLocationMenuPdfs(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const user = req.user;
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          message: 'Authentication required',
+        });
+        return;
+      }
+
+      const canAccess = await locationService.canUserAccessLocation(user.id, user.role as UserRole, id);
+      if (!canAccess) {
+        res.status(403).json({
+          success: false,
+          message: 'Not authorized to access this location',
+        });
+        return;
+      }
+
+      const pdfs = await locationService.getMenuPdfsByLocation(id);
+
+      res.json({
+        success: true,
+        data: pdfs,
+      });
+      return;
+    } catch (error) {
+      console.error('Error fetching admin location menu PDFs:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch location menu PDFs',
+      });
+      return;
+    }
+  }
+
+  /**
+   * POST /api/v1/admin/locations/:id/menu-pdfs
+   * Upload and create a location PDF menu entry (Admin only)
+   */
+  async uploadLocationMenuPdf(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const { title, fileData } = req.body || {};
+      const user = req.user;
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          message: 'Authentication required',
+        });
+        return;
+      }
+
+      const canAccess = await locationService.canUserAccessLocation(user.id, user.role as UserRole, id);
+      if (!canAccess) {
+        res.status(403).json({
+          success: false,
+          message: 'Not authorized to access this location',
+        });
+        return;
+      }
+
+      if (!title || typeof title !== 'string' || !title.trim()) {
+        res.status(400).json({
+          success: false,
+          message: 'title is required',
+        });
+        return;
+      }
+
+      if (!fileData || typeof fileData !== 'string') {
+        res.status(400).json({
+          success: false,
+          message: 'fileData is required',
+        });
+        return;
+      }
+
+      if (!fileData.startsWith('data:application/pdf;base64,')) {
+        res.status(400).json({
+          success: false,
+          message: 'Only PDF files are supported',
+        });
+        return;
+      }
+
+      const pdf = await locationService.createLocationMenuPdf(id, {
+        title: title.trim(),
+        fileData,
+      });
+
+      res.status(201).json({
+        success: true,
+        data: pdf,
+        message: 'PDF uploaded successfully',
+      });
+      return;
+    } catch (error: any) {
+      console.error('Error uploading location menu PDF:', error);
+      const statusCode = error?.message === 'Location not found' ? 404 : 500;
+      res.status(statusCode).json({
+        success: false,
+        message: error?.message || 'Failed to upload PDF',
+      });
+      return;
+    }
+  }
+
+  /**
+   * DELETE /api/v1/admin/locations/:locationId/menu-pdfs/:pdfId
+   * Delete a location PDF menu entry (Admin only)
+   */
+  async deleteLocationMenuPdf(req: AuthRequest, res: Response) {
+    try {
+      const { locationId, pdfId } = req.params;
+      const user = req.user;
+
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          message: 'Authentication required',
+        });
+        return;
+      }
+
+      const canAccess = await locationService.canUserAccessLocation(user.id, user.role as UserRole, locationId);
+      if (!canAccess) {
+        res.status(403).json({
+          success: false,
+          message: 'Not authorized to access this location',
+        });
+        return;
+      }
+
+      const deleted = await locationService.deleteLocationMenuPdf(locationId, pdfId);
+
+      if (!deleted) {
+        res.status(404).json({
+          success: false,
+          message: 'PDF not found for this location',
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        message: 'PDF removed successfully',
+      });
+      return;
+    } catch (error) {
+      console.error('Error deleting location menu PDF:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete PDF',
       });
       return;
     }

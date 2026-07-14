@@ -18,6 +18,7 @@ import {
   Paper,
   Slide,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -166,7 +167,7 @@ const LayoutContent: React.FC<LayoutProps> = ({ children }) => {
             mx: 1,
             mb: 1,
             borderRadius: 2,
-            bgcolor: 'rgba(45,95,63,0.08)',
+            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
           }}
         >
           <ShoppingCartIcon fontSize="small" sx={{ mr: 1 }} />
@@ -196,7 +197,7 @@ const LayoutContent: React.FC<LayoutProps> = ({ children }) => {
                   mx: 1,
                   mb: 1,
                   borderRadius: 2,
-                  bgcolor: 'rgba(45,95,63,0.08)',
+                  bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
                 }}
               >
                 <AdminPanelSettingsIcon fontSize="small" sx={{ mr: 1 }} />
@@ -224,7 +225,7 @@ const LayoutContent: React.FC<LayoutProps> = ({ children }) => {
                 mx: 1,
                 my: 0.5,
                 '&:hover': {
-                  backgroundColor: 'rgba(45, 95, 63, 0.08)',
+                  backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.08),
                 },
               }}
             >
@@ -283,7 +284,7 @@ const LayoutContent: React.FC<LayoutProps> = ({ children }) => {
         sx={{
           backdropFilter: 'blur(18px)',
           backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          borderBottom: '1px solid rgba(45, 95, 63, 0.08)',
+          borderBottom: (theme) => `1px solid ${alpha(theme.palette.primary.main, 0.08)}`,
           color: 'text.primary',
           zIndex: (theme) => theme.zIndex.drawer + 1,
         }}
@@ -306,12 +307,12 @@ const LayoutContent: React.FC<LayoutProps> = ({ children }) => {
                 width: 48,
                 height: 48,
                 borderRadius: '42%',
-                background: 'linear-gradient(135deg, #2D5F3F 0%, #4A8862 100%)',
+                background: (theme) => `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: 'white',
-                boxShadow: '0px 12px 30px rgba(45, 95, 63, 0.4)',
+                boxShadow: (theme) => `0px 12px 30px ${alpha(theme.palette.primary.main, 0.4)}`,
               }}
             >
               <LunchDiningIcon />
@@ -375,7 +376,7 @@ const LayoutContent: React.FC<LayoutProps> = ({ children }) => {
                     fontWeight: 700,
                     borderRadius: 999,
                     px: 2.5,
-                    boxShadow: '0 12px 24px rgba(45,95,63,0.2)',
+                    boxShadow: (theme) => `0 12px 24px ${alpha(theme.palette.primary.main, 0.2)}`,
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 1,
@@ -505,7 +506,7 @@ const LayoutContent: React.FC<LayoutProps> = ({ children }) => {
                 edge="end"
                 onClick={() => setDrawerOpen(true)}
                 sx={{
-                  bgcolor: 'rgba(45, 95, 63, 0.08)',
+                  bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
                   borderRadius: 2,
                 }}
               >
@@ -659,7 +660,7 @@ const LayoutContent: React.FC<LayoutProps> = ({ children }) => {
             px: 3,
             py: 2.5,
             borderRadius: 3,
-            background: 'linear-gradient(135deg, #1F3C2C 0%, #2D5F3F 100%)',
+            background: (theme) => `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 100%)`,
             color: 'common.white',
             minWidth: 320,
             boxShadow: '0 25px 60px rgba(15,31,22,0.45)',

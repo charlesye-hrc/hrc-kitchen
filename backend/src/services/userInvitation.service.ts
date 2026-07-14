@@ -21,6 +21,7 @@ export interface AcceptInvitationDTO {
 
 export class UserInvitationService {
   private static readonly INVITATION_TOKEN_EXPIRES = 24 * 60 * 60 * 1000; // 24 hours
+  private static readonly INVITABLE_ROLES: UserRole[] = [UserRole.KITCHEN, UserRole.FINANCE, UserRole.ADMIN];
 
   /**
    * Admin invites a new user
@@ -36,10 +37,15 @@ export class UserInvitationService {
       throw new ApiError(403, 'Only admins can invite users');
     }
 
+    if (!this.INVITABLE_ROLES.includes(data.role)) {
+      throw new ApiError(400, 'Staff users cannot be invited. Please ask staff to self-register.');
+    }
+
+    const normalizedEmail = data.email.trim().toLowerCase();
+
     // For privileged roles, validate domain
-    const privilegedRoles: UserRole[] = [UserRole.ADMIN, UserRole.KITCHEN, UserRole.FINANCE];
-    if (privilegedRoles.includes(data.role as UserRole)) {
-      const hasAccess = await hasAdminDomainAccess(data.email);
+    if (this.INVITABLE_ROLES.includes(data.role as UserRole)) {
+      const hasAccess = await hasAdminDomainAccess(normalizedEmail);
       if (!hasAccess) {
         const config = await prisma.systemConfig.findUnique({
           where: { configKey: 'restricted_role_domain' },
@@ -50,16 +56,21 @@ export class UserInvitationService {
     }
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: data.email },
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: normalizedEmail,
+          mode: 'insensitive',
+        },
+      },
     });
 
     if (existingUser) {
-      console.log(`⚠️  User invitation failed: ${data.email} already exists (ID: ${existingUser.id})`);
+      console.log(`⚠️  User invitation failed: ${normalizedEmail} already exists (ID: ${existingUser.id})`);
       throw new ApiError(400, 'User with this email already exists');
     }
 
-    console.log(`📧 Creating invitation for ${data.email} with role ${data.role}`);
+    console.log(`📧 Creating invitation for ${normalizedEmail} with role ${data.role}`);
 
     // Validate locations if provided
     if (data.locationIds && data.locationIds.length > 0) {
@@ -79,7 +90,7 @@ export class UserInvitationService {
     // Create user record (without password)
     const user = await prisma.user.create({
       data: {
-        email: data.email,
+        email: normalizedEmail,
         fullName: data.fullName,
         role: data.role,
         department: data.department,
@@ -103,7 +114,7 @@ export class UserInvitationService {
       });
     }
 
-    console.log(`User invitation created for ${data.email} by ${inviter.email}`);
+    console.log(`User invitation created for ${normalizedEmail} by ${inviter.email}`);
 
     return { user, invitationToken };
   }
@@ -301,3 +312,4 @@ export class UserInvitationService {
     console.log(`Invitation for ${user.email} cancelled by ${admin.email}`);
   }
 }
+

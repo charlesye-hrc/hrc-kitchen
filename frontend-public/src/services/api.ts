@@ -94,6 +94,13 @@ export interface WeeklyMenuResponse {
   };
 }
 
+export interface LocationMenuPdf {
+  id: string;
+  title: string;
+  fileUrl: string;
+  createdAt: string;
+}
+
 // Menu API
 export const menuApi = {
   getTodaysMenu: async (locationId?: string): Promise<TodaysMenuResponse> => {
@@ -109,6 +116,11 @@ export const menuApi = {
 
   getMenuItem: async (id: string): Promise<{ success: boolean; data: MenuItem }> => {
     const response = await api.get(`/menu/items/${id}`);
+    return response.data;
+  },
+
+  getLocationMenuPdfs: async (locationId: string): Promise<{ success: boolean; data: LocationMenuPdf[] }> => {
+    const response = await api.get(`/locations/${locationId}/menu-pdfs`);
     return response.data;
   },
 };

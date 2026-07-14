@@ -182,11 +182,15 @@ model SystemConfig {
 model Location {
   id                    String             @id @default(uuid())
   name                  String             @unique
+  publicCode            String             @unique @map("public_code")
+  themePrimary          String             @default("#2D5F3F") @map("theme_primary")
+  themeSecondary        String             @default("#D4A574") @map("theme_secondary")
   address               String?
   phone                 String?
   isActive              Boolean            @default(true) @map("is_active")
   createdAt             DateTime           @default(now()) @map("created_at")
   updatedAt             DateTime           @updatedAt @map("updated_at")
+  menuPdfs              LocationMenuPdf[]
   menuItemLocations     MenuItemLocation[]
   orders                Order[]
   userLocations         UserLocation[]
@@ -195,6 +199,21 @@ model Location {
 
   @@index([isActive])
   @@map("locations")
+}
+
+model LocationMenuPdf {
+  id                String   @id @default(uuid())
+  locationId        String   @map("location_id")
+  title             String
+  fileUrl           String   @map("file_url")
+  cloudinaryPublicId String  @map("cloudinary_public_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  location          Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@index([locationId])
+  @@index([createdAt])
+  @@map("location_menu_pdfs")
 }
 
 model MenuItemLocation {

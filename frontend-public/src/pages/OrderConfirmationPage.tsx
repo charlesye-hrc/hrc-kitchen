@@ -65,6 +65,15 @@ interface Order {
   locationAddress?: string | null;
 }
 
+const getApiErrorMessage = (err: any, fallback: string): string => {
+  return (
+    err?.response?.data?.error?.message ||
+    err?.response?.data?.message ||
+    err?.message ||
+    fallback
+  );
+};
+
 const OrderConfirmationPage: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
   const { isAuthenticated, loginWithPassword, verifyOtp } = useAuth();
@@ -77,11 +86,14 @@ const OrderConfirmationPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const searchParams = new URLSearchParams(location.search);
+  const tokenFromQuery = searchParams.get('token');
+
   // Guest checkout state from navigation
-  const isGuest = location.state?.isGuest || false;
+  const isGuest = location.state?.isGuest || Boolean(tokenFromQuery);
   const guestEmail = location.state?.guestEmail;
   const guestName = location.state?.guestName;
-  const accessToken = location.state?.accessToken;
+  const accessToken = location.state?.accessToken || tokenFromQuery;
 
   // Account creation dialog
   const [showAccountDialog, setShowAccountDialog] = useState(false);
@@ -118,7 +130,7 @@ const OrderConfirmationPage: React.FC = () => {
         }
       } catch (err: any) {
         console.error('Failed to fetch order:', err);
-        setError(err.response?.data?.message || 'Failed to load order details');
+        setError(getApiErrorMessage(err, 'Failed to load order details'));
       } finally {
         setLoading(false);
       }
@@ -166,7 +178,7 @@ const OrderConfirmationPage: React.FC = () => {
       navigate('/login');
     } catch (err: any) {
       console.error('Account creation failed:', err);
-      setAccountError(err.response?.data?.message || 'Failed to create account');
+      setAccountError(getApiErrorMessage(err, 'Failed to create account'));
     } finally {
       setAccountLoading(false);
     }
@@ -215,7 +227,7 @@ const OrderConfirmationPage: React.FC = () => {
             left: 0,
             right: 0,
             height: 6,
-            background: 'linear-gradient(90deg, #2D5F3F 0%, #4A8862 100%)',
+            background: (theme) => `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
           }
         }}
       >

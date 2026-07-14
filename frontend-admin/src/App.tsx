@@ -10,6 +10,7 @@ import KitchenDashboard from './pages/KitchenDashboard';
 import ReportsPage from './pages/ReportsPage';
 import MenuManagementPage from './pages/MenuManagementPage';
 import LocationManagementPage from './pages/LocationManagementPage';
+import PdfMenuManagementPage from './pages/PdfMenuManagementPage';
 import UserManagementPage from './pages/UserManagementPage';
 import UserLocationAssignmentPage from './pages/UserLocationAssignmentPage';
 import SystemSettingsPage from './pages/SystemSettingsPage';
@@ -173,6 +174,16 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['ADMIN']}>
             <LocationManagementPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Protected Routes - Admin Only - PDF Menus */}
+      <Route
+        path="/pdf-menus"
+        element={
+          <ProtectedRoute allowedRoles={['KITCHEN', 'ADMIN']}>
+            <PdfMenuManagementPage />
           </ProtectedRoute>
         }
       />

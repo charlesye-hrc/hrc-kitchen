@@ -24,10 +24,12 @@ import {
   Stack,
   useTheme,
   useMediaQuery,
+  Link,
+  Collapse,
 } from '@mui/material';
-import { Add as AddIcon, Replay as ReplayIcon } from '@mui/icons-material';
+import { Add as AddIcon, Replay as ReplayIcon, PictureAsPdf as PictureAsPdfIcon, OpenInNew as OpenInNewIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { menuApi, MenuItem, VariationSelection, orderApi } from '../services/api';
+import { menuApi, MenuItem, VariationSelection, orderApi, LocationMenuPdf } from '../services/api';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import VariationSelector from '../components/VariationSelector';
@@ -49,6 +51,9 @@ const MenuPage: React.FC = () => {
   const [repeatOrderLoading, setRepeatOrderLoading] = useState(false);
   const [lastOrderData, setLastOrderData] = useState<any>(null);
   const [lastOrderLoading, setLastOrderLoading] = useState(false);
+  const [locationMenuPdfs, setLocationMenuPdfs] = useState<LocationMenuPdf[]>([]);
+  const [menuPdfLoading, setMenuPdfLoading] = useState(false);
+  const [pdfSectionExpanded, setPdfSectionExpanded] = useState(false);
 
   const { items: cartItems, addItem, getCartItemCount, cartLocationId, setCartLocation, validateCartForLocation, removeItem, clearCart } = useCart();
   const { locations, selectedLocation, selectLocation, isLoading: locationsLoading } = useLocationContext();
@@ -61,6 +66,10 @@ const MenuPage: React.FC = () => {
   useEffect(() => {
     if (selectedLocation) {
       fetchTodaysMenu();
+      fetchLocationMenuPdfs(selectedLocation.id);
+      setPdfSectionExpanded(false);
+    } else {
+      setLocationMenuPdfs([]);
     }
   }, [selectedLocation]);
 
@@ -175,6 +184,21 @@ const MenuPage: React.FC = () => {
       setError(err.response?.data?.message || 'Failed to load menu. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchLocationMenuPdfs = async (locationId: string) => {
+    try {
+      setMenuPdfLoading(true);
+      const response = await menuApi.getLocationMenuPdfs(locationId);
+      if (response.success) {
+        setLocationMenuPdfs(response.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching location menu PDFs:', err);
+      setLocationMenuPdfs([]);
+    } finally {
+      setMenuPdfLoading(false);
     }
   };
 
@@ -495,7 +519,7 @@ const MenuPage: React.FC = () => {
             sx={{
               borderRadius: 3,
               p: { xs: 2.5, md: 3 },
-              border: '1px solid rgba(45, 95, 63, 0.12)',
+              border: (theme) => `1px solid ${theme.palette.primary.main}1F`,
               backgroundColor: 'rgba(255,255,255,0.92)',
             }}
           >
@@ -522,7 +546,7 @@ const MenuPage: React.FC = () => {
                     sx={{
                       mt: 1.5,
                       fontWeight: 600,
-                      backgroundColor: 'rgba(45,95,63,0.08)',
+                      backgroundColor: (theme) => `${theme.palette.primary.main}14`,
                       color: 'primary.main',
                     }}
                   />
@@ -549,6 +573,113 @@ const MenuPage: React.FC = () => {
             </Stack>
           </Paper>
 
+          {(menuPdfLoading || locationMenuPdfs.length > 0) && (
+            <Paper
+              elevation={0}
+              sx={{
+                borderRadius: 3,
+                p: { xs: 2, md: 2.5 },
+                border: (theme) => `1px solid ${theme.palette.primary.main}2A`,
+                background: (theme) => `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.primary.light}14 100%)`,
+              }}
+            >
+              <Stack spacing={1.5}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 1,
+                  }}
+                >
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <PictureAsPdfIcon fontSize="small" color="primary" />
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                      Weekly PDF Menus
+                    </Typography>
+                    {!menuPdfLoading && (
+                      <Chip
+                        size="small"
+                        label={`${locationMenuPdfs.length} file${locationMenuPdfs.length === 1 ? '' : 's'}`}
+                        sx={{ fontWeight: 600 }}
+                      />
+                    )}
+                  </Stack>
+
+                  {!menuPdfLoading && locationMenuPdfs.length > 0 && (
+                    <Button
+                      size="small"
+                      variant="text"
+                      endIcon={
+                        <ExpandMoreIcon
+                          sx={{
+                            transform: pdfSectionExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s ease',
+                          }}
+                        />
+                      }
+                      onClick={() => setPdfSectionExpanded((prev) => !prev)}
+                      sx={{ flexShrink: 0 }}
+                    >
+                      {pdfSectionExpanded ? 'Hide' : 'View'}
+                    </Button>
+                  )}
+                </Box>
+
+                {menuPdfLoading ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <CircularProgress size={18} />
+                    <Typography variant="body2" color="text.secondary">
+                      Loading menu files...
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Collapse in={pdfSectionExpanded} timeout="auto" unmountOnExit>
+                    <Stack spacing={1}>
+                      {locationMenuPdfs.map((pdf) => (
+                        <Box
+                          key={pdf.id}
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 1.5,
+                            p: 1.5,
+                            borderRadius: 2,
+                            bgcolor: 'rgba(255,255,255,0.78)',
+                            border: '1px solid',
+                            borderColor: 'divider',
+                          }}
+                        >
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
+                              {pdf.title}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Uploaded {new Date(pdf.createdAt).toLocaleDateString()}
+                            </Typography>
+                          </Box>
+                          <Button
+                            component={Link}
+                            href={pdf.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            size="small"
+                            variant="outlined"
+                            endIcon={<OpenInNewIcon fontSize="small" />}
+                            sx={{ flexShrink: 0 }}
+                          >
+                            Open
+                          </Button>
+                        </Box>
+                      ))}
+                    </Stack>
+                  </Collapse>
+                )}
+              </Stack>
+            </Paper>
+          )}
+
           {isAuthenticated && lastOrderData && !lastOrderLoading && (
             <Paper
               elevation={0}
@@ -557,13 +688,13 @@ const MenuPage: React.FC = () => {
                 p: { xs: 2, md: 2.5 },
                 border: '1.5px solid',
                 borderColor: 'primary.main',
-                backgroundColor: 'rgba(45, 95, 63, 0.04)',
+                backgroundColor: (theme) => `${theme.palette.primary.main}0A`,
                 cursor: 'pointer',
                 transition: 'all 0.25s ease',
                 '&:hover': {
-                  backgroundColor: 'rgba(45, 95, 63, 0.08)',
+                  backgroundColor: (theme) => `${theme.palette.primary.main}14`,
                   borderColor: 'primary.dark',
-                  boxShadow: '0 4px 12px rgba(45, 95, 63, 0.15)',
+                  boxShadow: (theme) => `0 4px 12px ${theme.palette.primary.main}26`,
                 },
               }}
               onClick={handleRepeatLastOrder}
@@ -729,7 +860,7 @@ const MenuPage: React.FC = () => {
                       left: 0,
                       width: 80,
                       height: 3,
-                      background: 'linear-gradient(90deg, #2D5F3F 0%, #4A8862 100%)',
+                      background: (theme) => `linear-gradient(90deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
                       borderRadius: 2,
                     },
                   }}
@@ -747,7 +878,7 @@ const MenuPage: React.FC = () => {
                           position: 'relative',
                           overflow: 'hidden',
                           borderRadius: 3,
-                          border: '1px solid rgba(45, 95, 63, 0.1)',
+                          border: (theme) => `1px solid ${theme.palette.primary.main}1A`,
                           background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, #F8FAF8 100%)',
                           '&:hover': {
                             boxShadow: '0px 25px 45px rgba(0,0,0,0.08)',
@@ -801,7 +932,7 @@ const MenuPage: React.FC = () => {
                             size="small"
                             sx={{
                               alignSelf: 'flex-start',
-                              backgroundColor: 'rgba(45,95,63,0.08)',
+                              backgroundColor: (theme) => `${theme.palette.primary.main}14`,
                               fontWeight: 600,
                             }}
                           />
@@ -930,13 +1061,13 @@ const MenuPage: React.FC = () => {
               sx={{
                 mt: 2,
                 p: 2.5,
-                background: 'linear-gradient(135deg, #2D5F3F 0%, #4A8862 100%)',
+                background: (theme) => `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
                 color: 'white',
                 borderRadius: 2,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                boxShadow: '0px 4px 12px rgba(45, 95, 63, 0.2)',
+                boxShadow: (theme) => `0px 4px 12px ${theme.palette.primary.main}33`,
               }}
             >
               <Typography variant="h6" sx={{ fontWeight: 600 }}>Total:</Typography>

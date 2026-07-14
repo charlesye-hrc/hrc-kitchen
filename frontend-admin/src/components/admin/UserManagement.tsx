@@ -101,7 +101,7 @@ const UserManagement = () => {
   const [inviteForm, setInviteForm] = useState({
     email: '',
     fullName: '',
-    role: 'STAFF' as 'STAFF' | 'KITCHEN' | 'FINANCE' | 'ADMIN',
+    role: 'KITCHEN' as 'KITCHEN' | 'FINANCE' | 'ADMIN',
     department: '',
     phone: '',
     locationIds: [] as string[],
@@ -181,7 +181,7 @@ const UserManagement = () => {
     setInviteForm({
       email: '',
       fullName: '',
-      role: 'STAFF',
+      role: 'KITCHEN',
       department: '',
       phone: '',
       locationIds: [],
@@ -663,7 +663,7 @@ const UserManagement = () => {
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Invite New User</DialogTitle>
+        <DialogTitle>Invite Admin User</DialogTitle>
         <DialogContent>
           {inviteError && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -698,7 +698,6 @@ const UserManagement = () => {
               onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value as any })}
               disabled={inviting}
             >
-              <MenuItem value="STAFF">Staff</MenuItem>
               <MenuItem
                 value="KITCHEN"
                 disabled={!inviteForm.email.toLowerCase().endsWith(restrictedDomain.toLowerCase())}
@@ -744,7 +743,7 @@ const UserManagement = () => {
             disabled={inviting}
           />
 
-          {inviteForm.role !== 'ADMIN' && inviteForm.role !== 'STAFF' && locations.length > 0 && (
+          {inviteForm.role !== 'ADMIN' && locations.length > 0 && (
             <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel>Assign Locations</InputLabel>
               <Select
@@ -801,3 +800,4 @@ const UserManagement = () => {
 };
 
 export default UserManagement;
+
