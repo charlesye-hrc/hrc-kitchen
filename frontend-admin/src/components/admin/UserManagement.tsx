@@ -41,6 +41,13 @@ import ListItemText from '@mui/material/ListItemText';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
+const ROLE_SORT_ORDER: Record<'ADMIN' | 'KITCHEN' | 'FINANCE' | 'STAFF', number> = {
+  ADMIN: 0,
+  KITCHEN: 1,
+  FINANCE: 2,
+  STAFF: 3,
+};
+
 interface User {
   id: string;
   email: string;
@@ -84,7 +91,7 @@ const UserManagement = () => {
   const [totalUsers, setTotalUsers] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('active');
   const [restrictedDomain, setRestrictedDomain] = useState<string>('@huonregionalcare.org.au');
 
   // Dialogs
@@ -147,7 +154,13 @@ const UserManagement = () => {
       const response = await api.get('/admin/users', { params });
 
       if (response.data.success) {
-        setUsers(response.data.data);
+        const sortedUsers = [...response.data.data].sort((a: User, b: User) => {
+          const roleOrderDiff = ROLE_SORT_ORDER[a.role] - ROLE_SORT_ORDER[b.role];
+          if (roleOrderDiff !== 0) return roleOrderDiff;
+          return a.fullName.localeCompare(b.fullName);
+        });
+
+        setUsers(sortedUsers);
         setTotalUsers(response.data.pagination.total);
       }
     } catch (err: any) {
