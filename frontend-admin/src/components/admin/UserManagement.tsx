@@ -356,7 +356,11 @@ const UserManagement = () => {
                       <Chip label={invitation.role} size="small" color={getRoleColor(invitation.role)} />
                     </TableCell>
                     <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
-                      {new Date(invitation.invitedAt).toLocaleDateString()}
+                      {new Date(invitation.invitedAt).toLocaleDateString('en-AU', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                      })}
                     </TableCell>
                     <TableCell align="right">
                       <IconButton
@@ -477,7 +481,11 @@ const UserManagement = () => {
                   />
                 </TableCell>
                 <TableCell sx={{ px: { xs: 1, sm: 2 }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, display: { xs: 'none', lg: 'table-cell' } }}>
-                  {new Date(user.createdAt).toLocaleDateString()}
+                  {new Date(user.createdAt).toLocaleDateString('en-AU', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                  })}
                 </TableCell>
                 <TableCell align="right" sx={{ px: { xs: 1, sm: 2 } }}>
                   <IconButton

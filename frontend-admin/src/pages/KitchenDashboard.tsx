@@ -451,6 +451,7 @@ const KitchenDashboard = () => {
                 fullWidth
                 size="small"
                 InputLabelProps={{ shrink: true }}
+                inputProps={{ lang: 'en-AU' }}
               />
             </Grid>
             <Grid item xs={12} sm={6} md={2.5}>
@@ -900,7 +901,7 @@ const KitchenDashboard = () => {
                                 }
                               </Typography>
                               <Typography variant="body2" color="text.secondary">
-                                {new Date(order.createdAt).toLocaleTimeString()}
+                                {new Date(order.createdAt).toLocaleTimeString('en-AU')}
                               </Typography>
                             </Box>
                             <Box sx={{ textAlign: { xs: 'left', sm: 'right' } }}>

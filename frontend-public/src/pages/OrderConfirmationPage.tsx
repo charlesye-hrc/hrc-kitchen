@@ -264,7 +264,11 @@ const OrderConfirmationPage: React.FC = () => {
           <Typography variant="body1" color="text.secondary" sx={{ fontSize: '1.0625rem', lineHeight: 1.6 }}>
             Thank you for your order. Your lunch will be prepared for{' '}
             <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
-              {deliveryDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              {deliveryDate.toLocaleDateString('en-AU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+              })}
             </Box>
           </Typography>
         </Box>
@@ -327,7 +331,7 @@ const OrderConfirmationPage: React.FC = () => {
                 Ordered At
               </Typography>
               <Typography variant="body1" fontWeight={600} sx={{ fontSize: '1.0625rem' }}>
-                {orderCreatedDate.toLocaleTimeString('en-US', {
+                {orderCreatedDate.toLocaleTimeString('en-AU', {
                   hour: 'numeric',
                   minute: '2-digit',
                 })}

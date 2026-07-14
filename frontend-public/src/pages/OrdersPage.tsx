@@ -198,6 +198,7 @@ const OrdersPage: React.FC = () => {
               }}
               fullWidth
               InputLabelProps={{ shrink: true }}
+              inputProps={{ lang: 'en-AU' }}
             />
           </Grid>
           <Grid item xs={12} md={4}>
@@ -211,6 +212,7 @@ const OrdersPage: React.FC = () => {
               }}
               fullWidth
               InputLabelProps={{ shrink: true }}
+              inputProps={{ lang: 'en-AU' }}
             />
           </Grid>
           <Grid item xs={12} md={4}>
@@ -294,19 +296,19 @@ const OrdersPage: React.FC = () => {
                         {order.orderNumber}
                       </Typography>
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                        Ordered on {createdDate.toLocaleDateString('en-US', {
-                          month: 'long',
-                          day: 'numeric',
+                        Ordered on {createdDate.toLocaleString('en-AU', {
+                          day: '2-digit',
+                          month: '2-digit',
                           year: 'numeric',
-                          hour: 'numeric',
+                          hour: '2-digit',
                           minute: '2-digit',
                         })}
                       </Typography>
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                        For {orderDate.toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          month: 'long',
-                          day: 'numeric',
+                        For {orderDate.toLocaleDateString('en-AU', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
                         })}
                       </Typography>
                       {(order.location?.name || order.locationName) && (

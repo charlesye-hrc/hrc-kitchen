@@ -258,6 +258,7 @@ const ReportsPage = () => {
               fullWidth
               size="small"
               InputLabelProps={{ shrink: true }}
+              inputProps={{ lang: 'en-AU' }}
             />
           </Grid>
           <Grid item xs={12} sm={6} md={2.5}>
@@ -269,6 +270,7 @@ const ReportsPage = () => {
               fullWidth
               size="small"
               InputLabelProps={{ shrink: true }}
+              inputProps={{ lang: 'en-AU' }}
             />
           </Grid>
         </Grid>
