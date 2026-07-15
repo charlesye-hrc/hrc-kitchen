@@ -143,7 +143,7 @@ export class LocationService {
       return location;
     } catch (error) {
       console.error('LocationService.updateLocation failed:', error, { locationId, data });
-      return null;
+      throw error;
     }
   }
 
@@ -656,3 +656,4 @@ export class LocationService {
 }
 
 export default new LocationService();
+

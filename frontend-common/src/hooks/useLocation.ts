@@ -25,7 +25,7 @@ export interface UseLocationOptions {
  * - Persists selected location to localStorage
  */
 export const useLocation = (options?: UseLocationOptions): UseLocationReturn => {
-  const API_URL = options?.apiUrl || 'http://localhost:3000/api/v1';
+  const API_URL = options?.apiUrl || '/api/v1';
   const TOKEN_KEY = options?.tokenKey || 'token';
   const authMode = options?.authMode || 'token';
   const useCookies = authMode === 'cookie';

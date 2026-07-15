@@ -299,14 +299,6 @@ export class LocationController {
 
       const location = await locationService.updateLocation(id, updateData);
 
-      if (!location) {
-        res.status(404).json({
-          success: false,
-          message: 'Location not found',
-        });
-        return;
-      }
-
       res.json({
         success: true,
         data: location,
@@ -315,6 +307,14 @@ export class LocationController {
       return;
     } catch (error) {
       console.error('Error updating location:', error, { body: req.body, locationId: req.params.id });
+      // Prisma "record not found" during update should map to HTTP 404.
+      if ((error as { code?: string })?.code === 'P2025') {
+        res.status(404).json({
+          success: false,
+          message: 'Location not found',
+        });
+        return;
+      }
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({
         success: false,
@@ -756,3 +756,4 @@ export class LocationController {
 }
 
 export default new LocationController();
+

@@ -1,10 +1,8 @@
 let recaptchaScriptPromise = null;
 const loadRecaptchaScript = (siteKey) => {
-    var _a;
-    if ((_a = window.grecaptcha) === null || _a === void 0 ? void 0 : _a.enterprise) {
+    if (window.grecaptcha?.enterprise) {
         return new Promise((resolve) => {
-            var _a;
-            (_a = window.grecaptcha) === null || _a === void 0 ? void 0 : _a.enterprise.ready(() => resolve());
+            window.grecaptcha.enterprise.ready(() => resolve());
         });
     }
     if (recaptchaScriptPromise) {
@@ -16,12 +14,11 @@ const loadRecaptchaScript = (siteKey) => {
         script.async = true;
         script.defer = true;
         script.onload = () => {
-            var _a, _b;
-            if (!((_a = window.grecaptcha) === null || _a === void 0 ? void 0 : _a.enterprise)) {
+            if (!window.grecaptcha?.enterprise) {
                 reject(new Error('reCAPTCHA failed to initialize'));
                 return;
             }
-            (_b = window.grecaptcha) === null || _b === void 0 ? void 0 : _b.enterprise.ready(() => resolve());
+            window.grecaptcha.enterprise.ready(() => resolve());
         };
         script.onerror = () => reject(new Error('Failed to load reCAPTCHA script'));
         document.head.appendChild(script);
@@ -29,10 +26,9 @@ const loadRecaptchaScript = (siteKey) => {
     return recaptchaScriptPromise;
 };
 export const executeRecaptcha = async (siteKey, action) => {
-    var _a, _b;
     await loadRecaptchaScript(siteKey);
-    if (!((_a = window.grecaptcha) === null || _a === void 0 ? void 0 : _a.enterprise)) {
+    if (!window.grecaptcha?.enterprise) {
         throw new Error('reCAPTCHA Enterprise is not available');
     }
-    return (_b = window.grecaptcha) === null || _b === void 0 ? void 0 : _b.enterprise.execute(siteKey, { action });
+    return window.grecaptcha.enterprise.execute(siteKey, { action });
 };

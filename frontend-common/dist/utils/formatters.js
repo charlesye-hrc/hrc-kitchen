@@ -13,9 +13,9 @@ export const formatCurrency = (amount) => {
 export const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-AU', {
+        day: '2-digit',
+        month: '2-digit',
         year: 'numeric',
-        month: 'long',
-        day: 'numeric',
     });
 };
 /**
@@ -24,9 +24,9 @@ export const formatDate = (dateString) => {
 export const formatDateShort = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-AU', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit',
     });
 };
 /**
@@ -35,9 +35,9 @@ export const formatDateShort = (dateString) => {
 export const formatDateTime = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleString('en-AU', {
+        day: '2-digit',
+        month: '2-digit',
         year: 'numeric',
-        month: 'short',
-        day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
     });

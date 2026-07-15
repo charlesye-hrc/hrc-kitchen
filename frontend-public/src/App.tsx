@@ -18,7 +18,7 @@ import { LocationProvider, useLocationContext } from '@hrc-kitchen/common';
 import { ReactNode, useEffect, useMemo, useRef } from 'react';
 import { createAppTheme } from './theme';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 /**
  * Public Ordering App
