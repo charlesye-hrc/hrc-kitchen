@@ -2,6 +2,53 @@ import prisma from '../lib/prisma';
 import { Weekday } from '@prisma/client';
 
 export class ConfigService {
+  private readonly businessTimeZone = process.env.ORDERING_TIMEZONE || 'Australia/Sydney';
+
+  /**
+   * Get date/time parts in configured business timezone
+   */
+  private getBusinessDateTimeParts(date: Date): {
+    weekday: Weekday;
+    hour: number;
+    minute: number;
+    second: number;
+  } {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: this.businessTimeZone,
+      weekday: 'long',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+
+    const parts = formatter.formatToParts(date);
+    const getPart = (type: string) => parts.find(part => part.type === type)?.value;
+
+    const weekdayString = getPart('weekday')?.toUpperCase();
+    const weekdayMap: { [key: string]: Weekday } = {
+      SUNDAY: 'SUNDAY',
+      MONDAY: 'MONDAY',
+      TUESDAY: 'TUESDAY',
+      WEDNESDAY: 'WEDNESDAY',
+      THURSDAY: 'THURSDAY',
+      FRIDAY: 'FRIDAY',
+      SATURDAY: 'SATURDAY',
+    };
+
+    const weekday = weekdayString ? weekdayMap[weekdayString] : undefined;
+    if (!weekday) {
+      throw new Error(`Unable to resolve weekday for timezone ${this.businessTimeZone}`);
+    }
+
+    return {
+      weekday,
+      hour: Number(getPart('hour') || '0'),
+      minute: Number(getPart('minute') || '0'),
+      second: Number(getPart('second') || '0'),
+    };
+  }
+
   /**
    * Get configuration value by key
    */
@@ -69,19 +116,8 @@ export class ConfigService {
    */
   async isOrderingWindowActive(): Promise<{ active: boolean; window: { start: string; end: string }; message?: string }> {
     const now = new Date();
-    const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
-
-    // Get current weekday as Prisma enum
-    const weekdayMap: { [key: number]: Weekday } = {
-      0: 'SUNDAY',
-      1: 'MONDAY',
-      2: 'TUESDAY',
-      3: 'WEDNESDAY',
-      4: 'THURSDAY',
-      5: 'FRIDAY',
-      6: 'SATURDAY',
-    };
-    const currentWeekday = weekdayMap[dayOfWeek];
+    const businessNow = this.getBusinessDateTimeParts(now);
+    const currentWeekday = businessNow.weekday;
 
     // Check if there are any menu items available for today
     const menuItemsToday = await prisma.menuItem.count({
@@ -106,18 +142,14 @@ export class ConfigService {
     const [startHour, startMin] = window.start.split(':').map(Number);
     const [endHour, endMin] = window.end.split(':').map(Number);
 
-    // Create date objects for comparison
-    const startTime = new Date(now);
-    startTime.setHours(startHour, startMin, 0, 0);
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    const currentMinutes = businessNow.hour * 60 + businessNow.minute;
 
-    const endTime = new Date(now);
-    endTime.setHours(endHour, endMin, 0, 0);
-
-    const currentTime = now.getTime();
-    const isActive = currentTime >= startTime.getTime() && currentTime <= endTime.getTime();
+    const isActive = currentMinutes >= startMinutes && currentMinutes <= endMinutes;
 
     if (!isActive) {
-      if (currentTime < startTime.getTime()) {
+      if (currentMinutes < startMinutes) {
         return {
           active: false,
           window,
