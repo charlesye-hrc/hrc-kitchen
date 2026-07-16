@@ -631,7 +631,12 @@ export class LocationService {
    */
   async getMenuItemLocations(menuItemId: string) {
     const menuItemLocations = await prisma.menuItemLocation.findMany({
-      where: { menuItemId },
+      where: {
+        menuItemId,
+        location: {
+          isActive: true,
+        },
+      },
       include: {
         location: true,
       },

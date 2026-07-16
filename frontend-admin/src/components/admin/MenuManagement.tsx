@@ -61,6 +61,7 @@ interface LocationOption {
   id: string;
   name: string;
   themePrimary?: string;
+  isActive?: boolean;
 }
 
 const WEEKDAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
@@ -129,11 +130,14 @@ const MenuManagement = () => {
         try {
           const response = await api.get(`/admin/menu-items/${item.id}/locations`);
           if (response.data.success) {
-            const assignedLocations: LocationOption[] = response.data.data.map((loc: any) => ({
-              id: loc.id,
-              name: loc.name,
-              themePrimary: loc.themePrimary,
-            }));
+            const assignedLocations: LocationOption[] = response.data.data
+              .filter((loc: any) => loc.isActive !== false)
+              .map((loc: any) => ({
+                id: loc.id,
+                name: loc.name,
+                themePrimary: loc.themePrimary,
+                isActive: loc.isActive,
+              }));
             return [item.id, assignedLocations] as const;
           }
         } catch (err) {
@@ -194,7 +198,11 @@ const MenuManagement = () => {
         setLoadingLocations(true);
         const response = await api.get(`/admin/menu-items/${item.id}/locations`);
         if (response.data.success) {
-          setSelectedLocationIds(response.data.data.map((loc: any) => loc.id));
+          setSelectedLocationIds(
+            response.data.data
+              .filter((loc: any) => loc.isActive !== false)
+              .map((loc: any) => loc.id)
+          );
         }
       } catch (err) {
         console.error('Failed to fetch menu item locations:', err);
