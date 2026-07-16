@@ -57,6 +57,12 @@ interface MenuItem {
   }>;
 }
 
+interface LocationOption {
+  id: string;
+  name: string;
+  themePrimary?: string;
+}
+
 const WEEKDAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 const CATEGORIES = ['MAIN', 'SIDE', 'DRINK', 'DESSERT', 'OTHER'];
 const DIETARY_TAGS = ['Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Nut-Free', 'Halal'];
@@ -79,7 +85,8 @@ const MenuManagement = () => {
   const [dialogTab, setDialogTab] = useState(0);
 
   // Location state
-  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
+  const [locations, setLocations] = useState<LocationOption[]>([]);
+  const [menuItemLocations, setMenuItemLocations] = useState<Record<string, LocationOption[]>>({});
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [loadingLocations, setLoadingLocations] = useState(false);
 
@@ -99,13 +106,66 @@ const MenuManagement = () => {
     fetchMenuItems();
   }, []);
 
+  const resolveLocationBadgeStyles = (themePrimary?: string) => {
+    const fallbackColor = theme.palette.success.main;
+    const resolvedColor =
+      themePrimary && /^#[0-9a-fA-F]{6}$/.test(themePrimary) ? themePrimary : fallbackColor;
+
+    return {
+      bgcolor: resolvedColor,
+      borderColor: resolvedColor,
+      color: theme.palette.getContrastText(resolvedColor),
+    };
+  };
+
+  const fetchMenuItemLocationAssignments = async (items: MenuItem[]) => {
+    if (items.length === 0) {
+      setMenuItemLocations({});
+      return;
+    }
+
+    const locationEntries = await Promise.all(
+      items.map(async (item) => {
+        try {
+          const response = await api.get(`/admin/menu-items/${item.id}/locations`);
+          if (response.data.success) {
+            const assignedLocations: LocationOption[] = response.data.data.map((loc: any) => ({
+              id: loc.id,
+              name: loc.name,
+              themePrimary: loc.themePrimary,
+            }));
+            return [item.id, assignedLocations] as const;
+          }
+        } catch (err) {
+          console.error(`Failed to fetch locations for menu item ${item.id}:`, err);
+        }
+        return [item.id, []] as const;
+      })
+    );
+
+    setMenuItemLocations(Object.fromEntries(locationEntries));
+  };
+
   const fetchMenuItems = async () => {
     try {
       setLoading(true);
       const response = await api.get('/menu/week');
 
       if (response.data.success) {
-        setMenuItems(response.data.data);
+        const weeklyMenu = response.data.data as Record<string, MenuItem[]>;
+        setMenuItems(weeklyMenu);
+
+        const uniqueItemMap = new Map<string, MenuItem>();
+        WEEKDAYS.forEach(day => {
+          const dayItems = weeklyMenu[day] || [];
+          dayItems.forEach(item => {
+            if (!uniqueItemMap.has(item.id)) {
+              uniqueItemMap.set(item.id, item);
+            }
+          });
+        });
+
+        await fetchMenuItemLocationAssignments(Array.from(uniqueItemMap.values()));
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load menu items');
@@ -607,6 +667,21 @@ const MenuManagement = () => {
                         })}
                       </Box>
                     )}
+                    <Box display="flex" flexWrap="wrap" gap={0.5}>
+                      {(menuItemLocations[item.id] || []).length > 0 ? (
+                        (menuItemLocations[item.id] || []).map((location) => (
+                          <Chip
+                            key={location.id}
+                            label={location.name}
+                            size="small"
+                            variant="filled"
+                            sx={resolveLocationBadgeStyles(location.themePrimary)}
+                          />
+                        ))
+                      ) : (
+                        <Chip label="No locations" size="small" color="warning" variant="outlined" />
+                      )}
+                    </Box>
                   </Stack>
                   {item.dietaryTags.length > 0 && (
                     <Box display="flex" flexWrap="wrap" gap={0.5}>
