@@ -2,23 +2,29 @@ import { Weekday } from '@prisma/client';
 import prisma from '../lib/prisma';
 
 export class MenuService {
+  private readonly businessTimeZone = process.env.ORDERING_TIMEZONE || 'Australia/Sydney';
+
   /**
    * Get current weekday as Prisma enum
    */
   private getCurrentWeekday(): Weekday | null {
-    const day = new Date().getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: this.businessTimeZone,
+      weekday: 'long',
+    });
 
-    const weekdayMap: { [key: number]: Weekday } = {
-      0: 'SUNDAY',
-      1: 'MONDAY',
-      2: 'TUESDAY',
-      3: 'WEDNESDAY',
-      4: 'THURSDAY',
-      5: 'FRIDAY',
-      6: 'SATURDAY',
+    const weekdayString = formatter.format(new Date()).toUpperCase();
+    const weekdayMap: { [key: string]: Weekday } = {
+      SUNDAY: 'SUNDAY',
+      MONDAY: 'MONDAY',
+      TUESDAY: 'TUESDAY',
+      WEDNESDAY: 'WEDNESDAY',
+      THURSDAY: 'THURSDAY',
+      FRIDAY: 'FRIDAY',
+      SATURDAY: 'SATURDAY',
     };
 
-    return weekdayMap[day] || null;
+    return weekdayMap[weekdayString] || null;
   }
 
   /**
