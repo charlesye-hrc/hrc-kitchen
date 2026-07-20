@@ -10,6 +10,106 @@ export interface KitchenOrderFilters {
 }
 
 export class KitchenService {
+  private formatCustomizationsForPrint(customizations: any): { customizations: string[]; specialRequests: string[] } {
+    const parseValues = (value: unknown): string[] => {
+      if (Array.isArray(value)) {
+        return value
+          .filter((item): item is string => typeof item === 'string')
+          .map(item => item.trim())
+          .filter(Boolean);
+      }
+
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed ? [trimmed] : [];
+      }
+
+      return [];
+    };
+
+    const uniqueValues = (values: string[]): string[] => {
+      const seen = new Set<string>();
+      const result: string[] = [];
+
+      for (const value of values) {
+        const key = value.toLowerCase();
+        if (seen.has(key)) {
+          continue;
+        }
+
+        seen.add(key);
+        result.push(value);
+      }
+
+      return result;
+    };
+
+    if (!customizations) {
+      return { customizations: [], specialRequests: [] };
+    }
+
+    if (typeof customizations === 'string') {
+      const trimmed = customizations.trim();
+      if (!trimmed) {
+        return { customizations: [], specialRequests: [] };
+      }
+
+      try {
+        return this.formatCustomizationsForPrint(JSON.parse(trimmed));
+      } catch {
+        return { customizations: [trimmed], specialRequests: [] };
+      }
+    }
+
+    if (Array.isArray(customizations)) {
+      return { customizations: uniqueValues(parseValues(customizations)), specialRequests: [] };
+    }
+
+    if (typeof customizations !== 'object') {
+      return { customizations: [String(customizations)], specialRequests: [] };
+    }
+
+    const data = customizations as Record<string, unknown>;
+    const formattedCustomizations = parseValues(data.customizations);
+    const explicitSpecialRequests = [
+      ...parseValues(data.specialRequests),
+      ...parseValues(data.specialRequest),
+      ...parseValues(data.notes),
+      ...parseValues(data.note),
+      ...parseValues(data.freeText),
+      ...parseValues(data.instruction),
+      ...parseValues(data.instructions)
+    ];
+
+    const fallbackSpecialRequests =
+      formattedCustomizations.length === 0 && explicitSpecialRequests.length === 0
+        ? Object.entries(data).flatMap(([key, value]) => {
+            if (key === 'customizations' || value == null) {
+              return [];
+            }
+
+            if (Array.isArray(value)) {
+              return parseValues(value).map(entry => `${key}: ${entry}`);
+            }
+
+            if (typeof value === 'string') {
+              const trimmed = value.trim();
+              return trimmed ? [`${key}: ${trimmed}`] : [];
+            }
+
+            if (typeof value === 'number' || typeof value === 'boolean') {
+              return [`${key}: ${value}`];
+            }
+
+            return [];
+          })
+        : [];
+
+    return {
+      customizations: uniqueValues(formattedCustomizations),
+      specialRequests: uniqueValues([...explicitSpecialRequests, ...fallbackSpecialRequests])
+    };
+  }
   /**
    * Get all orders for kitchen staff with optional filters
    */
@@ -519,9 +619,24 @@ export class KitchenService {
                   `${escapeHtml(v.groupName)}: ${escapeHtml(v.optionName)}`
                 ).join(', ') || 'None'}</span>
               ` : ''}
-              ${order.customizations ? `
-                <span class="customizations"><strong>Customizations:</strong> ${escapeHtml(JSON.stringify(order.customizations))}</span>
-              ` : ''}
+              ${(() => {
+                const formattedNotes = this.formatCustomizationsForPrint(order.customizations);
+                const details: string[] = [];
+
+                if (formattedNotes.customizations.length > 0) {
+                  details.push(
+                    `<span class="customizations"><strong>Customizations:</strong> ${escapeHtml(formattedNotes.customizations.join(', '))}</span>`
+                  );
+                }
+
+                if (formattedNotes.specialRequests.length > 0) {
+                  details.push(
+                    `<span class="customizations"><strong>Special Requests:</strong> ${escapeHtml(formattedNotes.specialRequests.join(' | '))}</span>`
+                  );
+                }
+
+                return details.join(' ');
+              })()}
             </div>
             <div class="quantity">× ${order.quantity}</div>
           </div>
@@ -592,3 +707,4 @@ export class KitchenService {
     return stats;
   }
 }
+

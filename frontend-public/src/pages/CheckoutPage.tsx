@@ -50,7 +50,6 @@ const CheckoutForm: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
-  const [deliveryNotes, setDeliveryNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [orderingWindow, setOrderingWindow] = useState<any>(null);
@@ -72,7 +71,6 @@ const CheckoutForm: React.FC = () => {
   const paymentRequestRef = useRef<PaymentRequest | null>(null);
   const latestCheckoutState = useRef({
     items,
-    deliveryNotes,
     cartLocationId,
     guestFirstName,
     guestLastName,
@@ -199,7 +197,6 @@ const CheckoutForm: React.FC = () => {
   useEffect(() => {
     latestCheckoutState.current = {
       items,
-      deliveryNotes,
       cartLocationId,
       guestFirstName,
       guestLastName,
@@ -207,7 +204,7 @@ const CheckoutForm: React.FC = () => {
       isAuthenticated,
       loading,
     };
-  }, [items, deliveryNotes, cartLocationId, guestFirstName, guestLastName, guestEmail, isAuthenticated, loading]);
+  }, [items, cartLocationId, guestFirstName, guestLastName, guestEmail, isAuthenticated, loading]);
 
   // Initialize Payment Request Button for Apple Pay / Google Pay
   useEffect(() => {
@@ -249,7 +246,6 @@ const CheckoutForm: React.FC = () => {
       let paymentRequestCompleted = false;
       const {
         items: currentItems,
-        deliveryNotes: currentDeliveryNotes,
         cartLocationId: currentCartLocationId,
         guestFirstName: currentGuestFirstName,
         guestLastName: currentGuestLastName,
@@ -300,7 +296,6 @@ const CheckoutForm: React.FC = () => {
             specialRequests: item.specialRequests,
             selectedVariations: item.selectedVariations || [],
           })),
-          deliveryNotes: currentDeliveryNotes || undefined,
           locationId: currentCartLocationId,
         };
 
@@ -489,7 +484,6 @@ const CheckoutForm: React.FC = () => {
           specialRequests: item.specialRequests,
           selectedVariations: item.selectedVariations || [],
         })),
-        deliveryNotes: deliveryNotes || undefined,
         locationId: cartLocationId,
       };
 
@@ -819,15 +813,6 @@ const CheckoutForm: React.FC = () => {
           </Typography>
         </Box>
 
-        <TextField
-          fullWidth
-          label="Delivery Notes (Optional)"
-          multiline
-          rows={2}
-          value={deliveryNotes}
-          onChange={(e) => setDeliveryNotes(e.target.value)}
-          placeholder="e.g., Office location, special instructions..."
-        />
       </Paper>
 
       <Paper

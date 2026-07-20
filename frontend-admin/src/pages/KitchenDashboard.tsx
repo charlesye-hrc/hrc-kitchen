@@ -109,6 +109,91 @@ interface DailyStats {
   };
 }
 
+const parseNoteValues = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === 'string')
+      .map(item => item.trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed ? [trimmed] : [];
+  }
+
+  return [];
+};
+
+const uniqueNotes = (values: string[]): string[] => {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const value of values) {
+    const key = value.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    result.push(value);
+  }
+
+  return result;
+};
+
+const getOrderItemNotes = (customizations: any): { customizations: string[]; freeText: string[] } => {
+  if (!customizations) {
+    return { customizations: [], freeText: [] };
+  }
+
+  if (typeof customizations === 'string') {
+    const trimmed = customizations.trim();
+    if (!trimmed) {
+      return { customizations: [], freeText: [] };
+    }
+
+    try {
+      return getOrderItemNotes(JSON.parse(trimmed));
+    } catch {
+      return { customizations: [], freeText: [trimmed] };
+    }
+  }
+
+  if (Array.isArray(customizations)) {
+    return { customizations: parseNoteValues(customizations), freeText: [] };
+  }
+
+  if (typeof customizations !== 'object') {
+    return { customizations: [], freeText: [String(customizations)] };
+  }
+
+  const data = customizations as Record<string, unknown>;
+  const customizationValues = parseNoteValues(data.customizations);
+
+  const explicitFreeText = [
+    ...parseNoteValues(data.specialRequests),
+    ...parseNoteValues(data.specialRequest),
+    ...parseNoteValues(data.notes),
+    ...parseNoteValues(data.note),
+    ...parseNoteValues(data.freeText),
+    ...parseNoteValues(data.instruction),
+    ...parseNoteValues(data.instructions)
+  ];
+
+  const fallbackFreeText =
+    customizationValues.length === 0 && explicitFreeText.length === 0
+      ? Object.entries(data).flatMap(([key, value]) =>
+          key === 'customizations' ? [] : parseNoteValues(value)
+        )
+      : [];
+
+  return {
+    customizations: uniqueNotes(customizationValues),
+    freeText: uniqueNotes([...explicitFreeText, ...fallbackFreeText])
+  };
+};
+
 const KitchenDashboard = () => {
   const { user } = useAuth();
   const { locations, selectedLocation, selectLocation, isLoading: locationsLoading } = useLocationContext();
@@ -386,6 +471,36 @@ const KitchenDashboard = () => {
     }
   };
 
+  const handlePrint = async () => {
+    const printWindow = window.open('', '_blank');
+
+    if (!printWindow) {
+      alert('Unable to open print preview. Please allow pop-ups and try again.');
+      return;
+    }
+
+    try {
+      printWindow.document.write('<p style="font-family: Arial, sans-serif; padding: 16px;">Loading print view...</p>');
+
+      const response = await api.get('/kitchen/print', {
+        params: {
+          date: selectedDate,
+          locationId: selectedLocation?.id,
+        },
+        headers: { Accept: 'text/html' },
+        responseType: 'text',
+      });
+
+      printWindow.document.open();
+      printWindow.document.write(response.data);
+      printWindow.document.close();
+    } catch (err) {
+      console.error('Print error:', err);
+      printWindow.close();
+      alert('Failed to generate print view. Please try again.');
+    }
+  };
+
   // Check if user has kitchen/admin role
   if (!user || (user.role !== 'KITCHEN' && user.role !== 'ADMIN')) {
     return (
@@ -397,35 +512,24 @@ const KitchenDashboard = () => {
     );
   }
 
+  const canPrint = user.role === 'KITCHEN' || user.role === 'ADMIN';
+
   return (
     <AdminPageLayout
       title="Kitchen Dashboard"
       subtitle="Monitor fulfillment progress by location and menu item."
       actions={
+        canPrint ?
         <Button
           variant="contained"
           color="primary"
           startIcon={<PrintIcon />}
-          onClick={async () => {
-            try {
-              const response = await api.get(`/kitchen/print?date=${selectedDate}`, {
-                headers: { Accept: 'text/html' },
-                responseType: 'text',
-              });
-              const printWindow = window.open('', '_blank');
-              if (printWindow) {
-                printWindow.document.write(response.data);
-                printWindow.document.close();
-              }
-            } catch (err) {
-              console.error('Print error:', err);
-              alert('Failed to generate print view. Please try again.');
-            }
-          }}
+          onClick={handlePrint}
           sx={{ width: { xs: '100%', sm: 'auto' } }}
         >
           Print All
         </Button>
+        : null
       }
     >
 
@@ -758,6 +862,12 @@ const KitchenDashboard = () => {
                                   oi => oi.id === order.orderItemId
                                 );
                                 const itemStatus = orderItem?.fulfillmentStatus || 'PLACED';
+                                const orderItemNotes = getOrderItemNotes(order.customizations);
+                                const hasOrderItemNotes =
+                                  orderItemNotes.customizations.length > 0 || orderItemNotes.freeText.length > 0;
+                                const customizationsText = orderItemNotes.customizations.join(', ');
+                                const specialRequestsText = orderItemNotes.freeText.join(' | ');
+                                const hasSpecialRequests = orderItemNotes.freeText.length > 0;
 
                                 return (
                                   <Box
@@ -766,8 +876,8 @@ const KitchenDashboard = () => {
                                     display: 'grid',
                                     gridTemplateColumns: {
                                       xs: '1fr',
-                                      sm: '120px 50px 1fr auto',
-                                      md: '160px 70px 1fr auto'
+                                      sm: '120px 50px minmax(180px, 1fr) minmax(220px, 1.2fr) auto',
+                                      md: '170px 70px minmax(220px, 1fr) minmax(260px, 1.2fr) auto'
                                     },
                                     gap: { xs: 1, md: 2 },
                                     alignItems: 'center',
@@ -796,7 +906,7 @@ const KitchenDashboard = () => {
                                   <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
                                     {order.quantity}x
                                   </Typography>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                                  <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
                                     <Typography variant="body2" color="text.primary" sx={{ fontWeight: 'medium' }}>
                                       {order.customerName}
                                     </Typography>
@@ -813,9 +923,57 @@ const KitchenDashboard = () => {
                                         ))}
                                       </Box>
                                     )}
-                                    {order.customizations && order.customizations.customizations && (
+                                    {hasOrderItemNotes && (
                                       <Typography variant="caption" color="text.secondary" sx={{ width: '100%' }}>
-                                        {order.customizations.customizations.join(', ')}
+                                        {customizationsText && `Customizations: ${customizationsText}`}
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                  <Box sx={{ width: '100%', minWidth: 0 }}>
+                                    {hasSpecialRequests ? (
+                                      <Box
+                                        sx={{
+                                          width: '100%',
+                                          px: 1.25,
+                                          py: 0.75,
+                                          borderRadius: 1,
+                                          backgroundColor: 'rgba(255, 152, 0, 0.14)',
+                                          border: '1px solid',
+                                          borderColor: 'warning.main'
+                                        }}
+                                      >
+                                        <Typography
+                                          variant="caption"
+                                          sx={{
+                                            display: 'block',
+                                            fontWeight: 700,
+                                            color: 'warning.dark',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: 0.4,
+                                            mb: 0.25
+                                          }}
+                                        >
+                                          Special Requests
+                                        </Typography>
+                                        <Typography
+                                          variant="body2"
+                                          sx={{
+                                            color: '#8a3600',
+                                            fontWeight: 700,
+                                            lineHeight: 1.3,
+                                            wordBreak: 'break-word'
+                                          }}
+                                        >
+                                          {specialRequestsText}
+                                        </Typography>
+                                      </Box>
+                                    ) : (
+                                      <Typography
+                                        variant="caption"
+                                        color="text.disabled"
+                                        sx={{ display: { xs: 'none', sm: 'block' } }}
+                                      >
+                                        No special requests
                                       </Typography>
                                     )}
                                   </Box>
@@ -922,7 +1080,11 @@ const KitchenDashboard = () => {
 
                           {/* Order items */}
                           <Stack spacing={2} sx={{ mb: 2 }}>
-                            {order.orderItems.map((item) => (
+                            {order.orderItems.map((item) => {
+                              const itemNotes = getOrderItemNotes(item.customizations);
+                              const hasItemNotes = itemNotes.customizations.length > 0 || itemNotes.freeText.length > 0;
+
+                              return (
                               <Box key={item.id} sx={{
                                 p: 1.5,
                                 border: order.fulfillmentStatus === 'FULFILLED'
@@ -959,12 +1121,12 @@ const KitchenDashboard = () => {
                                         ))}
                                       </>
                                     )}
-                                    {item.customizations && (item.customizations.customizations || item.customizations.specialRequests) && (
+                                    {hasItemNotes && (
                                       <Typography variant="body2" color="text.secondary" sx={{ width: '100%', mt: 0.5 }}>
-                                        {item.customizations.customizations &&
-                                          `Customizations: ${item.customizations.customizations.join(', ')}`}
-                                        {item.customizations.specialRequests &&
-                                          ` | Special: ${item.customizations.specialRequests}`}
+                                        {itemNotes.customizations.length > 0 &&
+                                          `Customizations: ${itemNotes.customizations.join(', ')}`}
+                                        {itemNotes.freeText.length > 0 &&
+                                          `${itemNotes.customizations.length > 0 ? ' | ' : ''}Special: ${itemNotes.freeText.join(' | ')}`}
                                       </Typography>
                                     )}
                                   </Box>
@@ -991,7 +1153,8 @@ const KitchenDashboard = () => {
                                   )}
                                 </Box>
                               </Box>
-                            ))}
+                              );
+                            })}
                           </Stack>
 
                           {order.specialRequests && (
