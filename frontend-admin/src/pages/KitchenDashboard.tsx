@@ -109,6 +109,28 @@ interface DailyStats {
   };
 }
 
+const BUSINESS_TIME_ZONE = 'Australia/Sydney';
+
+const getBusinessDateInputValue = (): string => {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: BUSINESS_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+
+  const parts = formatter.formatToParts(new Date());
+  const year = parts.find(part => part.type === 'year')?.value;
+  const month = parts.find(part => part.type === 'month')?.value;
+  const day = parts.find(part => part.type === 'day')?.value;
+
+  if (!year || !month || !day) {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  return `${year}-${month}-${day}`;
+};
+
 const parseNoteValues = (value: unknown): string[] => {
   if (Array.isArray(value)) {
     return value
@@ -203,13 +225,7 @@ const KitchenDashboard = () => {
   const [stats, setStats] = useState<DailyStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  });
+  const [selectedDate, setSelectedDate] = useState(getBusinessDateInputValue);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
   const [flashingCards, setFlashingCards] = useState<Record<string, boolean>>({});

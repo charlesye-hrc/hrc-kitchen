@@ -7,6 +7,7 @@ import { AuthService } from './auth.service';
 import { inventoryService } from './inventory.service';
 import prisma from '../lib/prisma';
 import { logger } from '../utils/logger';
+import { getBusinessDate, getBusinessDateString, parseDateOnly } from '../utils/businessDate';
 
 export class OrderService {
   private configService: ConfigService;
@@ -236,9 +237,7 @@ export class OrderService {
     // Round to 2 decimal places
     totalAmount = Math.round(totalAmount * 100) / 100;
 
-    // Get today's date (without time)
-    const today = new Date();
-    const orderDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const orderDate = getBusinessDate();
 
     // Build special requests string
     const specialRequests = orderData.deliveryNotes || null;
@@ -498,10 +497,10 @@ export class OrderService {
     if (startDate || endDate) {
       where.orderDate = {};
       if (startDate) {
-        where.orderDate.gte = new Date(startDate + 'T00:00:00');
+        where.orderDate.gte = parseDateOnly(startDate);
       }
       if (endDate) {
-        where.orderDate.lte = new Date(endDate + 'T23:59:59');
+        where.orderDate.lte = parseDateOnly(endDate);
       }
     }
 
@@ -600,8 +599,7 @@ export class OrderService {
   }
 
   private async generateOrderNumber(): Promise<string> {
-    const today = new Date();
-    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+    const dateStr = getBusinessDateString().replace(/-/g, '');
 
     // Get count of orders today with pattern ORD-{dateStr}-*
     // This uses a unique constraint check to avoid race conditions

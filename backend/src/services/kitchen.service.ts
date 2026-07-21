@@ -1,6 +1,7 @@
 import { OrderStatus } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { escapeHtml } from '../utils/validation';
+import { getBusinessDate, getBusinessTimeZone, parseDateOnly } from '../utils/businessDate';
 
 export interface KitchenOrderFilters {
   date?: string; // ISO date string
@@ -10,6 +11,14 @@ export interface KitchenOrderFilters {
 }
 
 export class KitchenService {
+  private resolveOrderDate(date?: string): Date {
+    if (!date) {
+      return getBusinessDate();
+    }
+
+    return parseDateOnly(date);
+  }
+
   private formatCustomizationsForPrint(customizations: any): { customizations: string[]; specialRequests: string[] } {
     const parseValues = (value: unknown): string[] => {
       if (Array.isArray(value)) {
@@ -120,16 +129,7 @@ export class KitchenService {
     const where: any = {};
 
     // Filter by date (default to today)
-    if (date) {
-      // Parse date as local timezone by appending time
-      const orderDate = new Date(date + 'T00:00:00');
-      where.orderDate = orderDate;
-    } else {
-      // Default to today
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      where.orderDate = today;
-    }
+    where.orderDate = this.resolveOrderDate(date);
 
     // Filter by location
     if (locationId) {
@@ -186,14 +186,7 @@ export class KitchenService {
    */
   async getOrderSummary(date?: string, locationId?: string) {
     // Build where clause for date
-    let orderDate: Date;
-    if (date) {
-      // Parse date as local timezone by appending time
-      orderDate = new Date(date + 'T00:00:00');
-    } else {
-      orderDate = new Date();
-      orderDate.setHours(0, 0, 0, 0);
-    }
+    const orderDate = this.resolveOrderDate(date);
 
     const where: any = {
       orderDate
@@ -436,15 +429,10 @@ export class KitchenService {
   async generatePrintableHTML(date?: string, locationId?: string): Promise<string> {
     const summary = await this.getOrderSummary(date, locationId);
 
-    let orderDate: Date;
-    if (date) {
-      orderDate = new Date(date + 'T00:00:00');
-    } else {
-      orderDate = new Date();
-      orderDate.setHours(0, 0, 0, 0);
-    }
+    const orderDate = this.resolveOrderDate(date);
 
     const formattedDate = orderDate.toLocaleDateString('en-AU', {
+      timeZone: getBusinessTimeZone(),
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -655,14 +643,7 @@ export class KitchenService {
    * Get daily statistics for kitchen dashboard
    */
   async getDailyStats(date?: string, locationId?: string) {
-    let orderDate: Date;
-    if (date) {
-      // Parse date as local timezone by appending time
-      orderDate = new Date(date + 'T00:00:00');
-    } else {
-      orderDate = new Date();
-      orderDate.setHours(0, 0, 0, 0);
-    }
+    const orderDate = this.resolveOrderDate(date);
 
     const where: any = {
       orderDate

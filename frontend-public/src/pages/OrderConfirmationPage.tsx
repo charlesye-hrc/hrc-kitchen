@@ -65,6 +65,8 @@ interface Order {
   locationAddress?: string | null;
 }
 
+const BUSINESS_TIME_ZONE = 'Australia/Sydney';
+
 const getApiErrorMessage = (err: any, fallback: string): string => {
   return (
     err?.response?.data?.error?.message ||
@@ -277,6 +279,7 @@ const OrderConfirmationPage: React.FC = () => {
             Thank you for your order. Your lunch will be prepared for{' '}
             <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
               {deliveryDate.toLocaleDateString('en-AU', {
+                timeZone: BUSINESS_TIME_ZONE,
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric',
@@ -344,6 +347,7 @@ const OrderConfirmationPage: React.FC = () => {
               </Typography>
               <Typography variant="body1" fontWeight={600} sx={{ fontSize: '1.0625rem' }}>
                 {orderCreatedDate.toLocaleTimeString('en-AU', {
+                  timeZone: BUSINESS_TIME_ZONE,
                   hour: 'numeric',
                   minute: '2-digit',
                 })}
