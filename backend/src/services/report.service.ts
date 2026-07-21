@@ -282,6 +282,9 @@ export class ReportService {
       orderDate: {
         gte: startDate,
         lte: endDate
+      },
+      paymentStatus: {
+        not: 'FAILED'
       }
     };
 
@@ -400,9 +403,9 @@ export class ReportService {
     }
     // If allowedLocationIds is null, it means ADMIN - no restriction, show all
 
-    if (filters?.paymentStatus) {
-      where.paymentStatus = filters.paymentStatus;
-    }
+    where.paymentStatus = filters?.paymentStatus
+      ? filters.paymentStatus
+      : { not: 'FAILED' };
 
     if (filters?.fulfillmentStatus) {
       where.fulfillmentStatus = filters.fulfillmentStatus;

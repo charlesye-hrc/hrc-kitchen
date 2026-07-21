@@ -1,4 +1,4 @@
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, PaymentStatus } from '@prisma/client';
 import prisma from '../lib/prisma';
 import { escapeHtml } from '../utils/validation';
 import { getBusinessDate, getBusinessTimeZone, parseDateOnly } from '../utils/businessDate';
@@ -11,6 +11,8 @@ export interface KitchenOrderFilters {
 }
 
 export class KitchenService {
+  private readonly payableOrderStatus: PaymentStatus = 'COMPLETED';
+
   private resolveOrderDate(date?: string): Date {
     if (!date) {
       return getBusinessDate();
@@ -130,6 +132,7 @@ export class KitchenService {
 
     // Filter by date (default to today)
     where.orderDate = this.resolveOrderDate(date);
+    where.paymentStatus = this.payableOrderStatus;
 
     // Filter by location
     if (locationId) {
@@ -189,8 +192,8 @@ export class KitchenService {
     const orderDate = this.resolveOrderDate(date);
 
     const where: any = {
-      orderDate
-      // Don't filter by payment status - show all orders for batch preparation
+      orderDate,
+      paymentStatus: this.payableOrderStatus,
     };
 
     // Filter by location
@@ -646,7 +649,8 @@ export class KitchenService {
     const orderDate = this.resolveOrderDate(date);
 
     const where: any = {
-      orderDate
+      orderDate,
+      paymentStatus: this.payableOrderStatus,
     };
 
     // Filter by location
