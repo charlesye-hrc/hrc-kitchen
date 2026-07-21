@@ -78,7 +78,7 @@ const getApiErrorMessage = (err: any, fallback: string): string => {
 
 const OrderConfirmationPage: React.FC = () => {
   const { orderId } = useParams<{ orderId: string }>();
-  const { isAuthenticated, loginWithPassword, verifyOtp } = useAuth();
+  const { isAuthenticated, register } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
@@ -163,12 +163,17 @@ const OrderConfirmationPage: React.FC = () => {
     setAccountError(null);
 
     try {
+      if (!guestEmail) {
+        setAccountError('Guest email is missing. Please use the Register page instead.');
+        return;
+      }
+
       // Extract first and last name
       const [firstName = '', ...lastNameParts] = (guestName || '').split(' ');
       const lastName = lastNameParts.join(' ') || '';
 
       // Register the account
-      await axios.post(`${import.meta.env.VITE_API_URL}/auth/register`, {
+      await register({
         email: guestEmail,
         password,
         fullName: guestName || `${firstName} ${lastName}`.trim(),
