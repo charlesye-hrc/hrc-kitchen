@@ -15,6 +15,20 @@ const API_VERSION = process.env.API_VERSION || 'v1';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
+const normalizeOrigin = (origin: string): string => origin.replace(/\/$/, '');
+
+const parseCorsOriginsFromEnv = (origins?: string): string[] => {
+  if (!origins) {
+    return [];
+  }
+
+  return origins
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+    .map(normalizeOrigin);
+};
+
 // Middleware
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
@@ -37,7 +51,9 @@ app.use(helmet({
 
 // CORS configuration
 
-const allowedOrigins: (string | RegExp | undefined)[] = isDevelopment
+const envCorsOrigins = parseCorsOriginsFromEnv(process.env.CORS_ORIGIN);
+
+const defaultAllowedOrigins: (string | RegExp | undefined)[] = isDevelopment
   ? [
       // Development origins - Public Ordering App
       'http://localhost:5173',
@@ -62,20 +78,40 @@ const allowedOrigins: (string | RegExp | undefined)[] = isDevelopment
       process.env.FRONTEND_URL,
     ];
 
+const allowedOrigins: (string | RegExp)[] = [
+  ...defaultAllowedOrigins,
+  ...envCorsOrigins,
+].reduce<(string | RegExp)[]>((acc, allowed) => {
+  if (!allowed) {
+    return acc;
+  }
+
+  if (allowed instanceof RegExp) {
+    acc.push(allowed);
+    return acc;
+  }
+
+  const normalizedAllowed = normalizeOrigin(allowed);
+  if (!acc.some((existing) => typeof existing === 'string' && existing === normalizedAllowed)) {
+    acc.push(normalizedAllowed);
+  }
+
+  return acc;
+}, []);
+
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
     // Check if origin matches allowed patterns
+    const normalizedOrigin = normalizeOrigin(origin);
+
     const isAllowed = allowedOrigins.some((allowed) => {
-      if (!allowed) {
-        return false;
-      }
       if (typeof allowed === 'string') {
-        return origin === allowed;
+        return normalizedOrigin === allowed;
       }
-      return allowed.test(origin);
+      return allowed.test(normalizedOrigin);
     });
 
     if (isAllowed) {

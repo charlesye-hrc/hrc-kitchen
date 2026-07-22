@@ -1,14 +1,25 @@
 import { RecaptchaEnterpriseServiceClient } from '@google-cloud/recaptcha-enterprise';
 
 export class CaptchaService {
-  private static client = new RecaptchaEnterpriseServiceClient();
+  private static client: RecaptchaEnterpriseServiceClient | null = null;
   private static bypassLogged = false;
+  private static runtimeBypassLogged = false;
+
+  private static get recaptchaClient(): RecaptchaEnterpriseServiceClient {
+    if (!this.client) {
+      this.client = new RecaptchaEnterpriseServiceClient();
+    }
+    return this.client;
+  }
+
+  private static get isDevelopment(): boolean {
+    return process.env.NODE_ENV === 'development';
+  }
 
   private static get shouldBypassInDev(): boolean {
-    const isDevelopment = process.env.NODE_ENV === 'development';
     const bypassValue = (process.env.RECAPTCHA_BYPASS_IN_DEV || '').toLowerCase().trim();
     const bypassEnabled = bypassValue === 'true' || bypassValue === '1' || bypassValue === 'yes';
-    return isDevelopment && bypassEnabled;
+    return this.isDevelopment && bypassEnabled;
   }
 
   static isBypassEnabledInDev(): boolean {
@@ -50,37 +61,57 @@ export class CaptchaService {
       return true;
     }
 
-    const projectPath = this.client.projectPath(this.projectId);
-    const expectedActions = options?.expectedAction
-      ? Array.isArray(options.expectedAction)
-        ? options.expectedAction
-        : [options.expectedAction]
-      : undefined;
+    if (this.isDevelopment && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      if (!this.runtimeBypassLogged) {
+        console.warn('[CaptchaService] GOOGLE_APPLICATION_CREDENTIALS is not set in development. Bypassing captcha verification.');
+        this.runtimeBypassLogged = true;
+      }
+      return true;
+    }
 
-    const [assessment] = await this.client.createAssessment({
-      parent: projectPath,
-      assessment: {
-        event: {
-          token,
-          siteKey: this.siteKey,
-          userIpAddress,
-          // Only set expectedAction when we have a single value to avoid mismatches
-          expectedAction: expectedActions && expectedActions.length === 1 ? expectedActions[0] : undefined,
+    try {
+      const projectPath = this.recaptchaClient.projectPath(this.projectId);
+      const expectedActions = options?.expectedAction
+        ? Array.isArray(options.expectedAction)
+          ? options.expectedAction
+          : [options.expectedAction]
+        : undefined;
+
+      const [assessment] = await this.recaptchaClient.createAssessment({
+        parent: projectPath,
+        assessment: {
+          event: {
+            token,
+            siteKey: this.siteKey,
+            userIpAddress,
+            // Only set expectedAction when we have a single value to avoid mismatches
+            expectedAction: expectedActions && expectedActions.length === 1 ? expectedActions[0] : undefined,
+          },
         },
-      },
-    });
+      });
 
-    const tokenProperties = assessment.tokenProperties;
+      const tokenProperties = assessment.tokenProperties;
 
-    if (!tokenProperties?.valid) {
-      return false;
+      if (!tokenProperties?.valid) {
+        return false;
+      }
+
+      if (expectedActions && tokenProperties.action && !expectedActions.includes(tokenProperties.action)) {
+        return false;
+      }
+
+      const score = assessment.riskAnalysis?.score ?? 0;
+      return score >= this.minScore;
+    } catch (error) {
+      if (this.isDevelopment) {
+        if (!this.runtimeBypassLogged) {
+          console.warn('[CaptchaService] reCAPTCHA verification failed in development. Bypassing verification for local development.');
+          this.runtimeBypassLogged = true;
+        }
+        return true;
+      }
+
+      throw error;
     }
-
-    if (expectedActions && tokenProperties.action && !expectedActions.includes(tokenProperties.action)) {
-      return false;
-    }
-
-    const score = assessment.riskAnalysis?.score ?? 0;
-    return score >= this.minScore;
   }
 }
