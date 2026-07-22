@@ -635,10 +635,10 @@ const LayoutContent: React.FC<LayoutProps> = ({ children }) => {
                 Contact
               </Typography>
               <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                kitchen@huonregionalcare.org.au
+                kitchen.app@huonregionalcare.org.au
               </Typography>
               <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', mt: 1 }}>
-                (03) 6123 4567
+                03 6264 7126
               </Typography>
             </Grid>
           </Grid>
