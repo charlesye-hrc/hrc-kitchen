@@ -78,7 +78,36 @@ export interface TodaysMenuResponse {
   data: {
     items: MenuItem[];
     weekday: string | null;
+    prepDate?: string;
     orderingWindow: any;
+    orderingContext?: OrderingContext;
+  };
+  message?: string;
+}
+
+export interface OrderingContextDate {
+  date: string;
+  label: string;
+  weekday: string;
+  eligible: boolean;
+  reason?: string;
+  message?: string;
+}
+
+export interface OrderingContext {
+  businessDate: string;
+  businessTimeZone: string;
+  cutoffTime: string;
+  selectableDates: OrderingContextDate[];
+}
+
+export interface MenuByDateResponse {
+  success: boolean;
+  data: {
+    items: MenuItem[];
+    weekday: string | null;
+    prepDate: string;
+    message?: string | null;
   };
   message?: string;
 }
@@ -111,6 +140,17 @@ export const menuApi = {
 
   getWeeklyMenu: async (): Promise<WeeklyMenuResponse> => {
     const response = await api.get('/menu/week');
+    return response.data;
+  },
+
+  getMenuByDate: async (date: string, locationId?: string): Promise<MenuByDateResponse> => {
+    const params = locationId ? { date, locationId } : { date };
+    const response = await api.get('/menu/by-date', { params });
+    return response.data;
+  },
+
+  getOrderingContext: async (): Promise<{ success: boolean; data: OrderingContext }> => {
+    const response = await api.get('/menu/ordering-context');
     return response.data;
   },
 

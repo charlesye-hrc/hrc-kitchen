@@ -149,6 +149,8 @@ model OrderItem {
   orderId            String       @map("order_id")
   menuItemId         String?      @map("menu_item_id")
   quantity           Int          @default(1)
+  prepDate           DateTime     @map("prep_date") @db.Date
+  prepDateSnapshot   DateTime     @map("prep_date_snapshot") @db.Date
   customizations     Json?
   priceAtPurchase    Decimal      @map("price_at_purchase") @db.Decimal(10, 2)
   createdAt          DateTime     @default(now()) @map("created_at")
@@ -165,6 +167,8 @@ model OrderItem {
 
   @@index([orderId])
   @@index([menuItemId])
+  @@index([prepDate])
+  @@index([prepDate, fulfillmentStatus])
   @@map("order_items")
 }
 

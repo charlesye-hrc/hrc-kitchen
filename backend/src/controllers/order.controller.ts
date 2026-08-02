@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthRequest } from '../middleware/auth';
-import { OrderService } from '../services/order.service';
+import { OrderService, OrderValidationError } from '../services/order.service';
 import { CreateOrderDto } from '../types/order.types';
 import { AuthService } from '../services/auth.service';
 import { ApiError } from '../middleware/errorHandler';
@@ -33,7 +33,40 @@ export class OrderController {
       });
       return;
     } catch (error) {
+      if (error instanceof OrderValidationError) {
+        res.status(400).json({
+          success: false,
+          code: error.code,
+          message: error.message,
+          invalidLines: error.invalidLines,
+        });
+        return;
+      }
+
       next(error);
+    }
+  };
+
+  validateOrder = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const orderData: CreateOrderDto = req.body;
+      const result = await this.orderService.validateOrder(orderData);
+
+      res.json({
+        success: true,
+        data: {
+          valid: result.invalidLines.length === 0,
+          invalidLines: result.invalidLines,
+        }
+      });
+      return;
+    } catch (error) {
+      console.error('Error validating order:', error);
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to validate order',
+      });
+      return;
     }
   };
 
@@ -236,6 +269,16 @@ export class OrderController {
       });
       return;
     } catch (error) {
+      if (error instanceof OrderValidationError) {
+        res.status(400).json({
+          success: false,
+          code: error.code,
+          message: error.message,
+          invalidLines: error.invalidLines,
+        });
+        return;
+      }
+
       console.error('Error creating guest order:', error);
       res.status(500).json({
         success: false,

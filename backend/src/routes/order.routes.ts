@@ -9,6 +9,7 @@ const orderController = new OrderController();
 router.post('/guest/token', orderController.requestGuestOrderToken);
 router.post('/guest', orderController.createGuestOrder);
 router.get('/guest', orderController.getGuestOrder);
+router.post('/validate', orderController.validateOrder);
 
 // Authenticated order routes
 router.use(authenticate);

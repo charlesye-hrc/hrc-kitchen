@@ -126,12 +126,10 @@ export class KitchenService {
    */
   async getOrders(filters: KitchenOrderFilters = {}) {
     const { date, fulfillmentStatus, menuItemId, locationId } = filters;
+    const prepDate = this.resolveOrderDate(date);
 
     // Build where clause
     const where: any = {};
-
-    // Filter by date (default to today)
-    where.orderDate = this.resolveOrderDate(date);
     where.paymentStatus = this.payableOrderStatus;
 
     // Filter by location
@@ -139,19 +137,19 @@ export class KitchenService {
       where.locationId = locationId;
     }
 
-    // Filter by fulfillment status
-    if (fulfillmentStatus) {
-      where.fulfillmentStatus = fulfillmentStatus;
+    const orderItemWhere: any = { prepDate };
+
+    if (menuItemId) {
+      orderItemWhere.menuItemId = menuItemId;
     }
 
-    // Filter by menu item (requires join)
-    if (menuItemId) {
-      where.orderItems = {
-        some: {
-          menuItemId
-        }
-      };
+    if (fulfillmentStatus) {
+      orderItemWhere.fulfillmentStatus = fulfillmentStatus;
     }
+
+    where.orderItems = {
+      some: orderItemWhere,
+    };
 
     const orders = await prisma.order.findMany({
       where,
@@ -163,6 +161,7 @@ export class KitchenService {
           }
         },
         orderItems: {
+          where: orderItemWhere,
           include: {
             menuItem: {
               select: {
@@ -188,12 +187,15 @@ export class KitchenService {
    * Get order summary grouped by menu item for batch preparation
    */
   async getOrderSummary(date?: string, locationId?: string) {
-    // Build where clause for date
-    const orderDate = this.resolveOrderDate(date);
+    const prepDate = this.resolveOrderDate(date);
 
     const where: any = {
-      orderDate,
       paymentStatus: this.payableOrderStatus,
+      orderItems: {
+        some: {
+          prepDate,
+        },
+      },
     };
 
     // Filter by location
@@ -211,12 +213,15 @@ export class KitchenService {
           }
         },
         orderItems: {
+          where: {
+            prepDate,
+          },
           include: {
             menuItem: true
           }
-        }
+        } as any
       }
-    });
+    } as any) as any[];
 
     // Group by menu item
     const summary: Record<string, {
@@ -261,7 +266,7 @@ export class KitchenService {
           customizations: item.customizations,
           selectedVariations: item.selectedVariations,
           customerName: order.user?.fullName || `${order.guestFirstName} ${order.guestLastName}` || 'Guest',
-          fulfillmentStatus: order.fulfillmentStatus
+          fulfillmentStatus: item.fulfillmentStatus
         });
       }
     }
@@ -646,26 +651,42 @@ export class KitchenService {
    * Get daily statistics for kitchen dashboard
    */
   async getDailyStats(date?: string, locationId?: string) {
-    const orderDate = this.resolveOrderDate(date);
+    const prepDate = this.resolveOrderDate(date);
 
-    const where: any = {
-      orderDate,
+    const orderWhere: any = {
       paymentStatus: this.payableOrderStatus,
     };
 
-    // Filter by location
     if (locationId) {
-      where.locationId = locationId;
+      orderWhere.locationId = locationId;
     }
 
-    const orders = await prisma.order.findMany({
-      where
+    const orderItemWhere: any = {
+      prepDate,
+      order: orderWhere,
+    };
+
+    const orderItems = await prisma.orderItem.findMany({
+      where: orderItemWhere,
+      select: {
+        orderId: true,
+        quantity: true,
+        priceAtPurchase: true,
+        fulfillmentStatus: true,
+        order: {
+          select: {
+            paymentStatus: true,
+          },
+        },
+      },
     });
 
+    const uniqueOrderIds = new Set(orderItems.map(item => item.orderId));
+
     const stats = {
-      totalOrders: orders.length,
-      totalRevenue: orders.reduce((sum, order) => {
-        const amount = Number(order.totalAmount);
+      totalOrders: uniqueOrderIds.size,
+      totalRevenue: orderItems.reduce((sum, item) => {
+        const amount = Number(item.priceAtPurchase) * item.quantity;
         return sum + amount;
       }, 0),
       ordersByStatus: {
@@ -684,12 +705,11 @@ export class KitchenService {
       }
     };
 
-    orders.forEach(order => {
-      stats.ordersByStatus[order.fulfillmentStatus as OrderStatus]++;
-      stats.ordersByPayment[order.paymentStatus as keyof typeof stats.ordersByPayment]++;
+    orderItems.forEach(item => {
+      stats.ordersByStatus[item.fulfillmentStatus as OrderStatus]++;
+      stats.ordersByPayment[item.order.paymentStatus as keyof typeof stats.ordersByPayment]++;
     });
 
     return stats;
   }
 }
-

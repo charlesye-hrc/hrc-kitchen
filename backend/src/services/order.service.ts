@@ -1,19 +1,48 @@
-import { Prisma } from '@prisma/client';
-import { CreateOrderDto } from '../types/order.types';
+import { Prisma, Weekday } from '@prisma/client';
+import { CreateOrderDto, InvalidOrderLine, OrderInvalidLineReason } from '../types/order.types';
 import { PaymentService } from './payment.service';
 import { ConfigService } from './config.service';
 import { SelectedVariation } from '../types/variation.types';
 import { AuthService } from './auth.service';
 import { inventoryService } from './inventory.service';
+import { OrderEligibilityService } from './orderEligibility.service';
 import prisma from '../lib/prisma';
 import { logger } from '../utils/logger';
 import { getBusinessDate, getBusinessDateString, parseDateOnly } from '../utils/businessDate';
 
+interface NormalizedOrderLine {
+  lineIndex: number;
+  menuItem: any;
+  item: CreateOrderDto['items'][number];
+  prepDate: Date;
+}
+
+interface OrderValidationResult {
+  invalidLines: InvalidOrderLine[];
+  normalizedLines: NormalizedOrderLine[];
+}
+
+export class OrderValidationError extends Error {
+  readonly code: 'PREP_DATE_INELIGIBLE';
+
+  readonly invalidLines: InvalidOrderLine[];
+
+  constructor(message: string, invalidLines: InvalidOrderLine[]) {
+    super(message);
+    this.code = 'PREP_DATE_INELIGIBLE';
+    this.invalidLines = invalidLines;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
 export class OrderService {
   private configService: ConfigService;
 
+  private readonly orderEligibilityService: OrderEligibilityService;
+
   constructor() {
     this.configService = new ConfigService();
+    this.orderEligibilityService = new OrderEligibilityService(this.configService);
   }
 
   async createOrder(userId: string, orderData: CreateOrderDto): Promise<{ order: any; clientSecret: string }> {
@@ -59,6 +88,224 @@ export class OrderService {
     };
   }
 
+  private getWeekdayForDate(date: Date): Weekday {
+    const weekdayMap: Weekday[] = [
+      'SUNDAY',
+      'MONDAY',
+      'TUESDAY',
+      'WEDNESDAY',
+      'THURSDAY',
+      'FRIDAY',
+      'SATURDAY',
+    ];
+
+    return weekdayMap[date.getUTCDay()];
+  }
+
+  private createInvalidLine(
+    item: CreateOrderDto['items'][number],
+    reason: OrderInvalidLineReason,
+    message: string
+  ): InvalidOrderLine {
+    return {
+      clientLineId: item.clientLineId,
+      menuItemId: item.menuItemId,
+      prepDate: item.prepDate,
+      reason,
+      message,
+    };
+  }
+
+  private addLineError(
+    lineErrors: Array<InvalidOrderLine | undefined>,
+    lineIndex: number,
+    item: CreateOrderDto['items'][number],
+    reason: OrderInvalidLineReason,
+    message: string
+  ): void {
+    if (!lineErrors[lineIndex]) {
+      lineErrors[lineIndex] = this.createInvalidLine(item, reason, message);
+    }
+  }
+
+  private async validateOrderData(orderData: CreateOrderDto): Promise<OrderValidationResult> {
+    if (!orderData.items || orderData.items.length === 0) {
+      throw new Error('Order must include at least one item');
+    }
+
+    const lineErrors: Array<InvalidOrderLine | undefined> = new Array(orderData.items.length);
+    const parsedPrepDates: Array<Date | undefined> = new Array(orderData.items.length);
+
+    const uniqueMenuItemIds = [...new Set(orderData.items.map(item => item.menuItemId))];
+
+    const menuItems = await prisma.menuItem.findMany({
+      where: {
+        id: { in: uniqueMenuItemIds }
+      },
+      include: {
+        variationGroups: {
+          include: {
+            options: true
+          }
+        }
+      }
+    });
+
+    const menuItemById = new Map(menuItems.map(item => [item.id, item]));
+
+    orderData.items.forEach((item, index) => {
+      if (!menuItemById.has(item.menuItemId)) {
+        this.addLineError(lineErrors, index, item, 'MENU_ITEM_INVALID', 'Menu item is invalid or unavailable');
+      }
+    });
+
+    if (orderData.locationId) {
+      const menuItemLocations = await prisma.menuItemLocation.findMany({
+        where: {
+          locationId: orderData.locationId,
+          menuItemId: { in: uniqueMenuItemIds }
+        },
+        select: {
+          menuItemId: true,
+        }
+      });
+
+      const availableMenuItemIds = new Set(menuItemLocations.map(mil => mil.menuItemId));
+
+      orderData.items.forEach((item, index) => {
+        if (!lineErrors[index] && !availableMenuItemIds.has(item.menuItemId)) {
+          this.addLineError(
+            lineErrors,
+            index,
+            item,
+            'ITEM_NOT_AVAILABLE_AT_LOCATION',
+            'Item is not available at the selected location'
+          );
+        }
+      });
+    }
+
+    for (let index = 0; index < orderData.items.length; index++) {
+      if (lineErrors[index]) {
+        continue;
+      }
+
+      const item = orderData.items[index];
+      const menuItem = menuItemById.get(item.menuItemId);
+
+      if (!menuItem) {
+        continue;
+      }
+
+      const eligibility = await this.orderEligibilityService.evaluatePrepDate(item.prepDate);
+      if (!eligibility.eligible || !eligibility.prepDate || !eligibility.prepDateString) {
+        const reason = (eligibility.reason ?? 'PREP_DATE_INVALID_FORMAT') as OrderInvalidLineReason;
+        this.addLineError(
+          lineErrors,
+          index,
+          item,
+          reason,
+          eligibility.message || 'Prep date is not eligible for ordering'
+        );
+        continue;
+      }
+
+      parsedPrepDates[index] = eligibility.prepDate;
+
+      const prepWeekday = this.getWeekdayForDate(eligibility.prepDate);
+      if (!menuItem.weekdays.includes(prepWeekday)) {
+        this.addLineError(
+          lineErrors,
+          index,
+          item,
+          'ITEM_NOT_AVAILABLE_ON_DATE',
+          `Item is not available on ${eligibility.prepDateString}`
+        );
+      }
+    }
+
+    if (orderData.locationId) {
+      const quantityByMenuItem = new Map<string, number>();
+
+      orderData.items.forEach((item, index) => {
+        if (lineErrors[index]) {
+          return;
+        }
+
+        quantityByMenuItem.set(item.menuItemId, (quantityByMenuItem.get(item.menuItemId) || 0) + item.quantity);
+      });
+
+      if (quantityByMenuItem.size > 0) {
+        const inventoryChecks = await inventoryService.checkBulkAvailability(
+          Array.from(quantityByMenuItem.entries()).map(([menuItemId, quantity]) => ({
+            menuItemId,
+            locationId: orderData.locationId,
+            quantity,
+          }))
+        );
+
+        const unavailableInventoryByMenuItem = new Map(
+          inventoryChecks
+            .filter(check => !check.available)
+            .map(check => [check.menuItemId, check])
+        );
+
+        orderData.items.forEach((item, index) => {
+          if (lineErrors[index]) {
+            return;
+          }
+
+          const inventoryIssue = unavailableInventoryByMenuItem.get(item.menuItemId);
+          if (!inventoryIssue) {
+            return;
+          }
+
+          const menuItem = menuItemById.get(item.menuItemId);
+          this.addLineError(
+            lineErrors,
+            index,
+            item,
+            'INSUFFICIENT_INVENTORY',
+            `${menuItem?.name || 'Item'} has insufficient inventory (available: ${inventoryIssue.currentStock}, requested: ${inventoryIssue.requested})`
+          );
+        });
+      }
+    }
+
+    const invalidLines = lineErrors.filter((line): line is InvalidOrderLine => Boolean(line));
+
+    const normalizedLines: NormalizedOrderLine[] = orderData.items
+      .map((item, lineIndex) => {
+        if (lineErrors[lineIndex]) {
+          return null;
+        }
+
+        const menuItem = menuItemById.get(item.menuItemId);
+        const prepDate = parsedPrepDates[lineIndex];
+
+        if (!menuItem || !prepDate) {
+          return null;
+        }
+
+        return {
+          lineIndex,
+          menuItem,
+          item,
+          prepDate,
+        };
+      })
+      .filter((line): line is NormalizedOrderLine => Boolean(line));
+
+    return {
+      invalidLines,
+      normalizedLines,
+    };
+  }
+
+  async validateOrder(orderData: CreateOrderDto): Promise<OrderValidationResult> {
+    return this.validateOrderData(orderData);
+  }
+
   private async createOrderInternal(
     orderData: CreateOrderDto,
     customerInfo: {
@@ -71,10 +318,9 @@ export class OrderService {
       customerDepartment?: string;
     }
   ): Promise<{ order: any; clientSecret: string; paymentIntentId: string }> {
-    // Validate ordering window
-    const windowStatus = await this.configService.isOrderingWindowActive();
-    if (!windowStatus.active) {
-      throw new Error(windowStatus.message || 'Ordering is currently not available');
+    const validation = await this.validateOrderData(orderData);
+    if (validation.invalidLines.length > 0) {
+      throw new OrderValidationError('Some order items are no longer eligible', validation.invalidLines);
     }
 
     // Fetch location data for snapshot (if locationId is provided)
@@ -93,78 +339,11 @@ export class OrderService {
       }
     }
 
-    // Validate items exist and calculate total
-    // Get unique menu item IDs
-    const uniqueMenuItemIds = [...new Set(orderData.items.map(item => item.menuItemId))];
-
-    const menuItems = await prisma.menuItem.findMany({
-      where: {
-        id: { in: uniqueMenuItemIds }
-      },
-      include: {
-        variationGroups: {
-          include: {
-            options: true
-          }
-        }
-      }
-    });
-
-    if (menuItems.length !== uniqueMenuItemIds.length) {
-      throw new Error('One or more menu items are invalid or unavailable');
-    }
-
-    // Validate all menu items are available at the specified location
-    if (orderData.locationId) {
-      const menuItemLocations = await prisma.menuItemLocation.findMany({
-        where: {
-          locationId: orderData.locationId,
-          menuItemId: { in: uniqueMenuItemIds }
-        }
-      });
-
-      const availableMenuItemIds = menuItemLocations.map(mil => mil.menuItemId);
-      const unavailableItems = orderData.items.filter(
-        item => !availableMenuItemIds.includes(item.menuItemId)
-      );
-
-      if (unavailableItems.length > 0) {
-        const unavailableNames = unavailableItems
-          .map(item => menuItems.find(mi => mi.id === item.menuItemId)?.name)
-          .filter(Boolean)
-          .join(', ');
-        throw new Error(`The following items are not available at the selected location: ${unavailableNames}`);
-      }
-    }
-
-    // Validate inventory availability for items with tracking enabled
-    if (orderData.locationId) {
-      const inventoryChecks = await inventoryService.checkBulkAvailability(
-        orderData.items.map(item => ({
-          menuItemId: item.menuItemId,
-          locationId: orderData.locationId!,
-          quantity: item.quantity
-        }))
-      );
-
-      const unavailableInventoryItems = inventoryChecks.filter(check => !check.available);
-
-      if (unavailableInventoryItems.length > 0) {
-        const unavailableDetails = unavailableInventoryItems
-          .map(check => {
-            const menuItem = menuItems.find(mi => mi.id === check.menuItemId);
-            return `${menuItem?.name} (Available: ${check.currentStock}, Requested: ${check.requested})`;
-          })
-          .join(', ');
-        throw new Error(`Insufficient inventory for the following items: ${unavailableDetails}`);
-      }
-    }
-
     // Calculate total amount with variations
     let totalAmount = 0;
-    const orderItems = orderData.items.map(item => {
-      const menuItem = menuItems.find(mi => mi.id === item.menuItemId);
-      if (!menuItem) throw new Error(`Menu item ${item.menuItemId} not found`);
+    const orderItems = validation.normalizedLines.map((line) => {
+      const item = line.item;
+      const menuItem = line.menuItem;
 
       const basePrice = Number(menuItem.price);
 
@@ -176,11 +355,11 @@ export class OrderService {
         selectedVariations = [];
 
         for (const selection of item.selectedVariations) {
-          const group = menuItem.variationGroups.find(g => g.id === selection.groupId);
+          const group = menuItem.variationGroups.find((g: any) => g.id === selection.groupId);
           if (!group) continue;
 
           for (const optionId of selection.optionIds) {
-            const option = group.options.find(o => o.id === optionId);
+            const option = group.options.find((o: any) => o.id === optionId);
             if (option) {
               const modifier = Number(option.priceModifier);
               variationModifier += modifier;
@@ -219,6 +398,8 @@ export class OrderService {
       return {
         menuItemId: item.menuItemId,
         quantity: item.quantity,
+        prepDate: line.prepDate,
+        prepDateSnapshot: line.prepDate,
         priceAtPurchase: itemPrice, // Store final price per item (base + variations)
         customizations: Object.keys(customizationsObj).length > 0 ? customizationsObj : null,
         selectedVariations:
@@ -309,19 +490,19 @@ export class OrderService {
 
           // Deduct inventory for items with tracking enabled
           if (orderData.locationId) {
-            for (const item of orderData.items) {
+            for (const line of validation.normalizedLines) {
               try {
                 await inventoryService.deductInventory(
-                  item.menuItemId,
+                  line.item.menuItemId,
                   orderData.locationId,
-                  item.quantity,
+                  line.item.quantity,
                   order.id,
                   tx
                 );
               } catch (error: any) {
                 // If deduction fails, the transaction will rollback
                 logger.error('Failed to deduct inventory for order item', {
-                  menuItemId: item.menuItemId,
+                  menuItemId: line.item.menuItemId,
                   orderId: order.id,
                   error: error.message,
                 });

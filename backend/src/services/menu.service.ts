@@ -1,5 +1,6 @@
 import { Weekday } from '@prisma/client';
 import prisma from '../lib/prisma';
+import { getBusinessDateString, parseDateOnly } from '../utils/businessDate';
 
 export class MenuService {
   private readonly businessTimeZone = process.env.ORDERING_TIMEZONE || 'Australia/Sydney';
@@ -7,13 +8,13 @@ export class MenuService {
   /**
    * Get current weekday as Prisma enum
    */
-  private getCurrentWeekday(): Weekday | null {
-    const formatter = new Intl.DateTimeFormat('en-US', {
+  private getWeekdayForDate(dateInput?: string): Weekday | null {
+    const date = dateInput ? parseDateOnly(dateInput) : parseDateOnly(getBusinessDateString());
+    const weekdayString = date.toLocaleDateString('en-US', {
       timeZone: this.businessTimeZone,
       weekday: 'long',
-    });
+    }).toUpperCase();
 
-    const weekdayString = formatter.format(new Date()).toUpperCase();
     const weekdayMap: { [key: string]: Weekday } = {
       SUNDAY: 'SUNDAY',
       MONDAY: 'MONDAY',
@@ -32,13 +33,18 @@ export class MenuService {
    * Optionally filtered by location
    */
   async getTodaysMenu(locationId?: string) {
-    const weekday = this.getCurrentWeekday();
+    return this.getMenuByDate(getBusinessDateString(), locationId);
+  }
+
+  async getMenuByDate(prepDate: string, locationId?: string) {
+    const weekday = this.getWeekdayForDate(prepDate);
 
     if (!weekday) {
       return {
         items: [],
         message: 'Unable to determine current day',
         weekday: null,
+        prepDate,
       };
     }
 
@@ -129,6 +135,7 @@ export class MenuService {
     return {
       items,
       weekday,
+      prepDate,
       message: items.length > 0 ? null : 'No menu items available for today',
     };
   }

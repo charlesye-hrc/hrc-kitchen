@@ -1,11 +1,31 @@
 import { VariationSelection } from './variation.types';
 
 export interface CreateOrderItemDto {
+  clientLineId?: string;
   menuItemId: string;
   quantity: number;
+  prepDate: string;
   customizations?: string;  // Legacy: old free-text customizations
   specialRequests?: string;
   selectedVariations?: VariationSelection[];  // New: structured variations
+}
+
+export type OrderInvalidLineReason =
+  | 'MENU_ITEM_INVALID'
+  | 'ITEM_NOT_AVAILABLE_AT_LOCATION'
+  | 'ITEM_NOT_AVAILABLE_ON_DATE'
+  | 'INSUFFICIENT_INVENTORY'
+  | 'PREP_DATE_REQUIRED'
+  | 'PREP_DATE_INVALID_FORMAT'
+  | 'PREP_DATE_OUT_OF_RANGE'
+  | 'PREP_DATE_CUTOFF_PASSED';
+
+export interface InvalidOrderLine {
+  clientLineId?: string;
+  menuItemId: string;
+  prepDate?: string;
+  reason: OrderInvalidLineReason;
+  message: string;
 }
 
 export interface CreateOrderDto {

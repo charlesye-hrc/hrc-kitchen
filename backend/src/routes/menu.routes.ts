@@ -10,6 +10,8 @@ const router = Router();
  * @note    Used by public ordering app - includes orderingWindow metadata
  */
 router.get('/today', menuController.getTodaysMenu);
+router.get('/by-date', menuController.getMenuByDate);
+router.get('/ordering-context', menuController.getOrderingContext);
 
 /**
  * @route   GET /api/v1/menu/week

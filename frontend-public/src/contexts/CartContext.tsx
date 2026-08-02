@@ -4,6 +4,7 @@ import { MenuItem, VariationSelection, SelectedVariation } from '../services/api
 export interface CartItem {
   menuItem: MenuItem;
   quantity: number;
+  prepDate: string;
   customizations: string[];
   specialRequests?: string;
   selectedVariations?: VariationSelection[];
@@ -16,12 +17,14 @@ interface CartContextType {
   addItem: (
     menuItem: MenuItem,
     quantity: number,
+    prepDate: string,
     customizations: string[],
     specialRequests?: string,
     selectedVariations?: VariationSelection[]
   ) => Promise<{ success: boolean; message?: string }>;
   removeItem: (menuItemId: string) => void;
   updateQuantity: (menuItemId: string, quantity: number) => void;
+  updatePrepDate: (cartItemId: string, prepDate: string) => void;
   updateCustomizations: (menuItemId: string, customizations: string[]) => void;
   updateSpecialRequests: (menuItemId: string, specialRequests: string) => void;
   clearCart: () => void;
@@ -50,12 +53,16 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [cartLocationId, setCartLocationId] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
-  const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1').replace(/\/$/, '');
+  const API_BASE_URL = (import.meta.env.VITE_API_URL || '/api/v1').replace(/\/$/, '');
+
+  const getTodayDateString = (): string => {
+    return new Date().toISOString().slice(0, 10);
+  };
 
   // Helper function to generate a unique cart item ID based on menu item and variations
-  const generateCartItemId = (menuItemId: string, selectedVariations?: VariationSelection[]): string => {
+  const generateCartItemId = (menuItemId: string, prepDate: string, selectedVariations?: VariationSelection[]): string => {
     if (!selectedVariations || selectedVariations.length === 0) {
-      return menuItemId;
+      return `${menuItemId}__${prepDate}`;
     }
 
     // Sort variations to ensure consistent ordering
@@ -64,13 +71,18 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       .map(v => `${v.groupId}:${[...v.optionIds].sort().join(',')}`)
       .join('|');
 
-    return `${menuItemId}__${variationsString}`;
+    return `${menuItemId}__${prepDate}__${variationsString}`;
   };
 
   // Helper function to check if two cart items are the same (same menu item and variations)
-  const isSameCartItem = (item1: CartItem, menuItemId: string, selectedVariations?: VariationSelection[]): boolean => {
-    const id1 = item1.cartItemId || generateCartItemId(item1.menuItem.id, item1.selectedVariations);
-    const id2 = generateCartItemId(menuItemId, selectedVariations);
+  const isSameCartItem = (
+    item1: CartItem,
+    menuItemId: string,
+    prepDate: string,
+    selectedVariations?: VariationSelection[]
+  ): boolean => {
+    const id1 = item1.cartItemId || generateCartItemId(item1.menuItem.id, item1.prepDate, item1.selectedVariations);
+    const id2 = generateCartItemId(menuItemId, prepDate, selectedVariations);
     return id1 === id2;
   };
 
@@ -80,7 +92,16 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     const savedLocationId = localStorage.getItem('cartLocationId');
     if (savedCart) {
       try {
-        setItems(JSON.parse(savedCart));
+        const parsed = JSON.parse(savedCart) as CartItem[];
+        const today = getTodayDateString();
+        setItems(parsed.map((item) => {
+          const prepDate = item.prepDate || today;
+          return {
+            ...item,
+            prepDate,
+            cartItemId: generateCartItemId(item.menuItem.id, prepDate, item.selectedVariations),
+          };
+        }));
       } catch (error) {
         console.error('Failed to load cart from localStorage:', error);
       }
@@ -135,15 +156,18 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const addItem = async (
     menuItem: MenuItem,
     quantity: number,
+    prepDate: string,
     customizations: string[],
     specialRequests?: string,
     selectedVariations?: VariationSelection[]
   ): Promise<{ success: boolean; message?: string }> => {
+    const normalizedPrepDate = prepDate || getTodayDateString();
+
     // Check inventory availability if cart has a location
     if (cartLocationId) {
       try {
         // Calculate total quantity including existing cart items
-        const existingItem = items.find((item) => isSameCartItem(item, menuItem.id, selectedVariations));
+        const existingItem = items.find((item) => isSameCartItem(item, menuItem.id, normalizedPrepDate, selectedVariations));
         const totalQuantity = (existingItem?.quantity || 0) + quantity;
 
         const response = await fetch(`${API_BASE_URL}/inventory/check-availability`, {
@@ -183,10 +207,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     setItems((prevItems) => {
       // Check if item with same menu item ID and variations already exists in cart
       const existingItemIndex = prevItems.findIndex(
-        (item) => isSameCartItem(item, menuItem.id, selectedVariations)
+        (item) => isSameCartItem(item, menuItem.id, normalizedPrepDate, selectedVariations)
       );
 
-      const cartItemId = generateCartItemId(menuItem.id, selectedVariations);
+      const cartItemId = generateCartItemId(menuItem.id, normalizedPrepDate, selectedVariations);
 
       if (existingItemIndex > -1) {
         // Update existing item - only increment quantity
@@ -201,6 +225,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         return [...prevItems, {
           menuItem,
           quantity,
+          prepDate: normalizedPrepDate,
           customizations,
           specialRequests,
           selectedVariations,
@@ -227,6 +252,55 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         (item.cartItemId || item.menuItem.id) === cartItemId ? { ...item, quantity } : item
       )
     );
+  };
+
+  const updatePrepDate = (cartItemId: string, prepDate: string) => {
+    const normalizedPrepDate = prepDate || getTodayDateString();
+
+    setItems((prevItems) => {
+      const sourceItem = prevItems.find((item) => (item.cartItemId || item.menuItem.id) === cartItemId);
+      if (!sourceItem) {
+        return prevItems;
+      }
+
+      const targetCartItemId = generateCartItemId(sourceItem.menuItem.id, normalizedPrepDate, sourceItem.selectedVariations);
+
+      if (targetCartItemId === (sourceItem.cartItemId || sourceItem.menuItem.id)) {
+        return prevItems;
+      }
+
+      const duplicateItem = prevItems.find((item) => (item.cartItemId || item.menuItem.id) === targetCartItemId);
+
+      if (!duplicateItem) {
+        return prevItems.map((item) =>
+          (item.cartItemId || item.menuItem.id) === cartItemId
+            ? {
+                ...item,
+                prepDate: normalizedPrepDate,
+                cartItemId: targetCartItemId,
+              }
+            : item
+        );
+      }
+
+      return prevItems
+        .map((item) => {
+          const itemId = item.cartItemId || item.menuItem.id;
+          if (itemId === cartItemId) {
+            return null;
+          }
+
+          if (itemId === targetCartItemId) {
+            return {
+              ...item,
+              quantity: item.quantity + sourceItem.quantity,
+            };
+          }
+
+          return item;
+        })
+        .filter((item): item is CartItem => Boolean(item));
+    });
   };
 
   const updateCustomizations = (cartItemId: string, customizations: string[]) => {
@@ -286,6 +360,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     addItem,
     removeItem,
     updateQuantity,
+    updatePrepDate,
     updateCustomizations,
     updateSpecialRequests,
     clearCart,

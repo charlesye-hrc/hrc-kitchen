@@ -19,13 +19,17 @@ import {
   IconButton,
   useTheme,
   useMediaQuery,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import { Add as AddIcon, Remove as RemoveIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocationContext, LocationSelector, executeRecaptcha } from '@hrc-kitchen/common';
-import { menuApi } from '../services/api';
+import { menuApi, OrderingContext } from '../services/api';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements, PaymentRequestButtonElement } from '@stripe/react-stripe-js';
 import type { PaymentRequest } from '@stripe/stripe-js';
@@ -40,7 +44,17 @@ interface GuestOrderSecurityToken {
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 const CheckoutForm: React.FC = () => {
-  const { items, clearCart, getCartTotal, calculateItemPrice, cartLocationId, removeItem, updateQuantity, setCartLocation, validateCartForLocation } = useCart();
+  const {
+    items,
+    clearCart,
+    getCartTotal,
+    calculateItemPrice,
+    cartLocationId,
+    removeItem,
+    updateQuantity,
+    updatePrepDate,
+    setCartLocation,
+  } = useCart();
   const { isAuthenticated } = useAuth();
   const { locations, selectedLocation, selectLocation, isLoading: locationsLoading } = useLocationContext();
   const navigate = useNavigate();
@@ -52,8 +66,9 @@ const CheckoutForm: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [orderingWindow, setOrderingWindow] = useState<any>(null);
+  const [orderingContext, setOrderingContext] = useState<OrderingContext | null>(null);
   const [checkingWindow, setCheckingWindow] = useState(true);
+  const [validationNotice, setValidationNotice] = useState<string | null>(null);
   const [guestSecurityToken, setGuestSecurityToken] = useState<GuestOrderSecurityToken | null>(null);
   const [guestTokenExpiry, setGuestTokenExpiry] = useState<number | null>(null);
 
@@ -80,7 +95,8 @@ const CheckoutForm: React.FC = () => {
   });
 
   const cartTotal = getCartTotal();
-  const apiBaseUrl = import.meta.env.VITE_API_URL || '/api/v1';
+  const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api/v1').replace(/\/$/, '');
+  const selectablePrepDates = orderingContext?.selectableDates || [];
 
   const ensureGuestSecurityToken = useCallback(async (): Promise<GuestOrderSecurityToken> => {
     if (guestSecurityToken && guestTokenExpiry && guestTokenExpiry > Date.now()) {
@@ -109,30 +125,105 @@ const CheckoutForm: React.FC = () => {
     return tokenPayload;
   }, [guestSecurityToken, guestTokenExpiry, recaptchaSiteKey, apiBaseUrl]);
 
-  // Check ordering window on page load
-  useEffect(() => {
-    const checkOrderingWindow = async () => {
-      try {
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/menu/today`);
-        const windowData = response.data.data.orderingWindow;
-        setOrderingWindow(windowData);
+  const validateCartItems = useCallback(async (
+    targetItems = items,
+    targetLocationId = cartLocationId
+  ): Promise<{ valid: boolean; removedCount: number }> => {
+    if (!targetItems.length || !targetLocationId) {
+      return { valid: targetItems.length > 0, removedCount: 0 };
+    }
 
-        // If ordering window is closed, redirect to menu with error
-        if (windowData && !windowData.active) {
-          setError('Ordering is currently closed. You cannot proceed with checkout at this time.');
-          setTimeout(() => {
-            navigate('/menu');
-          }, 3000);
+    const payload = {
+      locationId: targetLocationId,
+      items: targetItems.map(item => ({
+        clientLineId: item.cartItemId || `${item.menuItem.id}__${item.prepDate}`,
+        menuItemId: item.menuItem.id,
+        quantity: item.quantity,
+        prepDate: item.prepDate,
+        customizations: item.customizations.join(', '),
+        specialRequests: item.specialRequests,
+        selectedVariations: item.selectedVariations || [],
+      })),
+    };
+
+    const response = await axios.post(`${apiBaseUrl}/orders/validate`, payload);
+    const invalidLines = response.data?.data?.invalidLines || [];
+
+    if (!invalidLines.length) {
+      setValidationNotice(null);
+      return { valid: true, removedCount: 0 };
+    }
+
+    const cartItemIdsToRemove = new Set<string>();
+
+    invalidLines.forEach((line: any) => {
+      if (line.clientLineId) {
+        cartItemIdsToRemove.add(line.clientLineId);
+        return;
+      }
+
+      const fallbackItem = targetItems.find(item => item.menuItem.id === line.menuItemId && item.prepDate === line.prepDate);
+      if (fallbackItem) {
+        cartItemIdsToRemove.add(fallbackItem.cartItemId || `${fallbackItem.menuItem.id}__${fallbackItem.prepDate}`);
+      }
+    });
+
+    cartItemIdsToRemove.forEach((cartItemId) => removeItem(cartItemId));
+
+    const uniqueDates = Array.from(new Set(invalidLines.map((line: any) => line.prepDate).filter(Boolean)));
+    const removedNotice = uniqueDates.length > 0
+      ? `We removed ${cartItemIdsToRemove.size} item(s) that are no longer orderable for ${uniqueDates.join(', ')}.`
+      : `We removed ${cartItemIdsToRemove.size} item(s) that are no longer orderable.`;
+
+    setValidationNotice(removedNotice);
+
+    return {
+      valid: false,
+      removedCount: cartItemIdsToRemove.size,
+    };
+  }, [items, cartLocationId, removeItem]);
+
+  const handleInvalidLineError = useCallback((err: any, targetItems: typeof items) => {
+    const invalidLines = err?.response?.data?.invalidLines;
+    if (!Array.isArray(invalidLines) || invalidLines.length === 0) {
+      return false;
+    }
+
+    const cartItemIdsToRemove = new Set<string>();
+    invalidLines.forEach((line: any) => {
+      if (line.clientLineId) {
+        cartItemIdsToRemove.add(line.clientLineId);
+        return;
+      }
+
+      const fallbackItem = targetItems.find(item => item.menuItem.id === line.menuItemId && item.prepDate === line.prepDate);
+      if (fallbackItem) {
+        cartItemIdsToRemove.add(fallbackItem.cartItemId || `${fallbackItem.menuItem.id}__${fallbackItem.prepDate}`);
+      }
+    });
+
+    cartItemIdsToRemove.forEach((id) => removeItem(id));
+    setValidationNotice('Some items were removed because they are no longer orderable.');
+    return true;
+  }, [items, removeItem]);
+
+  // Load ordering context on page load
+  useEffect(() => {
+    const loadOrderingContext = async () => {
+      try {
+        const response = await menuApi.getOrderingContext();
+        if (response.success) {
+          setOrderingContext(response.data);
         }
       } catch (err) {
-        console.error('Error checking ordering window:', err);
+        console.error('Error loading ordering context:', err);
       } finally {
         setCheckingWindow(false);
       }
     };
 
-    checkOrderingWindow();
-  }, [navigate]);
+    loadOrderingContext();
+  }, []);
 
   // Handle location change and validate cart
   const handleLocationChange = async (locationId: string) => {
@@ -143,50 +234,23 @@ const CheckoutForm: React.FC = () => {
     const currentCartLocation = locations.find(loc => loc.id === cartLocationId);
     const currentLocationName = currentCartLocation?.name || 'current location';
 
-    try {
-      // Fetch menu items for the new location to validate cart
-      const response = await menuApi.getTodaysMenu(locationId);
-      if (response.success) {
-        const availableMenuItemIds = response.data.items.map((item: any) => item.id);
-        const unavailableItems = validateCartForLocation(locationId, availableMenuItemIds);
+    // Ask user to confirm location switch if cart has items
+    if (items.length > 0) {
+      const confirmLocationChange = window.confirm(
+        `You have ${items.length} item(s) in your cart from ${currentLocationName}.\n\n` +
+        `Do you want to switch your cart location to ${newLocation.name}?`
+      );
 
-        if (unavailableItems.length > 0) {
-          // Get item names
-          const unavailableNames = unavailableItems
-            .map(id => items.find(item => item.menuItem.id === id)?.menuItem.name)
-            .filter(Boolean);
-
-          const confirmRemove = window.confirm(
-            `The following items in your cart are not available at ${newLocation.name}:\n\n` +
-            unavailableNames.join('\n') +
-            '\n\nThese items will be removed from your cart. Continue?'
-          );
-
-          if (confirmRemove) {
-            // Remove all cart items with unavailable menu items (including all variations)
-            unavailableItems.forEach(menuItemId => {
-              items.filter(item => item.menuItem.id === menuItemId).forEach(item => {
-                removeItem(item.cartItemId || item.menuItem.id);
-              });
-            });
-            selectLocation(locationId);
-            setCartLocation(locationId);
-          }
-          // If user cancels, don't change location
-        } else {
-          // All items ARE available at new location, but ask user to confirm
-          const confirmLocationChange = window.confirm(
-            `You have ${items.length} item(s) in your cart from ${currentLocationName}.\n\n` +
-            `Do you want to switch your cart location to ${newLocation.name}?`
-          );
-
-          if (confirmLocationChange) {
-            selectLocation(locationId);
-            setCartLocation(locationId);
-          }
-          // If user cancels, revert to cart location (don't change the dropdown)
-        }
+      if (!confirmLocationChange) {
+        return;
       }
+    }
+
+    selectLocation(locationId);
+    setCartLocation(locationId);
+
+    try {
+      await validateCartItems(items, locationId);
     } catch (err) {
       console.error('Error validating cart for new location:', err);
       setError('Failed to validate cart for new location');
@@ -205,6 +269,16 @@ const CheckoutForm: React.FC = () => {
       loading,
     };
   }, [items, cartLocationId, guestFirstName, guestLastName, guestEmail, isAuthenticated, loading]);
+
+  useEffect(() => {
+    if (checkingWindow || items.length === 0 || !cartLocationId) {
+      return;
+    }
+
+    validateCartItems().catch((err) => {
+      console.error('Cart validation failed:', err);
+    });
+  }, [checkingWindow, items.length, cartLocationId, validateCartItems]);
 
   // Initialize Payment Request Button for Apple Pay / Google Pay
   useEffect(() => {
@@ -287,11 +361,21 @@ const CheckoutForm: React.FC = () => {
           return;
         }
 
+        const validation = await validateCartItems(currentItems, currentCartLocationId);
+        if (!validation.valid) {
+          event.complete('fail');
+          setError('Some items were removed because they are no longer orderable. Please review your cart.');
+          setLoading(false);
+          return;
+        }
+
         // Create order and get payment intent
         const orderData = {
           items: currentItems.map(item => ({
+            clientLineId: item.cartItemId || `${item.menuItem.id}__${item.prepDate}`,
             menuItemId: item.menuItem.id,
             quantity: item.quantity,
+            prepDate: item.prepDate,
             customizations: item.customizations.join(', '),
             specialRequests: item.specialRequests,
             selectedVariations: item.selectedVariations || [],
@@ -306,7 +390,7 @@ const CheckoutForm: React.FC = () => {
         if (currentIsAuthenticated) {
           // Authenticated order
           response = await axios.post(
-            `${import.meta.env.VITE_API_URL}/orders`,
+            `${apiBaseUrl}/orders`,
             orderData,
             authConfig
           );
@@ -322,7 +406,7 @@ const CheckoutForm: React.FC = () => {
           }
 
           // Guest order
-          response = await axios.post(`${import.meta.env.VITE_API_URL}/orders/guest`, {
+          response = await axios.post(`${apiBaseUrl}/orders/guest`, {
             ...orderData,
             guestInfo: {
               firstName: firstName || guestFirstName,
@@ -369,7 +453,7 @@ const CheckoutForm: React.FC = () => {
           // Manually confirm payment status with backend (since webhooks may not fire in dev)
           try {
             await axios.post(
-              `${import.meta.env.VITE_API_URL}/payment/confirm`,
+              `${apiBaseUrl}/payment/confirm`,
               { paymentIntentId: finalPaymentIntent.id, clientSecret },
               currentIsAuthenticated ? { withCredentials: true } : undefined
             );
@@ -408,6 +492,11 @@ const CheckoutForm: React.FC = () => {
           event.complete('fail');
         }
 
+        if (handleInvalidLineError(err, currentItems)) {
+          setError('Some items were removed because they are no longer orderable. Please review your cart.');
+          return;
+        }
+
         // Check if error is due to existing email
         if (err.response?.data?.code === 'EMAIL_EXISTS') {
           setShowEmailExistsDialog(true);
@@ -425,7 +514,7 @@ const CheckoutForm: React.FC = () => {
     return () => {
       pr.off('paymentmethod', handlePaymentMethod);
     };
-  }, [stripe, isAuthenticated, cartTotal, ensureGuestSecurityToken, clearCart, navigate]);
+  }, [stripe, isAuthenticated, cartTotal, ensureGuestSecurityToken, clearCart, navigate, validateCartItems, handleInvalidLineError]);
 
   // Keep the payment request total in sync without recreating the element
   useEffect(() => {
@@ -474,12 +563,21 @@ const CheckoutForm: React.FC = () => {
       return;
     }
 
+    const validation = await validateCartItems(items, cartLocationId);
+    if (!validation.valid) {
+      setError('Some items were removed because they are no longer orderable. Please review your cart.');
+      setLoading(false);
+      return;
+    }
+
     try {
       // Create order and get payment intent
       const orderData = {
         items: items.map(item => ({
+          clientLineId: item.cartItemId || `${item.menuItem.id}__${item.prepDate}`,
           menuItemId: item.menuItem.id,
           quantity: item.quantity,
+          prepDate: item.prepDate,
           customizations: item.customizations.join(', '),
           specialRequests: item.specialRequests,
           selectedVariations: item.selectedVariations || [],
@@ -494,7 +592,7 @@ const CheckoutForm: React.FC = () => {
         if (isAuthenticated) {
           // Authenticated order
           response = await axios.post(
-            `${import.meta.env.VITE_API_URL}/orders`,
+            `${apiBaseUrl}/orders`,
             orderData,
             authConfig
           );
@@ -510,7 +608,7 @@ const CheckoutForm: React.FC = () => {
 
         // Guest order
         response = await axios.post(
-          `${import.meta.env.VITE_API_URL}/orders/guest`,
+          `${apiBaseUrl}/orders/guest`,
           {
             ...orderData,
             guestInfo: {
@@ -546,7 +644,7 @@ const CheckoutForm: React.FC = () => {
         // Manually confirm payment status with backend (since webhooks may not fire in dev)
         try {
           await axios.post(
-            `${import.meta.env.VITE_API_URL}/payment/confirm`,
+            `${apiBaseUrl}/payment/confirm`,
             { paymentIntentId: paymentIntent.id, clientSecret },
             isAuthenticated ? { withCredentials: true } : undefined
           );
@@ -579,6 +677,11 @@ const CheckoutForm: React.FC = () => {
     } catch (err: any) {
       console.error('Checkout error:', err);
 
+      if (handleInvalidLineError(err, items)) {
+        setError('Some items were removed because they are no longer orderable. Please review your cart.');
+        return;
+      }
+
       // Check if error is due to existing email
       if (err.response?.data?.code === 'EMAIL_EXISTS') {
         setShowEmailExistsDialog(true);
@@ -609,20 +712,6 @@ const CheckoutForm: React.FC = () => {
       <Container maxWidth="md" sx={{ py: { xs: 2, md: 4 } }}>
         <Alert severity="info">
           Your cart is empty. <Button onClick={() => navigate('/menu')}>Browse Menu</Button>
-        </Alert>
-      </Container>
-    );
-  }
-
-  // If ordering is closed, show error and prevent checkout
-  if (orderingWindow && !orderingWindow.active) {
-    return (
-      <Container maxWidth="md" sx={{ py: { xs: 2, md: 4 } }}>
-        <Alert severity="error">
-          {error || 'Ordering is currently closed'}
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            Redirecting to menu...
-          </Typography>
         </Alert>
       </Container>
     );
@@ -684,9 +773,19 @@ const CheckoutForm: React.FC = () => {
           Order Summary
         </Typography>
 
+        {validationNotice && (
+          <Alert severity="warning" sx={{ mb: 2.5 }}>
+            {validationNotice}
+          </Alert>
+        )}
+
         <List>
-          {items.map(item => (
-            <ListItem key={item.menuItem.id} sx={{ px: 0, py: { xs: 1.5, sm: 2 }, flexDirection: 'column', alignItems: 'flex-start' }}>
+          {items.map(item => {
+            const cartItemIdentifier = item.cartItemId || `${item.menuItem.id}__${item.prepDate}`;
+            const selectedDateOption = selectablePrepDates.find(dateOption => dateOption.date === item.prepDate);
+
+            return (
+            <ListItem key={cartItemIdentifier} sx={{ px: 0, py: { xs: 1.5, sm: 2 }, flexDirection: 'column', alignItems: 'flex-start' }}>
               <Box sx={{
                 width: '100%',
                 display: 'flex',
@@ -718,7 +817,7 @@ const CheckoutForm: React.FC = () => {
                       size="small"
                       onClick={() => {
                         if (item.quantity > 1) {
-                          updateQuantity(item.cartItemId || item.menuItem.id, item.quantity - 1);
+                          updateQuantity(cartItemIdentifier, item.quantity - 1);
                         }
                       }}
                       disabled={item.quantity <= 1}
@@ -730,7 +829,7 @@ const CheckoutForm: React.FC = () => {
                     </Typography>
                     <IconButton
                       size="small"
-                      onClick={() => updateQuantity(item.cartItemId || item.menuItem.id, item.quantity + 1)}
+                      onClick={() => updateQuantity(cartItemIdentifier, item.quantity + 1)}
                     >
                       <AddIcon fontSize="small" />
                     </IconButton>
@@ -743,7 +842,7 @@ const CheckoutForm: React.FC = () => {
                     <IconButton
                       size="small"
                       color="error"
-                      onClick={() => removeItem(item.cartItemId || item.menuItem.id)}
+                      onClick={() => removeItem(cartItemIdentifier)}
                       aria-label="Remove item"
                     >
                       <DeleteIcon fontSize="small" />
@@ -753,6 +852,32 @@ const CheckoutForm: React.FC = () => {
               </Box>
 
               <Box sx={{ width: '100%', pl: { xs: 0, sm: 2 } }}>
+                <Box sx={{ mt: 1, mb: 1.5, maxWidth: 280 }}>
+                  <FormControl size="small" fullWidth>
+                    <InputLabel id={`prep-date-${cartItemIdentifier}`}>Prep Date</InputLabel>
+                    <Select
+                      labelId={`prep-date-${cartItemIdentifier}`}
+                      value={item.prepDate}
+                      label="Prep Date"
+                      onChange={(event) => updatePrepDate(cartItemIdentifier, event.target.value)}
+                    >
+                      {selectablePrepDates.map((dateOption) => (
+                        <MenuItem
+                          key={dateOption.date}
+                          value={dateOption.date}
+                          disabled={!dateOption.eligible && dateOption.date !== item.prepDate}
+                        >
+                          {dateOption.label} ({dateOption.date}){!dateOption.eligible ? ' - Unavailable' : ''}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  {selectedDateOption && !selectedDateOption.eligible && (
+                    <Typography variant="caption" color="warning.main" sx={{ mt: 0.5, display: 'block' }}>
+                      {selectedDateOption.message || 'This date is no longer eligible and will be removed at checkout.'}
+                    </Typography>
+                  )}
+                </Box>
 
                 {/* Display selected variations */}
                 {item.selectedVariations && item.selectedVariations.length > 0 && (
@@ -790,7 +915,7 @@ const CheckoutForm: React.FC = () => {
                 )}
               </Box>
             </ListItem>
-          ))}
+          )})}
         </List>
 
         <Divider sx={{ my: 3 }} />

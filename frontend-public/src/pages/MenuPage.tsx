@@ -26,10 +26,14 @@ import {
   useMediaQuery,
   Link,
   Collapse,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem as SelectOption,
 } from '@mui/material';
 import { Add as AddIcon, Replay as ReplayIcon, PictureAsPdf as PictureAsPdfIcon, OpenInNew as OpenInNewIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { menuApi, MenuItem, VariationSelection, orderApi, LocationMenuPdf } from '../services/api';
+import { menuApi, MenuItem, VariationSelection, orderApi, LocationMenuPdf, OrderingContext } from '../services/api';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import VariationSelector from '../components/VariationSelector';
@@ -46,7 +50,8 @@ const MenuPage: React.FC = () => {
   const [selectedCustomizations, setSelectedCustomizations] = useState<string[]>([]);
   const [selectedVariations, setSelectedVariations] = useState<VariationSelection[]>([]);
   const [specialRequests, setSpecialRequests] = useState('');
-  const [orderingWindow, setOrderingWindow] = useState<any>(null);
+  const [orderingContext, setOrderingContext] = useState<OrderingContext | null>(null);
+  const [selectedPrepDate, setSelectedPrepDate] = useState<string>('');
   const [activeCategory, setActiveCategory] = useState<string>('ALL');
   const [repeatOrderLoading, setRepeatOrderLoading] = useState(false);
   const [lastOrderData, setLastOrderData] = useState<any>(null);
@@ -64,14 +69,20 @@ const MenuPage: React.FC = () => {
   const { setHideActionBar } = useCartUI();
 
   useEffect(() => {
+    fetchOrderingContext();
+  }, []);
+
+  useEffect(() => {
     if (selectedLocation) {
-      fetchTodaysMenu();
+      if (selectedPrepDate) {
+        fetchMenuForDate(selectedPrepDate);
+      }
       fetchLocationMenuPdfs(selectedLocation.id);
       setPdfSectionExpanded(false);
     } else {
       setLocationMenuPdfs([]);
     }
-  }, [selectedLocation]);
+  }, [selectedLocation, selectedPrepDate]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -159,22 +170,33 @@ const MenuPage: React.FC = () => {
     }
   };
 
-  const fetchTodaysMenu = async () => {
-    if (!selectedLocation) return;
+  const fetchOrderingContext = async () => {
+    try {
+      const response = await menuApi.getOrderingContext();
+      if (response.success) {
+        setOrderingContext(response.data);
+        if (!selectedPrepDate) {
+          setSelectedPrepDate(response.data.businessDate);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching ordering context:', err);
+    }
+  };
+
+  const fetchMenuForDate = async (prepDate: string) => {
+    if (!selectedLocation || !prepDate) return;
 
     try {
       setLoading(true);
-      const response = await menuApi.getTodaysMenu(selectedLocation.id);
+      const response = await menuApi.getMenuByDate(prepDate, selectedLocation.id);
 
       if (response.success) {
         const newMenuItems = response.data.items;
         setMenuItems(newMenuItems);
         setWeekday(response.data.weekday);
-        setOrderingWindow(response.data.orderingWindow);
-        // Clear any previous errors when successfully loading menu
-        setError(null);
 
-        // Validate cart AFTER menu is loaded with the NEW menu items
+        setError(null);
         validateCartForCurrentLocation(newMenuItems);
       } else {
         setError(response.message || 'Failed to load menu');
@@ -224,6 +246,12 @@ const MenuPage: React.FC = () => {
 
   const handleConfirmAddToCart = async () => {
     if (selectedItem) {
+      const currentDateContext = orderingContext?.selectableDates.find(date => date.date === selectedPrepDate);
+      if (currentDateContext && !currentDateContext.eligible) {
+        alert(currentDateContext.message || 'Selected prep date is currently unavailable');
+        return;
+      }
+
       // Validate required variation groups
       if (selectedItem.variationGroups) {
         const requiredGroups = selectedItem.variationGroups.filter((g) => g.required);
@@ -242,7 +270,19 @@ const MenuPage: React.FC = () => {
         setCartLocation(selectedLocation.id);
       }
 
-      const result = await addItem(selectedItem, quantity, selectedCustomizations, specialRequests, selectedVariations);
+      if (!selectedPrepDate) {
+        alert('Please select a prep date before adding items to cart');
+        return;
+      }
+
+      const result = await addItem(
+        selectedItem,
+        quantity,
+        selectedPrepDate,
+        selectedCustomizations,
+        specialRequests,
+        selectedVariations
+      );
 
       if (!result.success) {
         alert(result.message || 'Unable to add item to cart');
@@ -305,25 +345,29 @@ const MenuPage: React.FC = () => {
       return;
     }
 
+    if (!selectedPrepDate) {
+      alert('Please select a prep date first');
+      return;
+    }
+
+    const currentDateContext = orderingContext?.selectableDates.find(date => date.date === selectedPrepDate);
+    if (currentDateContext && !currentDateContext.eligible) {
+      alert(currentDateContext.message || 'Selected prep date is currently unavailable');
+      return;
+    }
+
     setRepeatOrderLoading(true);
     setError(null);
 
     try {
       const lastOrder = lastOrderData;
 
-      // Fetch today's menu for the CURRENT location to validate availability
-      let todaysMenuItems: MenuItem[] = [];
+      // Fetch selected date menu for the current location to validate availability
+      let selectedDateMenuItems: MenuItem[] = [];
       try {
-        const menuResponse = await menuApi.getTodaysMenu(selectedLocation.id);
+        const menuResponse = await menuApi.getMenuByDate(selectedPrepDate, selectedLocation.id);
         if (menuResponse.success) {
-          todaysMenuItems = menuResponse.data.items;
-
-          // Check if ordering window is active
-          if (menuResponse.data.orderingWindow && !menuResponse.data.orderingWindow.active) {
-            alert('Ordering is currently closed. Please try again during ordering hours.');
-            setRepeatOrderLoading(false);
-            return;
-          }
+          selectedDateMenuItems = menuResponse.data.items;
         }
       } catch (err) {
         console.error('Error fetching menu:', err);
@@ -333,7 +377,7 @@ const MenuPage: React.FC = () => {
       }
 
       // Validate that items from last order are available at the CURRENT location
-      const availableMenuItemIds = new Set(todaysMenuItems.map(item => item.id));
+      const availableMenuItemIds = new Set(selectedDateMenuItems.map(item => item.id));
       const unavailableItems = lastOrder.orderItems.filter(
         (orderItem: any) => !availableMenuItemIds.has(orderItem.menuItemId)
       );
@@ -376,7 +420,7 @@ const MenuPage: React.FC = () => {
           }
 
           // Get the current menu item (with updated pricing, variations, etc.)
-          const currentMenuItem = todaysMenuItems.find(item => item.id === orderItem.menuItemId);
+          const currentMenuItem = selectedDateMenuItems.find(item => item.id === orderItem.menuItemId);
           if (!currentMenuItem) {
             continue;
           }
@@ -411,6 +455,7 @@ const MenuPage: React.FC = () => {
           const result = await addItem(
             currentMenuItem,
             orderItem.quantity,
+            selectedPrepDate,
             customizations,
             specialReqs,
             variationSelections
@@ -487,6 +532,8 @@ const MenuPage: React.FC = () => {
   const visibleCategories =
     activeCategory === 'ALL' ? categories : categories.filter((cat) => cat === activeCategory);
 
+  const selectedDateContext = orderingContext?.selectableDates.find(date => date.date === selectedPrepDate) || null;
+
   const formatCategoryLabel = (category: string) =>
     category.charAt(0) + category.slice(1).toLowerCase();
 
@@ -534,23 +581,39 @@ const MenuPage: React.FC = () => {
                   component="h1"
                   sx={{ fontWeight: 700, fontSize: { xs: '1.875rem', md: '2.25rem' } }}
                 >
-                  Today's Menu
+                  Menu for {selectedDateContext?.label || 'Selected Date'}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                  Choose the dishes you'd like delivered today.
+                  Choose the dishes you'd like prepared for this date.
                 </Typography>
+                <Stack direction="row" spacing={1} sx={{ mt: 1.5, flexWrap: 'wrap' }}>
+                  <FormControl size="small" sx={{ minWidth: 220 }}>
+                    <InputLabel id="prep-date-label">Prep Date</InputLabel>
+                    <Select
+                      labelId="prep-date-label"
+                      value={selectedPrepDate}
+                      label="Prep Date"
+                      onChange={(event) => setSelectedPrepDate(event.target.value)}
+                    >
+                      {orderingContext?.selectableDates.map((dateOption) => (
+                        <SelectOption key={dateOption.date} value={dateOption.date} disabled={!dateOption.eligible}>
+                          {dateOption.label} ({dateOption.date}){!dateOption.eligible ? ' - Unavailable' : ''}
+                        </SelectOption>
+                      ))}
+                    </Select>
+                  </FormControl>
                 {weekday && (
                   <Chip
                     label={weekday}
                     size="small"
                     sx={{
-                      mt: 1.5,
                       fontWeight: 600,
                       backgroundColor: (theme) => `${theme.palette.primary.main}14`,
                       color: 'primary.main',
                     }}
                   />
                 )}
+                </Stack>
               </Box>
 
               <Box
@@ -808,7 +871,7 @@ const MenuPage: React.FC = () => {
             </Alert>
           )}
 
-          {orderingWindow && !orderingWindow.active && (
+          {selectedDateContext && !selectedDateContext.eligible && (
             <Alert
               severity="error"
               sx={{
@@ -819,12 +882,7 @@ const MenuPage: React.FC = () => {
                 },
               }}
             >
-              {orderingWindow.message || 'Ordering is currently closed'}
-              {orderingWindow.window.start && orderingWindow.window.end && (
-                <Typography variant="body2" sx={{ mt: 1, fontWeight: 500 }}>
-                  Ordering window: {orderingWindow.window.start} - {orderingWindow.window.end}
-                </Typography>
-              )}
+              {selectedDateContext.message || 'Selected prep date is currently unavailable'}
             </Alert>
           )}
 
@@ -838,7 +896,7 @@ const MenuPage: React.FC = () => {
                 py: 3,
               }}
             >
-              No menu items available for today.
+              No menu items available for this date.
             </Alert>
           ) : (
             visibleCategories.map((category) => (
@@ -965,6 +1023,7 @@ const MenuPage: React.FC = () => {
                             variant="contained"
                             startIcon={<AddIcon />}
                             onClick={() => handleAddToCart(item)}
+                            disabled={Boolean(selectedDateContext && !selectedDateContext.eligible)}
                             sx={{
                               py: 1.1,
                               fontSize: '0.95rem',
@@ -1087,7 +1146,12 @@ const MenuPage: React.FC = () => {
           <Button onClick={() => setSelectedItem(null)} variant="outlined" sx={{ minWidth: 100 }}>
             Cancel
           </Button>
-          <Button variant="contained" onClick={handleConfirmAddToCart} sx={{ minWidth: 140 }}>
+          <Button
+            variant="contained"
+            onClick={handleConfirmAddToCart}
+            disabled={Boolean(selectedDateContext && !selectedDateContext.eligible)}
+            sx={{ minWidth: 140 }}
+          >
             Add to Cart
           </Button>
         </DialogActions>

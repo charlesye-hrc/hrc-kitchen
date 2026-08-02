@@ -37,6 +37,7 @@ const HomePage = () => {
   const [orderingWindow, setOrderingWindow] = useState<any>(null);
   const [sectionTitle, setSectionTitle] = useState('Today\'s Menu');
   const [cartOpen, setCartOpen] = useState(false);
+  const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api/v1').replace(/\/$/, '');
 
   useEffect(() => {
     fetchDisplayItems();
@@ -47,7 +48,7 @@ const HomePage = () => {
       if (isAuthenticated) {
         // Fetch user's recent orders to get menu item IDs
         const ordersResponse = await axios.get(
-          `${import.meta.env.VITE_API_URL}/orders?limit=10`,
+          `${apiBaseUrl}/orders?limit=10`,
           { withCredentials: true }
         );
 
@@ -116,7 +117,8 @@ const HomePage = () => {
   };
 
   const handleQuickAdd = (item: MenuItem) => {
-    addItem(item, 1, [], '', []);
+    const prepDate = new Date().toISOString().slice(0, 10);
+    addItem(item, 1, prepDate, [], '', []);
   };
 
   return (

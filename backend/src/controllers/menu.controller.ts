@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import menuService from '../services/menu.service';
-import configService from '../services/config.service';
+import orderEligibilityService from '../services/orderEligibility.service';
+import { getBusinessDateString } from '../utils/businessDate';
 
 export class MenuController {
   /**
@@ -12,7 +13,16 @@ export class MenuController {
     try {
       const locationId = req.query.locationId as string | undefined;
       const result = await menuService.getTodaysMenu(locationId);
-      const orderingWindow = await configService.isOrderingWindowActive();
+      const orderingContext = await orderEligibilityService.getOrderingContext();
+      const todayStatus = orderingContext.selectableDates.find(date => date.date === getBusinessDateString());
+      const orderingWindow = {
+        active: todayStatus?.eligible ?? true,
+        window: {
+          start: '',
+          end: orderingContext.cutoffTime,
+        },
+        message: todayStatus?.message,
+      };
 
       if (result.items.length === 0) {
         res.status(200).json({
@@ -20,7 +30,9 @@ export class MenuController {
           data: {
             items: [],
             weekday: result.weekday,
+            prepDate: result.prepDate,
             orderingWindow,
+            orderingContext,
           },
           message: result.message,
         });
@@ -32,7 +44,9 @@ export class MenuController {
         data: {
           items: result.items,
           weekday: result.weekday,
+          prepDate: result.prepDate,
           orderingWindow,
+          orderingContext,
         },
       });
       return;
@@ -41,6 +55,64 @@ export class MenuController {
       res.status(500).json({
         success: false,
         message: 'Failed to fetch menu',
+      });
+      return;
+    }
+  }
+
+  /**
+   * GET /api/v1/menu/by-date
+   * Get menu items for a specific prep date
+   * Query params: date=YYYY-MM-DD, locationId
+   */
+  async getMenuByDate(req: Request, res: Response): Promise<void> {
+    try {
+      const prepDate = req.query.date as string | undefined;
+      const locationId = req.query.locationId as string | undefined;
+
+      if (!prepDate) {
+        res.status(400).json({
+          success: false,
+          message: 'date query parameter is required (YYYY-MM-DD)',
+        });
+        return;
+      }
+
+      const result = await menuService.getMenuByDate(prepDate, locationId);
+
+      res.json({
+        success: true,
+        data: result,
+      });
+      return;
+    } catch (error) {
+      console.error('Error fetching menu by date:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch menu',
+      });
+      return;
+    }
+  }
+
+  /**
+   * GET /api/v1/menu/ordering-context
+   * Get business date/cutoff and selectable prep dates
+   */
+  async getOrderingContext(_req: Request, res: Response): Promise<void> {
+    try {
+      const context = await orderEligibilityService.getOrderingContext();
+
+      res.json({
+        success: true,
+        data: context,
+      });
+      return;
+    } catch (error) {
+      console.error('Error fetching ordering context:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch ordering context',
       });
       return;
     }

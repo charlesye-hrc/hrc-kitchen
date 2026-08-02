@@ -179,13 +179,13 @@ export class ReportService {
     const endDate = new Date(dateRange.endDate + 'T23:59:59');
 
     const whereClause: any = {
+      prepDate: {
+        gte: startDate,
+        lte: endDate
+      },
       order: {
-        orderDate: {
-          gte: startDate,
-          lte: endDate
-        },
         paymentStatus: 'COMPLETED' // Only completed orders
-      }
+      },
     };
 
     // Apply location filtering
@@ -278,20 +278,22 @@ export class ReportService {
     const startDate = new Date(dateRange.startDate + 'T00:00:00');
     const endDate = new Date(dateRange.endDate + 'T23:59:59');
 
-    const whereClause: any = {
-      orderDate: {
+    const orderItemWhere: any = {
+      prepDate: {
         gte: startDate,
         lte: endDate
       },
-      paymentStatus: {
-        not: 'FAILED'
+      order: {
+        paymentStatus: {
+          not: 'FAILED'
+        }
       }
     };
 
     // Apply location filtering
     if (dateRange.locationId) {
       // Specific location selected by user
-      whereClause.locationId = dateRange.locationId;
+      orderItemWhere.order.locationId = dateRange.locationId;
     } else if (dateRange.allowedLocationIds !== null && dateRange.allowedLocationIds !== undefined) {
       // Role-based restriction: KITCHEN/FINANCE users
       if (dateRange.allowedLocationIds.length === 0) {
@@ -312,26 +314,47 @@ export class ReportService {
           dateRange: { startDate: dateRange.startDate, endDate: dateRange.endDate }
         };
       }
-      whereClause.locationId = { in: dateRange.allowedLocationIds };
+      orderItemWhere.order.locationId = { in: dateRange.allowedLocationIds };
     }
     // If allowedLocationIds is null, it means ADMIN - no restriction, show all
 
-    const orders = await prisma.order.findMany({
-      where: whereClause
+    const orderItems = await prisma.orderItem.findMany({
+      where: orderItemWhere,
+      select: {
+        orderId: true,
+        order: {
+          select: {
+            totalAmount: true,
+            fulfillmentStatus: true,
+            paymentStatus: true,
+          }
+        }
+      }
     });
 
-    // Count all orders for statistics
-    const totalOrders = orders.length;
+    const uniqueOrderMap = new Map<string, {
+      totalAmount: number;
+      fulfillmentStatus: OrderStatus;
+      paymentStatus: PaymentStatus;
+    }>();
+
+    for (const orderItem of orderItems) {
+      if (!uniqueOrderMap.has(orderItem.orderId)) {
+        uniqueOrderMap.set(orderItem.orderId, {
+          totalAmount: Number(orderItem.order.totalAmount),
+          fulfillmentStatus: orderItem.order.fulfillmentStatus as OrderStatus,
+          paymentStatus: orderItem.order.paymentStatus as PaymentStatus,
+        });
+      }
+    }
+
+    const uniqueOrders = Array.from(uniqueOrderMap.values());
+    const totalOrders = uniqueOrders.length;
 
     // Only sum revenue from completed payments
-    let completedOrderCount = 0;
-    const totalRevenue = orders.reduce((sum, order) => {
-      if (order.paymentStatus === 'COMPLETED') {
-        completedOrderCount++;
-        return sum + Number(order.totalAmount);
-      }
-      return sum;
-    }, 0);
+    const completedOrders = uniqueOrders.filter(order => order.paymentStatus === 'COMPLETED');
+    const completedOrderCount = completedOrders.length;
+    const totalRevenue = completedOrders.reduce((sum, order) => sum + order.totalAmount, 0);
 
     const averageOrderValue = completedOrderCount > 0 ? totalRevenue / completedOrderCount : 0;
 
@@ -351,9 +374,9 @@ export class ReportService {
       REFUNDED: 0
     };
 
-    orders.forEach(order => {
-      ordersByStatus[order.fulfillmentStatus as OrderStatus]++;
-      ordersByPayment[order.paymentStatus as PaymentStatus]++;
+    uniqueOrders.forEach(order => {
+      ordersByStatus[order.fulfillmentStatus]++;
+      ordersByPayment[order.paymentStatus]++;
     });
 
     return {
@@ -476,13 +499,14 @@ export class ReportService {
         break;
 
       case 'orders':
-        headers = ['Order Number', 'Date', 'Customer', 'Email', 'Items', 'Total', 'Payment Status', 'Fulfillment Status'];
+        headers = ['Order Number', 'Order Date', 'Prep Dates', 'Customer', 'Email', 'Items', 'Total', 'Payment Status', 'Fulfillment Status'];
         rows = data.map((order: any) => [
           order.orderNumber,
           new Date(order.orderDate).toLocaleDateString(),
-          order.user.fullName,
-          order.user.email,
-          order.orderItems.map((item: any) => `${item.menuItem.name} (${item.quantity})`).join('; '),
+          Array.from(new Set(order.orderItems.map((item: any) => new Date(item.prepDate).toLocaleDateString()))).join('; '),
+          order.user?.fullName || `${order.guestFirstName || ''} ${order.guestLastName || ''}`.trim() || 'Guest',
+          order.user?.email || order.guestEmail || 'N/A',
+          order.orderItems.map((item: any) => `${item.menuItem?.name || item.itemName || 'Unknown Item'} (${item.quantity})`).join('; '),
           Number(order.totalAmount).toFixed(2),
           order.paymentStatus,
           order.fulfillmentStatus
