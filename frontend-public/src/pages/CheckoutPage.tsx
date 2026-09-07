@@ -17,6 +17,11 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
+  FormControl,
+  FormLabel,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -36,6 +41,82 @@ interface GuestOrderSecurityToken {
   timestamp: number;
   signature: string;
 }
+
+const ALLERGEN_NOTE_PREFIX = 'ALLERGEN:';
+
+const buildTaggedAllergenNote = (allergenNote: string): string => `${ALLERGEN_NOTE_PREFIX} ${allergenNote.trim()}`;
+
+const extractTaggedAllergenNote = (value?: string | null): string | null => {
+  if (!value) {
+    return null;
+  }
+
+  const match = value.match(/allergen:\s*([^|\n\r]+)/i);
+  const extracted = match?.[1]?.trim();
+
+  return extracted || null;
+};
+
+const mergeSpecialRequestsWithAllergen = (
+  existingSpecialRequests?: string,
+  taggedAllergenNote?: string | null
+): string | undefined => {
+  const baseSpecialRequests = existingSpecialRequests?.trim();
+  const baseSegments = (baseSpecialRequests || '')
+    .split('|')
+    .map(segment => segment.trim())
+    .filter(Boolean);
+  const nonAllergenSegments = baseSegments.filter(segment => !/^allergen\s*:/i.test(segment));
+  const normalizedBaseSpecialRequests = nonAllergenSegments.length > 0
+    ? nonAllergenSegments.join(' | ')
+    : undefined;
+
+  if (!taggedAllergenNote) {
+    return normalizedBaseSpecialRequests;
+  }
+
+  if (!normalizedBaseSpecialRequests) {
+    return taggedAllergenNote;
+  }
+
+  return `${normalizedBaseSpecialRequests} | ${taggedAllergenNote}`;
+};
+
+const extractRememberedAllergenFromOrder = (order: any): string | null => {
+  const fromOrderLevel = extractTaggedAllergenNote(order?.specialRequests);
+  if (fromOrderLevel) {
+    return fromOrderLevel;
+  }
+
+  const orderItems = Array.isArray(order?.orderItems) ? order.orderItems : [];
+  for (const item of orderItems) {
+    const customizations = item?.customizations as Record<string, unknown> | null;
+    if (!customizations || typeof customizations !== 'object') {
+      continue;
+    }
+
+    const possibleValues = [
+      customizations.specialRequests,
+      customizations.specialRequest,
+      customizations.note,
+      customizations.notes,
+      customizations.freeText,
+      customizations.instruction,
+      customizations.instructions,
+    ];
+
+    for (const value of possibleValues) {
+      if (typeof value === 'string') {
+        const remembered = extractTaggedAllergenNote(value);
+        if (remembered) {
+          return remembered;
+        }
+      }
+    }
+  }
+
+  return null;
+};
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
@@ -61,6 +142,8 @@ const CheckoutForm: React.FC = () => {
   const [guestFirstName, setGuestFirstName] = useState('');
   const [guestLastName, setGuestLastName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
+  const [allergenDeclaration, setAllergenDeclaration] = useState<'yes' | 'no' | ''>('');
+  const [allergenNote, setAllergenNote] = useState('');
 
   // Email exists dialog
   const [showEmailExistsDialog, setShowEmailExistsDialog] = useState(false);
@@ -75,12 +158,66 @@ const CheckoutForm: React.FC = () => {
     guestFirstName,
     guestLastName,
     guestEmail,
+    allergenDeclaration,
+    allergenNote,
     isAuthenticated,
     loading,
   });
 
   const cartTotal = getCartTotal();
   const apiBaseUrl = import.meta.env.VITE_API_URL || '/api/v1';
+
+  const resolveAllergenDeclaration = (
+    declaration: 'yes' | 'no' | '',
+    noteValue: string
+  ): { normalizedAllergenNote: string | null; validationError: string | null } => {
+    if (!declaration) {
+      return {
+        normalizedAllergenNote: null,
+        validationError: 'Please confirm whether you have any allergen requirements before placing your order.',
+      };
+    }
+
+    if (declaration === 'yes') {
+      const normalized = noteValue.trim();
+      if (!normalized) {
+        return {
+          normalizedAllergenNote: null,
+          validationError: 'Please enter your allergen details before placing your order.',
+        };
+      }
+
+      return {
+        normalizedAllergenNote: normalized,
+        validationError: null,
+      };
+    }
+
+    return {
+      normalizedAllergenNote: null,
+      validationError: null,
+    };
+  };
+
+  const buildOrderData = (
+    orderItems: typeof items,
+    locationId: string,
+    normalizedAllergenNote: string | null
+  ) => {
+    const taggedAllergenNote = normalizedAllergenNote ? buildTaggedAllergenNote(normalizedAllergenNote) : null;
+
+    return {
+      items: orderItems.map(item => ({
+        menuItemId: item.menuItem.id,
+        quantity: item.quantity,
+        customizations: item.customizations.join(', '),
+        specialRequests: mergeSpecialRequestsWithAllergen(item.specialRequests, taggedAllergenNote),
+        selectedVariations: item.selectedVariations || [],
+      })),
+      locationId,
+      deliveryNotes: taggedAllergenNote || undefined,
+    };
+  };
 
   const ensureGuestSecurityToken = useCallback(async (): Promise<GuestOrderSecurityToken> => {
     if (guestSecurityToken && guestTokenExpiry && guestTokenExpiry > Date.now()) {
@@ -133,6 +270,46 @@ const CheckoutForm: React.FC = () => {
 
     checkOrderingWindow();
   }, [navigate]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setAllergenDeclaration('');
+      setAllergenNote('');
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadRememberedAllergen = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/orders/last/details`, {
+          withCredentials: true,
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        const rememberedAllergen = extractRememberedAllergenFromOrder(response.data?.data);
+        if (rememberedAllergen) {
+          setAllergenDeclaration('yes');
+          setAllergenNote(rememberedAllergen);
+        }
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+
+        console.log('No previous allergen note found for prefill', err);
+      }
+    };
+
+    loadRememberedAllergen();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
 
   // Handle location change and validate cart
   const handleLocationChange = async (locationId: string) => {
@@ -201,10 +378,22 @@ const CheckoutForm: React.FC = () => {
       guestFirstName,
       guestLastName,
       guestEmail,
+      allergenDeclaration,
+      allergenNote,
       isAuthenticated,
       loading,
     };
-  }, [items, cartLocationId, guestFirstName, guestLastName, guestEmail, isAuthenticated, loading]);
+  }, [
+    items,
+    cartLocationId,
+    guestFirstName,
+    guestLastName,
+    guestEmail,
+    allergenDeclaration,
+    allergenNote,
+    isAuthenticated,
+    loading,
+  ]);
 
   // Initialize Payment Request Button for Apple Pay / Google Pay
   useEffect(() => {
@@ -250,6 +439,8 @@ const CheckoutForm: React.FC = () => {
         guestFirstName: currentGuestFirstName,
         guestLastName: currentGuestLastName,
         guestEmail: currentGuestEmail,
+        allergenDeclaration: currentAllergenDeclaration,
+        allergenNote: currentAllergenNote,
         isAuthenticated: currentIsAuthenticated,
         loading: currentLoading,
       } = latestCheckoutState.current;
@@ -287,17 +478,19 @@ const CheckoutForm: React.FC = () => {
           return;
         }
 
+        const { normalizedAllergenNote, validationError } = resolveAllergenDeclaration(
+          currentAllergenDeclaration,
+          currentAllergenNote
+        );
+        if (validationError) {
+          event.complete('fail');
+          setError(validationError);
+          setLoading(false);
+          return;
+        }
+
         // Create order and get payment intent
-        const orderData = {
-          items: currentItems.map(item => ({
-            menuItemId: item.menuItem.id,
-            quantity: item.quantity,
-            customizations: item.customizations.join(', '),
-            specialRequests: item.specialRequests,
-            selectedVariations: item.selectedVariations || [],
-          })),
-          locationId: currentCartLocationId,
-        };
+        const orderData = buildOrderData(currentItems, currentCartLocationId, normalizedAllergenNote);
 
         let response;
         let guestTokenPayload: GuestOrderSecurityToken | undefined;
@@ -474,18 +667,19 @@ const CheckoutForm: React.FC = () => {
       return;
     }
 
+    const { normalizedAllergenNote, validationError } = resolveAllergenDeclaration(
+      allergenDeclaration,
+      allergenNote
+    );
+    if (validationError) {
+      setError(validationError);
+      setLoading(false);
+      return;
+    }
+
     try {
       // Create order and get payment intent
-      const orderData = {
-        items: items.map(item => ({
-          menuItemId: item.menuItem.id,
-          quantity: item.quantity,
-          customizations: item.customizations.join(', '),
-          specialRequests: item.specialRequests,
-          selectedVariations: item.selectedVariations || [],
-        })),
-        locationId: cartLocationId,
-      };
+      const orderData = buildOrderData(items, cartLocationId, normalizedAllergenNote);
 
       let response;
       let guestTokenPayload: GuestOrderSecurityToken | undefined;
@@ -897,6 +1091,53 @@ const CheckoutForm: React.FC = () => {
               </Typography>
             </Box>
           )}
+
+          <Box
+            sx={{
+              mb: 3,
+              p: 2,
+              border: '1px solid',
+              borderColor: 'warning.light',
+              borderRadius: 2,
+              bgcolor: 'warning.50',
+            }}
+          >
+            <FormControl component="fieldset" fullWidth>
+              <FormLabel component="legend" sx={{ fontWeight: 700, color: 'text.primary', mb: 1 }}>
+                Allergen Declaration (Required)
+              </FormLabel>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                Do you have any allergy or allergen requirements for this order?
+              </Typography>
+              <RadioGroup
+                row
+                value={allergenDeclaration}
+                onChange={(event) => setAllergenDeclaration(event.target.value as 'yes' | 'no')}
+              >
+                <FormControlLabel value="yes" control={<Radio />} label="Yes" disabled={loading} />
+                <FormControlLabel value="no" control={<Radio />} label="No" disabled={loading} />
+              </RadioGroup>
+            </FormControl>
+
+            {allergenDeclaration === 'yes' && (
+              <TextField
+                required
+                fullWidth
+                multiline
+                minRows={2}
+                label="Allergen details"
+                value={allergenNote}
+                onChange={(event) => setAllergenNote(event.target.value)}
+                placeholder="Example: Peanut and shellfish allergy"
+                sx={{ mt: 1.5 }}
+                disabled={loading}
+              />
+            )}
+
+            <Typography variant="caption" sx={{ display: 'block', mt: 1.5, color: 'text.secondary' }}>
+              We flag this for kitchen staff, but cross-contact may still occur.
+            </Typography>
+          </Box>
 
           {/* Apple Pay / Google Pay Button */}
           {canMakePayment && paymentRequest && (

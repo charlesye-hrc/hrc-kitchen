@@ -112,6 +112,7 @@ interface DailyStats {
 const BUSINESS_TIME_ZONE = 'Australia/Sydney';
 const AUTO_REFRESH_INTERVAL_MS = 15000;
 const ACTIVITY_REFRESH_THROTTLE_MS = 5000;
+const ALLERGEN_NOTE_PREFIX = 'ALLERGEN:';
 
 const getBusinessDateInputValue = (): string => {
   const formatter = new Intl.DateTimeFormat('en-US', {
@@ -166,30 +167,48 @@ const uniqueNotes = (values: string[]): string[] => {
   return result;
 };
 
-const getOrderItemNotes = (customizations: any): { customizations: string[]; freeText: string[] } => {
+const extractAllergenNote = (value: string): string | null => {
+  const match = value.match(/^\s*allergen:\s*(.+?)\s*$/i);
+  const extracted = match?.[1]?.trim();
+
+  return extracted || null;
+};
+
+const getOrderItemNotes = (customizations: any): { customizations: string[]; freeText: string[]; allergenNotes: string[] } => {
   if (!customizations) {
-    return { customizations: [], freeText: [] };
+    return { customizations: [], freeText: [], allergenNotes: [] };
   }
 
   if (typeof customizations === 'string') {
     const trimmed = customizations.trim();
     if (!trimmed) {
-      return { customizations: [], freeText: [] };
+      return { customizations: [], freeText: [], allergenNotes: [] };
     }
 
     try {
       return getOrderItemNotes(JSON.parse(trimmed));
     } catch {
-      return { customizations: [], freeText: [trimmed] };
+      const extractedAllergen = extractAllergenNote(trimmed);
+      return {
+        customizations: [],
+        freeText: extractedAllergen ? [] : [trimmed],
+        allergenNotes: extractedAllergen ? [extractedAllergen] : [],
+      };
     }
   }
 
   if (Array.isArray(customizations)) {
-    return { customizations: parseNoteValues(customizations), freeText: [] };
+    return { customizations: parseNoteValues(customizations), freeText: [], allergenNotes: [] };
   }
 
   if (typeof customizations !== 'object') {
-    return { customizations: [], freeText: [String(customizations)] };
+    const asString = String(customizations);
+    const extractedAllergen = extractAllergenNote(asString);
+    return {
+      customizations: [],
+      freeText: extractedAllergen ? [] : [asString],
+      allergenNotes: extractedAllergen ? [extractedAllergen] : [],
+    };
   }
 
   const data = customizations as Record<string, unknown>;
@@ -212,9 +231,31 @@ const getOrderItemNotes = (customizations: any): { customizations: string[]; fre
         )
       : [];
 
+  const allFreeText = uniqueNotes([...explicitFreeText, ...fallbackFreeText]);
+  const allergenNotes: string[] = [];
+  const nonAllergenFreeText: string[] = [];
+
+  allFreeText.forEach(note => {
+    const noteSegments = note
+      .split('|')
+      .map(segment => segment.trim())
+      .filter(Boolean);
+
+    noteSegments.forEach(segment => {
+      const extractedAllergen = extractAllergenNote(segment);
+      if (extractedAllergen) {
+        allergenNotes.push(extractedAllergen);
+        return;
+      }
+
+      nonAllergenFreeText.push(segment);
+    });
+  });
+
   return {
     customizations: uniqueNotes(customizationValues),
-    freeText: uniqueNotes([...explicitFreeText, ...fallbackFreeText])
+    freeText: uniqueNotes(nonAllergenFreeText),
+    allergenNotes: uniqueNotes(allergenNotes),
   };
 };
 
@@ -235,6 +276,24 @@ const KitchenDashboard = () => {
   const cardPositions = useRef<Record<string, { top: number; height: number }>>({});
   const requestInFlightRef = useRef(false);
   const lastActivityRefreshRef = useRef(0);
+
+  const itemHasAllergenAlert = (item: Order['orderItems'][number]): boolean => {
+    const itemNotes = getOrderItemNotes(item.customizations);
+    return itemNotes.allergenNotes.length > 0;
+  };
+
+  const confirmAllergensConsidered = (targetItems: Order['orderItems'][number][]): boolean => {
+    const allergenItems = targetItems.filter(itemHasAllergenAlert);
+    if (allergenItems.length === 0) {
+      return true;
+    }
+
+    const alertMessage = allergenItems.length === 1
+      ? `Allergen alert found on this item (${ALLERGEN_NOTE_PREFIX} ${getOrderItemNotes(allergenItems[0].customizations).allergenNotes.join(' | ')}).\n\nConfirm allergens have been considered before marking fulfilled.`
+      : `${allergenItems.length} items include allergen alerts.\n\nConfirm allergens have been considered before marking fulfilled.`;
+
+    return window.confirm(alertMessage);
+  };
 
   const loadData = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!selectedLocation) return;
@@ -328,6 +387,15 @@ const KitchenDashboard = () => {
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     try {
+      if (newStatus === 'FULFILLED') {
+        const targetOrder = orders.find(order => order.id === orderId);
+        const targetItems = targetOrder?.orderItems.filter(item => item.fulfillmentStatus !== 'FULFILLED') || [];
+
+        if (!confirmAllergensConsidered(targetItems)) {
+          return;
+        }
+      }
+
       await api.patch(`/kitchen/orders/${orderId}/status`, { status: newStatus });
 
       // Update state locally instead of reloading
@@ -365,6 +433,20 @@ const KitchenDashboard = () => {
 
   const handleItemStatusChange = async (orderItemId: string, newStatus: string) => {
     try {
+      if (!orderItemId) {
+        return;
+      }
+
+      if (newStatus === 'FULFILLED') {
+        const targetItem = orders
+          .flatMap(order => order.orderItems)
+          .find(item => item.id === orderItemId);
+
+        if (targetItem && !confirmAllergensConsidered([targetItem])) {
+          return;
+        }
+      }
+
       // Trigger flash effect on the specific row
       setFlashingRows(prev => ({ ...prev, [orderItemId]: true }));
 
@@ -448,26 +530,34 @@ const KitchenDashboard = () => {
     }
   };
 
-  const handleBatchFulfillment = async (menuItemId: string) => {
+  const handleBatchFulfillment = async (menuItemId?: string) => {
     try {
-      // Trigger flash effect
-      setFlashingCards(prev => ({ ...prev, [menuItemId]: true }));
+      if (!menuItemId) {
+        return;
+      }
 
       // Find all order items for this menu item that are not fulfilled
-      const orderItemsToFulfill: string[] = [];
+      const orderItemsToFulfill: Order['orderItems'][number][] = [];
 
       orders.forEach(order => {
         order.orderItems.forEach(item => {
           if (item.menuItem?.id === menuItemId && item.fulfillmentStatus === 'PLACED') {
-            orderItemsToFulfill.push(item.id);
+            orderItemsToFulfill.push(item);
           }
         });
       });
 
+      if (!confirmAllergensConsidered(orderItemsToFulfill)) {
+        return;
+      }
+
+      // Trigger flash effect
+      setFlashingCards(prev => ({ ...prev, [menuItemId]: true }));
+
       // Update all items in parallel
       await Promise.all(
-        orderItemsToFulfill.map(itemId =>
-          api.patch(`/kitchen/order-items/${itemId}/status`, { status: 'FULFILLED' })
+        orderItemsToFulfill.map(item =>
+          api.patch(`/kitchen/order-items/${item.id}/status`, { status: 'FULFILLED' })
         )
       );
 
@@ -936,11 +1026,11 @@ const KitchenDashboard = () => {
                                 );
                                 const itemStatus = orderItem?.fulfillmentStatus || 'PLACED';
                                 const orderItemNotes = getOrderItemNotes(order.customizations);
-                                const hasOrderItemNotes =
-                                  orderItemNotes.customizations.length > 0 || orderItemNotes.freeText.length > 0;
                                 const customizationsText = orderItemNotes.customizations.join(', ');
                                 const specialRequestsText = orderItemNotes.freeText.join(' | ');
+                                const allergenText = orderItemNotes.allergenNotes.join(' | ');
                                 const hasSpecialRequests = orderItemNotes.freeText.length > 0;
+                                const hasAllergenAlerts = orderItemNotes.allergenNotes.length > 0;
 
                                 return (
                                   <Box
@@ -996,14 +1086,54 @@ const KitchenDashboard = () => {
                                         ))}
                                       </Box>
                                     )}
-                                    {hasOrderItemNotes && (
+                                    {customizationsText && (
                                       <Typography variant="caption" color="text.secondary" sx={{ width: '100%' }}>
-                                        {customizationsText && `Customizations: ${customizationsText}`}
+                                        {`Customizations: ${customizationsText}`}
                                       </Typography>
                                     )}
                                   </Box>
                                   <Box sx={{ width: '100%', minWidth: 0 }}>
-                                    {hasSpecialRequests ? (
+                                    {hasAllergenAlerts && (
+                                      <Box
+                                        sx={{
+                                          width: '100%',
+                                          px: 1.25,
+                                          py: 0.75,
+                                          borderRadius: 1,
+                                          backgroundColor: 'rgba(211, 47, 47, 0.12)',
+                                          border: '1px solid',
+                                          borderColor: 'error.main',
+                                          mb: hasSpecialRequests ? 1 : 0,
+                                        }}
+                                      >
+                                        <Typography
+                                          variant="caption"
+                                          sx={{
+                                            display: 'block',
+                                            fontWeight: 700,
+                                            color: 'error.main',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: 0.4,
+                                            mb: 0.25
+                                          }}
+                                        >
+                                          Allergen Alert
+                                        </Typography>
+                                        <Typography
+                                          variant="body2"
+                                          sx={{
+                                            color: '#7f1d1d',
+                                            fontWeight: 700,
+                                            lineHeight: 1.3,
+                                            wordBreak: 'break-word'
+                                          }}
+                                        >
+                                          {allergenText}
+                                        </Typography>
+                                      </Box>
+                                    )}
+
+                                    {hasSpecialRequests && (
                                       <Box
                                         sx={{
                                           width: '100%',
@@ -1040,7 +1170,9 @@ const KitchenDashboard = () => {
                                           {specialRequestsText}
                                         </Typography>
                                       </Box>
-                                    ) : (
+                                    )}
+
+                                    {!hasAllergenAlerts && !hasSpecialRequests && (
                                       <Typography
                                         variant="caption"
                                         color="text.disabled"
@@ -1155,7 +1287,10 @@ const KitchenDashboard = () => {
                           <Stack spacing={2} sx={{ mb: 2 }}>
                             {order.orderItems.map((item) => {
                               const itemNotes = getOrderItemNotes(item.customizations);
-                              const hasItemNotes = itemNotes.customizations.length > 0 || itemNotes.freeText.length > 0;
+                              const hasItemNotes =
+                                itemNotes.customizations.length > 0 ||
+                                itemNotes.freeText.length > 0 ||
+                                itemNotes.allergenNotes.length > 0;
 
                               return (
                               <Box key={item.id} sx={{
@@ -1195,12 +1330,25 @@ const KitchenDashboard = () => {
                                       </>
                                     )}
                                     {hasItemNotes && (
-                                      <Typography variant="body2" color="text.secondary" sx={{ width: '100%', mt: 0.5 }}>
-                                        {itemNotes.customizations.length > 0 &&
-                                          `Customizations: ${itemNotes.customizations.join(', ')}`}
-                                        {itemNotes.freeText.length > 0 &&
-                                          `${itemNotes.customizations.length > 0 ? ' | ' : ''}Special: ${itemNotes.freeText.join(' | ')}`}
-                                      </Typography>
+                                      <Box sx={{ width: '100%', mt: 0.5 }}>
+                                        {itemNotes.customizations.length > 0 && (
+                                          <Typography variant="body2" color="text.secondary">
+                                            Customizations: {itemNotes.customizations.join(', ')}
+                                          </Typography>
+                                        )}
+
+                                        {itemNotes.freeText.length > 0 && (
+                                          <Typography variant="body2" color="text.secondary">
+                                            Special: {itemNotes.freeText.join(' | ')}
+                                          </Typography>
+                                        )}
+
+                                        {itemNotes.allergenNotes.length > 0 && (
+                                          <Alert severity="error" sx={{ mt: 1, py: 0 }}>
+                                            <strong>Allergen Alert:</strong> {itemNotes.allergenNotes.join(' | ')}
+                                          </Alert>
+                                        )}
+                                      </Box>
                                     )}
                                   </Box>
                                   {item.fulfillmentStatus === 'FULFILLED' ? (
@@ -1230,11 +1378,16 @@ const KitchenDashboard = () => {
                             })}
                           </Stack>
 
-                          {order.specialRequests && (
-                            <Alert severity="info" sx={{ mb: 2 }}>
-                              <strong>Special Requests:</strong> {order.specialRequests}
-                            </Alert>
-                          )}
+                          {order.specialRequests && (() => {
+                            const orderLevelAllergen = extractAllergenNote(order.specialRequests);
+
+                            return (
+                              <Alert severity={orderLevelAllergen ? 'error' : 'info'} sx={{ mb: 2 }}>
+                                <strong>{orderLevelAllergen ? 'Allergen Alert:' : 'Special Requests:'}</strong>{' '}
+                                {orderLevelAllergen || order.specialRequests}
+                              </Alert>
+                            );
+                          })()}
 
                           {/* Quick action: Mark all items as fulfilled */}
                           {order.fulfillmentStatus !== 'FULFILLED' &&
