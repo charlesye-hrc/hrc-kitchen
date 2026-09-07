@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -110,6 +110,8 @@ interface DailyStats {
 }
 
 const BUSINESS_TIME_ZONE = 'Australia/Sydney';
+const AUTO_REFRESH_INTERVAL_MS = 15000;
+const ACTIVITY_REFRESH_THROTTLE_MS = 5000;
 
 const getBusinessDateInputValue = (): string => {
   const formatter = new Intl.DateTimeFormat('en-US', {
@@ -231,19 +233,20 @@ const KitchenDashboard = () => {
   const [flashingCards, setFlashingCards] = useState<Record<string, boolean>>({});
   const [flashingRows, setFlashingRows] = useState<Record<string, boolean>>({});
   const cardPositions = useRef<Record<string, { top: number; height: number }>>({});
+  const requestInFlightRef = useRef(false);
+  const lastActivityRefreshRef = useRef(0);
 
-  useEffect(() => {
-    if (selectedLocation) {
-      loadData();
-    }
-  }, [selectedDate, statusFilter, selectedLocation]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!selectedLocation) return;
+    if (requestInFlightRef.current) return;
+
+    requestInFlightRef.current = true;
 
     try {
-      setLoading(true);
-      setError('');
+      if (!silent) {
+        setLoading(true);
+        setError('');
+      }
 
       // Build query params
       const params: any = { date: selectedDate, locationId: selectedLocation.id };
@@ -261,13 +264,67 @@ const KitchenDashboard = () => {
       setOrders(ordersRes.data.data || []);
       setSummary(summaryRes.data.data || []);
       setStats(statsRes.data.data || null);
+      setError('');
     } catch (err: any) {
-      console.error('Error loading kitchen data:', err);
-      setError(err.response?.data?.message || 'Failed to load kitchen data');
+      console.error(`Error ${silent ? 'auto-refreshing' : 'loading'} kitchen data:`, err);
+      if (!silent) {
+        setError(err.response?.data?.message || 'Failed to load kitchen data');
+      }
     } finally {
-      setLoading(false);
+      requestInFlightRef.current = false;
+      if (!silent) {
+        setLoading(false);
+      }
     }
-  };
+  }, [selectedDate, selectedLocation, statusFilter]);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    if (!selectedLocation) return;
+
+    const intervalId = window.setInterval(() => {
+      void loadData({ silent: true });
+    }, AUTO_REFRESH_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [loadData, selectedLocation]);
+
+  useEffect(() => {
+    if (!selectedLocation) return;
+
+    const refreshFromActivity = () => {
+      const now = Date.now();
+      if (now - lastActivityRefreshRef.current < ACTIVITY_REFRESH_THROTTLE_MS) {
+        return;
+      }
+
+      lastActivityRefreshRef.current = now;
+      void loadData({ silent: true });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshFromActivity();
+      }
+    };
+
+    const handleWindowFocus = () => {
+      refreshFromActivity();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, [loadData, selectedLocation]);
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     try {
