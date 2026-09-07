@@ -498,9 +498,9 @@ const ReportsPage = () => {
                               Orders by Fulfillment Status
                             </Typography>
                             <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                              <Typography>Placed: {summaryStats.ordersByStatus.PLACED}</Typography>
-                              <Typography>Partially Fulfilled: {summaryStats.ordersByStatus.PARTIALLY_FULFILLED}</Typography>
-                              <Typography>Fulfilled: {summaryStats.ordersByStatus.FULFILLED}</Typography>
+                              <Typography>Placed (no items fulfilled): {summaryStats.ordersByStatus.PLACED}</Typography>
+                              <Typography>Partially Fulfilled (some items fulfilled): {summaryStats.ordersByStatus.PARTIALLY_FULFILLED}</Typography>
+                              <Typography>Fulfilled (all items fulfilled): {summaryStats.ordersByStatus.FULFILLED}</Typography>
                             </Box>
                           </CardContent>
                         </Card>
