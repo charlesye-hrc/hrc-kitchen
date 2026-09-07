@@ -61,18 +61,46 @@ const UserLocationAssignmentPage: React.FC = () => {
     loadData();
   }, []);
 
+  const fetchAllUsers = async (): Promise<User[]> => {
+    const limit = 100;
+    let page = 1;
+    let totalPages = 1;
+    const allUsers: User[] = [];
+
+    while (page <= totalPages) {
+      const response = await api.get('/admin/users', {
+        params: {
+          page,
+          limit,
+        },
+      });
+
+      if (!response.data.success) {
+        break;
+      }
+
+      const pageUsers: User[] = Array.isArray(response.data.data) ? response.data.data : [];
+      allUsers.push(...pageUsers);
+
+      totalPages = response.data.pagination?.totalPages || 1;
+      page += 1;
+    }
+
+    const uniqueUsersById = new Map(allUsers.map((user) => [user.id, user]));
+    return Array.from(uniqueUsersById.values());
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
-      const [usersRes, locationsRes] = await Promise.all([api.get('/admin/users'), api.get('/admin/locations')]);
+      const [allUsers, locationsRes] = await Promise.all([fetchAllUsers(), api.get('/admin/locations')]);
 
-      if (usersRes.data.success) {
-        // Filter out ADMIN and STAFF users - they don't need location assignments
-        const filteredUsers = usersRes.data.data.filter(
-          (user: User) => user.role !== 'ADMIN' && user.role !== 'STAFF'
-        );
-        setUsers(filteredUsers);
-      }
+      // Filter out ADMIN and STAFF users - they don't need location assignments
+      const filteredUsers = allUsers.filter(
+        (user: User) => user.role !== 'ADMIN' && user.role !== 'STAFF'
+      );
+      setUsers(filteredUsers);
+
       if (locationsRes.data.success) {
         setLocations(locationsRes.data.data.filter((loc: Location) => loc.isActive));
       }
